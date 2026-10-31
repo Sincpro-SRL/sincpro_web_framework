@@ -1,0 +1,7 @@
+@import "@sincpro/web-ui/tokens.css";
+
+/* Tailwind v4 skips node_modules: without these, the classes of web-ui's own components are
+   never generated. */
+@source "../node_modules/@sincpro/web-ui/dist";
+@source "../src";
+@source "../stories";

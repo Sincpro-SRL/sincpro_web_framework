@@ -1,0 +1,44 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Introducción" />
+
+# @sincpro/web-framework
+
+**El cliente de sincpro_framework**: listas y registros que se arman con la definición que
+cada entidad publica — sus labels, sus tipos, qué es obligatorio, a qué apunta — para que una
+aplicación **nombre sus campos y el resto salga solo**.
+
+| Paquete                  | La pregunta que contesta                                  |
+| ------------------------ | --------------------------------------------------------- |
+| `@sincpro/web-ui`        | Cómo se ve una pantalla                                   |
+| `@sincpro/web-composer`  | Cómo se juntan las pantallas                              |
+| `@sincpro/criteria`      | Cómo una pantalla le pide registros al servidor           |
+| `@sincpro/web-framework` | Qué tiene un registro: leerlo, editarlo y actuar sobre él |
+| Tu aplicación            | Qué es un registro                                        |
+
+## Web, casado con web-ui y composer
+
+Este paquete es **sólo web**: dibuja con `@sincpro/web-ui` y abre con `@sincpro/web-composer`.
+Mobile tiene su propio framework (`sincpro_mobile`), con su core para REST o gRPC — querer
+servir a los dos desde acá rebajaría lo que la web necesita de verdad.
+
+Adentro, tres carpetas con una sola dirección:
+
+| Carpeta | Sabe de                                  | Por qué aparte                          |
+| ------- | ---------------------------------------- | --------------------------------------- |
+| `core`  | transporte, entidad, meta, qué texto es un valor | lógica pura: se prueba en Node, rápido |
+| `react` | `useListing`, `useRecord`, el provider   | estado sin dibujo: se usa sin `EntityList` |
+| `web`   | `@sincpro/web-ui`                        | lo que se ve                            |
+
+Todo se importa desde `@sincpro/web-framework`. `make doctor` rechaza que `core` importe React
+o toque el DOM, y que `react` importe web-ui.
+
+## Estas historias son los tests de aceptación
+
+Cada historia es **un caso de uso** del framework, contra un servidor en memoria que contesta
+con el mismo motor de criteria que sincpro_framework. Cada una trae un `play` que
+`make test` corre con vitest en un Chrome real (también desde «Run tests» en esta barra). Un caso que el framework todavía no resuelve aparece
+acá primero.
+
+- **ventas** — un dominio declarado a mano con `defineMeta`, sin servidor detrás.
+- **forge** — la definición de `Tenant` copiada de un forge corriendo, tal cual llega hoy.
