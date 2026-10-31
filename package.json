@@ -1,0 +1,63 @@
+{
+  "name": "@sincpro/web-framework",
+  "version": "0.0.0",
+  "description": "The web client of sincpro_framework: entities, lists and records bound to the metadata the server publishes, drawn with @sincpro/web-ui and arranged with @sincpro/web-composer.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "prettier": {
+    "printWidth": 94
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-simple-import-sort": "^14.0.0",
+    "prettier": "^3.9.10",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "tsc-alias": "^1.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1"
+  },
+  "keywords": [
+    "sincpro",
+    "sincpro-framework",
+    "react",
+    "metadata",
+    "criteria",
+    "erp"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sincpro-SRL/sincpro_web_framework.git"
+  },
+  "author": "Gutierrez, Andres <andres.gutierrez@sincpro.com.bo>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=26"
+  }
+}
