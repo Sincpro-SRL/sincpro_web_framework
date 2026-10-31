@@ -533,6 +533,24 @@
   resolved "https://registry.yarnpkg.com/@fontsource/ibm-plex-sans/-/ibm-plex-sans-5.3.0.tgz#8099950b404e625f65e7bd833bcb84ffe6bcd40c"
   integrity sha512-CbE4CbbEEZJX860XyUiRpsksXIQR8Rp2XDva2VO53NJox9tVNtusrysd2x5YkUEY3ErQ66W1IiiQL8/wihhw5w==
 
+"@full-ui/headless-calendar@7.1.3":
+  version "7.1.3"
+  resolved "https://registry.yarnpkg.com/@full-ui/headless-calendar/-/headless-calendar-7.1.3.tgz#24ce61197d649b5f85ea181b074041e0dbf89172"
+  integrity sha512-CFomIp87osqY65Hlu2c0e2ZnofBe9tKOO8IoPzIfSPVDK/+aGz4Itj6mLu4xPjIvzRDQiopcVzYlip6u1bvYxw==
+
+"@fullcalendar/core@7.1.3":
+  version "7.1.3"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/core/-/core-7.1.3.tgz#b657c29f362018762611b7bfa232668b02aeb48f"
+  integrity sha512-DLGXqX7CnuUQHH679FgE6+jc927wa708ydIcnfVx372IOK/OiDZjqc+IBwuKnu2EyqleCooDoAnUAcvXBhHosA==
+
+"@fullcalendar/react@7.1.3":
+  version "7.1.3"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/react/-/react-7.1.3.tgz#46dc2ef2cbafdd5e2c9c383731e311674c74d118"
+  integrity sha512-tZNr0hylQwFy8bOEAiMRv6KCc0mVFlCFLDPdiSoo8IZz17WWe9feB0FnU902jKX/Gi7djDIzAhLCkDbgecCknw==
+  dependencies:
+    "@full-ui/headless-calendar" "7.1.3"
+    "@fullcalendar/core" "7.1.3"
+
 "@humanfs/core@^0.19.2":
   version "0.19.2"
   resolved "https://registry.yarnpkg.com/@humanfs/core/-/core-0.19.2.tgz#a8272ca03b2acf492670222b2320b6c421bfde60"
@@ -1037,22 +1055,25 @@
   dependencies:
     "@atlaskit/pragmatic-drag-and-drop" "^4.0.0"
 
-"@sincpro/web-ui@^0.2.0":
-  version "0.2.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/web-ui/-/web-ui-0.2.0.tgz#f76d3f542774bcf4a87d183728442fafb42ae3b5"
-  integrity sha512-wcLLHM+IOs3b6Vyg2y8bhqfUiIT6ss/nyClkWK6dHOCwQIF0QBe3HjP+Gsz3U23LIp8v69+4qRBiH5TfALgOTw==
+"@sincpro/web-ui@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/web-ui/-/web-ui-1.0.0.tgz#d335af0430007c68af20ef723063134c56a35129"
+  integrity sha512-aLTyVsLycrG3J9DtV0YHx4J2jiiJ8f3qBhEsvlvRHS+O/hv6EClchcOwdKLmF9jIT97F7f1v113FsexVzvHAfA==
   dependencies:
     "@codemirror/lang-json" "^6.0.2"
     "@codemirror/lint" "^6.9.7"
     "@fontsource/ibm-plex-mono" "^5.3.0"
     "@fontsource/ibm-plex-sans" "^5.3.0"
+    "@fullcalendar/react" "7.1.3"
     "@internationalized/date" "^3.12.4"
+    "@svar-ui/react-gantt" "2.8.2"
     "@uiw/react-codemirror" "^4.25.11"
     lucide-react "^1.45.0"
     react-aria "^3.53.1"
     react-aria-components "^1.22.1"
     tailwind-variants "^4.0.0"
     tailwindcss-react-aria-components "^2.2.0"
+    temporal-polyfill "^1.0.6"
 
 "@standard-schema/spec@^1.0.0":
   version "1.1.0"
@@ -1144,6 +1165,257 @@
     "@storybook/react-dom-shim" "10.6.5"
     react-docgen "^8.0.2"
     react-docgen-typescript "^2.2.2"
+
+"@svar-ui/comments-locales@2.6.1":
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/comments-locales/-/comments-locales-2.6.1.tgz#16e72a16ce9262dccdad652964c200377ad8ee1e"
+  integrity sha512-jouLSwt0rPp2818bHftsb37aU8ERsyBney8XVUHhnWrsIaGJy/0TSOCw6YqN3cae6SQBd6KBO+P1+hBcDEsmUg==
+
+"@svar-ui/core-locales@2.6.1":
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/core-locales/-/core-locales-2.6.1.tgz#a7c8cacb6a2b22d7a1faf0cd28dfbd0d6eddce28"
+  integrity sha512-18xu7qn8Bxwi2EHguVV3Xya5kS+A+6Gnuo2wl55dofp9y948iZ5z7HIRh1+Mj1BgzbdVt6+B04JOCDMLJXyjtg==
+
+"@svar-ui/editor-locales@2.6.1":
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/editor-locales/-/editor-locales-2.6.1.tgz#04fce752b43d107a335432bd3734b2901dbc8f66"
+  integrity sha512-HFEB43W+AEUjoBh3ZsrlLFFTVh8WYPVpZeOiCfptS5hS0qC8pEnqaXtreM6TM1g3W5VHHOR+sXsWkIxAoeKVvg==
+
+"@svar-ui/filter-locales@2.6.1":
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/filter-locales/-/filter-locales-2.6.1.tgz#163863841150d52ab3f7efc076d3de5ead19708d"
+  integrity sha512-m963r4TnZxiZ6XzfJYvSmiYcmgSgKhkzpOVcUP25AviWle1oPulyv4Qe28Rak3JaAOFAHQAf0EucoaSMJzvK6A==
+
+"@svar-ui/filter-store@2.6.1":
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/filter-store/-/filter-store-2.6.1.tgz#e3a9c40c2fee3f74b9d8b30797b8131b374e43b0"
+  integrity sha512-2UHeXuNYN56MokBhB48EJ7KvKDVAJbRP2nIbE6t7lbsnWhRsBGxPc4jjUQn/9K+MTGkxrzPrOfeoH8L4p3Hy5g==
+  dependencies:
+    "@svar-ui/lib-state" "1.9.6"
+
+"@svar-ui/gantt-data-provider@2.8.2":
+  version "2.8.2"
+  resolved "https://registry.yarnpkg.com/@svar-ui/gantt-data-provider/-/gantt-data-provider-2.8.2.tgz#11931bd7453259c0861951c0210b8f0209f06f25"
+  integrity sha512-1Q2fXOt/KprlshHDjCq5yV8M9cvhGMDSP3wZklH33FCRyb4TXWb4EPzgRSoVzf+jNk9tue9eV7osVFSH+DtNTA==
+  dependencies:
+    "@svar-ui/lib-data-provider" "1.7.4"
+
+"@svar-ui/gantt-locales@2.8.2":
+  version "2.8.2"
+  resolved "https://registry.yarnpkg.com/@svar-ui/gantt-locales/-/gantt-locales-2.8.2.tgz#4e264de27abc016cbd25458c73668e241aa13862"
+  integrity sha512-f95G68E5mbaYRkHV3zz6IMVxuaxvB7fIlA9pqRGNLBHPyvl2tmXVKqkfhWT8vZGKQYzehWyqErdPQaBnzwftyQ==
+
+"@svar-ui/gantt-store@2.8.2":
+  version "2.8.2"
+  resolved "https://registry.yarnpkg.com/@svar-ui/gantt-store/-/gantt-store-2.8.2.tgz#fe59f3f4e5b98ff7e0293bdf3f483d292b9bc4d6"
+  integrity sha512-F3YwQ4RXPMxIZXzA1CYWiL3GhrB4MXA70jrTF3GYWDw3RtnxZN5cy9vukgVhRww6PmoABhkvU+y4weH/Lto/lQ==
+  dependencies:
+    "@svar-ui/lib-dom" "0.14.0"
+    "@svar-ui/lib-state" "1.10.1"
+    date-fns "3.6.0"
+
+"@svar-ui/grid-data-provider@2.7.5":
+  version "2.7.5"
+  resolved "https://registry.yarnpkg.com/@svar-ui/grid-data-provider/-/grid-data-provider-2.7.5.tgz#4d7b2c3d20f0f9fdd354d3d47c79522399223708"
+  integrity sha512-cYf6Vi+cAVhZBkVeKFFIDXmMaLKqyzKPzup3H2v13kIB7R2B3yq/UmfkewFx58VKxzObnnt3T6VFx7JTB6pUDQ==
+  dependencies:
+    "@svar-ui/lib-data-provider" "1.7.4"
+
+"@svar-ui/grid-locales@2.7.5":
+  version "2.7.5"
+  resolved "https://registry.yarnpkg.com/@svar-ui/grid-locales/-/grid-locales-2.7.5.tgz#e28fbbfaf73f6db1ad45183490e6c4989c17b6ec"
+  integrity sha512-iqV49UxVOSwN+Va7VRYY6wiYrT7C1zwGPWSKdthkydXUcHbxxwkzwvgPUxcBgooN0tUANS03TMfqCX7tSMuD6w==
+
+"@svar-ui/grid-store@2.7.5":
+  version "2.7.5"
+  resolved "https://registry.yarnpkg.com/@svar-ui/grid-store/-/grid-store-2.7.5.tgz#447278c4887ea8e412d0cd2d94a3927a72e38295"
+  integrity sha512-0tjK8P6WZcSPPnczoG/uc4nF6qLjf0y/fKyvo/KhsBD4CUmZUAZNpdsX0a78LVKTGiEsxwqhf0jk3GrQJxPj5Q==
+  dependencies:
+    "@svar-ui/lib-dom" "0.12.1"
+    "@svar-ui/lib-state" "1.10.1"
+
+"@svar-ui/lib-data-provider@1.7.3":
+  version "1.7.3"
+  resolved "https://registry.yarnpkg.com/@svar-ui/lib-data-provider/-/lib-data-provider-1.7.3.tgz#a616866493ea1c3dccba858d1f1b84a0007ad030"
+  integrity sha512-+UAM1VybQco5N52iv6rVcDwOJ5G1qE+V+nvaoBHx41H05w4TZTFJL+UnRy99NDLrVbLoCWhoH3L8vyNmZVjTvw==
+  dependencies:
+    "@svar-ui/lib-state" "1.9.6"
+
+"@svar-ui/lib-data-provider@1.7.4":
+  version "1.7.4"
+  resolved "https://registry.yarnpkg.com/@svar-ui/lib-data-provider/-/lib-data-provider-1.7.4.tgz#eafbaeb4726694534e67129d10127f0d136339fa"
+  integrity sha512-aDNMqd4kKK7aGTkF6F2zrjchaE3cjVKAYNCzm2fsLXKiGLn6gpxUAXGgsEuPrgop5wvOfJVJGr7cO/3dEsdHpA==
+  dependencies:
+    "@svar-ui/lib-state" "1.10.1"
+
+"@svar-ui/lib-dom@0.12.1":
+  version "0.12.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/lib-dom/-/lib-dom-0.12.1.tgz#22cf166b4ba3d12454001877c30080c6df535b8c"
+  integrity sha512-srvDleQqR6stBBDijCgzDHMFTTffI6sv3XCpNPKmurrnE83L1MDNqezqg6j3+0dUVPd4AAEGOez2DvK6byblTQ==
+
+"@svar-ui/lib-dom@0.14.0":
+  version "0.14.0"
+  resolved "https://registry.yarnpkg.com/@svar-ui/lib-dom/-/lib-dom-0.14.0.tgz#150fb2dfa27213a211c89a57cf0ad1ecee266e66"
+  integrity sha512-9uao5ebcQmuW0RoMu1LCesPsZ7i6G3xIvYAQzX/aeg662Yy/ETsNVy1pXoSa2q5v6ccAMjVxFrFCYReK7fzaJQ==
+
+"@svar-ui/lib-dom@^0.11.1":
+  version "0.11.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/lib-dom/-/lib-dom-0.11.1.tgz#926250ec75c76008ead9ef1a84a4cb96614b46e4"
+  integrity sha512-4wgerhDVttvrQ9t6OjHur34Of+VVr2VygA16HHGcWHytgdnOuGgfZb5PeBEhCJw/pO3RKfJvBHbaMIzL4IR//g==
+
+"@svar-ui/lib-dom@^0.12.1":
+  version "0.12.2"
+  resolved "https://registry.yarnpkg.com/@svar-ui/lib-dom/-/lib-dom-0.12.2.tgz#cacc25163340fdeceed2b5416b3bf0a0239af548"
+  integrity sha512-tV9sJ7Xpedxf1dttTc8I190eqlP0UsassUw48uW3JuEQR0G3IRfmH53/X+mYEooc7bcpZDkzYukWEqJeEq9UlQ==
+
+"@svar-ui/lib-react@1.2.2":
+  version "1.2.2"
+  resolved "https://registry.yarnpkg.com/@svar-ui/lib-react/-/lib-react-1.2.2.tgz#c8107601bf7623a14eae64218e9ab76b38fcc4aa"
+  integrity sha512-bB+Vou2NM0JhMuFW03MsjjoV5Y3xcFfuuK48+7uzUC9Ui1oSWpCK+txOZ+dnUFJISSVjSsXuF34AzMw/2CA63w==
+  dependencies:
+    "@svar-ui/lib-dom" "^0.11.1"
+
+"@svar-ui/lib-react@1.3.0":
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/@svar-ui/lib-react/-/lib-react-1.3.0.tgz#7d42c04546189a33948e51e46a7c6db62677dc41"
+  integrity sha512-jVcREYAMAXOhZB/lbMmLteGKIZoUW3rzmoXCMcFLGcHIGUH7AjFrKOAG/SJvgV0grcG9XyuRTG3jp++6NIGtuw==
+  dependencies:
+    "@svar-ui/lib-dom" "^0.12.1"
+
+"@svar-ui/lib-state@1.10.1":
+  version "1.10.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/lib-state/-/lib-state-1.10.1.tgz#c8a98007e43ac6feccdc96638719b706abb20570"
+  integrity sha512-Gdxm1F0dv6jhy5SM473spM9TX8qH8ZycTRggawHpJikdSME3FN7v6b+ER202PjGB4VnWWlqFRHZqkVWsSyZ8Wg==
+
+"@svar-ui/lib-state@1.9.6":
+  version "1.9.6"
+  resolved "https://registry.yarnpkg.com/@svar-ui/lib-state/-/lib-state-1.9.6.tgz#b2359f2a212565eaa72d6a15fc4d27aadd42a070"
+  integrity sha512-twoHa8wZvzdxtES68s6Wnp4Xi1WivScNaFFK6sJ6WDgqVYOzJw0ZhVVrdwHQgieLITTKl/DYh/U3nuqtMetKYw==
+
+"@svar-ui/lib-state@1.9.7":
+  version "1.9.7"
+  resolved "https://registry.yarnpkg.com/@svar-ui/lib-state/-/lib-state-1.9.7.tgz#4f60647d3f4b8a56e4c41436db33a08fb0e0485c"
+  integrity sha512-nxRdk+54m1RJjGT2yDH7NjxAM5KECxA39kdTZezEIj1ixykyefssB9BrgxKy2jIseYxJMtd6lPZvQ3SZXuvn2g==
+
+"@svar-ui/react-comments@2.6.1":
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/react-comments/-/react-comments-2.6.1.tgz#9dec98c1abc0649ebaa20b62712af394234ef436"
+  integrity sha512-bdO8DHIZ/qpQNXeZzNuU2cbUsiyen+bc2/sS9h7PLzCSeeGmKwAyHeTyO06WvsVxUgQSBAfp2Eom+xFNDaQcXw==
+  dependencies:
+    "@svar-ui/comments-locales" "2.6.1"
+    "@svar-ui/core-locales" "2.6.1"
+    "@svar-ui/lib-data-provider" "1.7.3"
+    "@svar-ui/lib-dom" "0.14.0"
+    "@svar-ui/lib-state" "1.9.7"
+    "@svar-ui/react-core" "2.6.1"
+    "@svar-ui/react-menu" "2.6.1"
+
+"@svar-ui/react-core@2.6.1":
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/react-core/-/react-core-2.6.1.tgz#a237807474eedd76c525c4d5793cc018b9a1c2b5"
+  integrity sha512-1b0R+n4r/XLM2FC4mAxhyRYCI79HdrDbfe0nsOr/uJ0Ty+wxEfWglamCf6yJSM2tvmpGJQ388flDIXPbzep4Fg==
+  dependencies:
+    "@svar-ui/core-locales" "2.6.1"
+    "@svar-ui/lib-dom" "0.14.0"
+    "@svar-ui/lib-react" "1.2.2"
+
+"@svar-ui/react-editor@2.6.1":
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/react-editor/-/react-editor-2.6.1.tgz#2df6e92f5b6d48547955772d2f10af6f181ae893"
+  integrity sha512-r/POft5rvYx43DGHHuC3yKJKani0i+jqKbWFH+j5IWUhWjnkEqdpcToehGzoXob7gyl7VuzGMQQFu8DzUcyNrw==
+  dependencies:
+    "@svar-ui/editor-locales" "2.6.1"
+    "@svar-ui/lib-dom" "0.14.0"
+    "@svar-ui/lib-state" "1.9.7"
+    "@svar-ui/react-comments" "2.6.1"
+    "@svar-ui/react-core" "2.6.1"
+    "@svar-ui/react-tasklist" "2.6.1"
+    "@svar-ui/react-toolbar" "2.6.1"
+
+"@svar-ui/react-filter@2.6.1":
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/react-filter/-/react-filter-2.6.1.tgz#818d85f728b76f1f02a23dc291efb639afae3616"
+  integrity sha512-GBwReaJUa7Qb7EZTJroxjzm7NIGsAEFuDoTrmJqwkcmwFB+WBukQa/2Z0mf5Ya4t4/ldt1sfOzNWlbFhMo8FTA==
+  dependencies:
+    "@svar-ui/filter-locales" "2.6.1"
+    "@svar-ui/filter-store" "2.6.1"
+    "@svar-ui/lib-dom" "0.14.0"
+    "@svar-ui/lib-react" "1.3.0"
+    "@svar-ui/lib-state" "1.9.7"
+    "@svar-ui/react-core" "2.6.1"
+    "@svar-ui/react-menu" "2.6.1"
+
+"@svar-ui/react-gantt@2.8.2":
+  version "2.8.2"
+  resolved "https://registry.yarnpkg.com/@svar-ui/react-gantt/-/react-gantt-2.8.2.tgz#afb893c51cbadc8523ea8f35b0b0d0540827aecd"
+  integrity sha512-cXVaHnUmCCiiNT1ufkWMUply3BbaZqHqQmPrfrtRJ4dvM9frv5YH+5dg9Zw+HdNkVtnNm0WFHo299pmuSnsskw==
+  dependencies:
+    "@svar-ui/core-locales" "2.6.1"
+    "@svar-ui/gantt-data-provider" "2.8.2"
+    "@svar-ui/gantt-locales" "2.8.2"
+    "@svar-ui/gantt-store" "2.8.2"
+    "@svar-ui/grid-store" "2.7.5"
+    "@svar-ui/lib-dom" "0.14.0"
+    "@svar-ui/lib-react" "1.3.0"
+    "@svar-ui/lib-state" "1.10.1"
+    "@svar-ui/react-comments" "2.6.1"
+    "@svar-ui/react-core" "2.6.1"
+    "@svar-ui/react-editor" "2.6.1"
+    "@svar-ui/react-filter" "2.6.1"
+    "@svar-ui/react-grid" "2.7.6"
+    "@svar-ui/react-menu" "2.6.1"
+    "@svar-ui/react-tasklist" "2.6.1"
+    "@svar-ui/react-toolbar" "2.6.1"
+    date-fns "3.6.0"
+
+"@svar-ui/react-grid@2.7.6":
+  version "2.7.6"
+  resolved "https://registry.yarnpkg.com/@svar-ui/react-grid/-/react-grid-2.7.6.tgz#b6cd5928bfd82f7b1940fd28897c2a05a270be4a"
+  integrity sha512-53UwuICxLd71b9KLsKlBwrP0eslgL49029SQHJBzvAsCCX08O80AXj99xMkdLoK/jvqK1+OoZ62lCmc1tYvWdw==
+  dependencies:
+    "@svar-ui/grid-data-provider" "2.7.5"
+    "@svar-ui/grid-locales" "2.7.5"
+    "@svar-ui/grid-store" "2.7.5"
+    "@svar-ui/lib-dom" "0.14.0"
+    "@svar-ui/lib-react" "1.3.0"
+    "@svar-ui/lib-state" "1.10.1"
+    "@svar-ui/react-core" "2.6.1"
+    "@svar-ui/react-menu" "2.6.1"
+    "@svar-ui/react-toolbar" "2.6.1"
+
+"@svar-ui/react-menu@2.6.1":
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/react-menu/-/react-menu-2.6.1.tgz#40a82b4fa501cfda3200ffc74a1a175320fecb54"
+  integrity sha512-/wu6vaLVPN2AJp8r+axIkjaSpoZOAgE46CRsdM2d0yc+hbJdeMo997LXZTGQzBziwLZttW1DDwOvL+uLIeTOug==
+  dependencies:
+    "@svar-ui/core-locales" "2.6.1"
+    "@svar-ui/lib-dom" "0.14.0"
+    "@svar-ui/react-core" "2.6.1"
+
+"@svar-ui/react-tasklist@2.6.1":
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/react-tasklist/-/react-tasklist-2.6.1.tgz#e7e6a5b6f8a45963b8845a5e91c44b0d9e141e92"
+  integrity sha512-U06UHYwL1J6XXMLsHrTvs/wWUXEm3ZC+Ca1hC5Ns0vvnscdE6cSRPqC1Xl2JGKu/cem0sHimEVi7SW4Q2NWczw==
+  dependencies:
+    "@svar-ui/lib-data-provider" "1.7.3"
+    "@svar-ui/lib-dom" "0.14.0"
+    "@svar-ui/lib-state" "1.9.7"
+    "@svar-ui/react-core" "2.6.1"
+    "@svar-ui/tasklist-locales" "2.6.1"
+
+"@svar-ui/react-toolbar@2.6.1":
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/react-toolbar/-/react-toolbar-2.6.1.tgz#7c9907c299da65bcfd359a12577085367c65e78c"
+  integrity sha512-jSxcTW8WNgpSgkxicGyu76cKjVuwwxOvdDXJqQpLnxIIdN/RNeWuY8ak4sD0IqhCOp7AicgfPg2t+K4YUp+LMQ==
+  dependencies:
+    "@svar-ui/core-locales" "2.6.1"
+    "@svar-ui/lib-dom" "0.14.0"
+    "@svar-ui/react-core" "2.6.1"
+
+"@svar-ui/tasklist-locales@2.6.1":
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/@svar-ui/tasklist-locales/-/tasklist-locales-2.6.1.tgz#090929946ced33f31aceada3186c58f9b8648012"
+  integrity sha512-ewGvdmALpEJR3CpzlNX8aDL2JPmeyF1EweRBoI0jQmp7bIpYDIlpTWStmGwDEwQ5SgvUTJylFyIj6baPf2RBlw==
 
 "@swc/helpers@^0.5.0":
   version "0.5.23"
@@ -1937,6 +2209,11 @@ csstype@^3.2.2:
   version "3.2.3"
   resolved "https://registry.yarnpkg.com/csstype/-/csstype-3.2.3.tgz#ec48c0f3e993e50648c86da559e2610995cf989a"
   integrity sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==
+
+date-fns@3.6.0:
+  version "3.6.0"
+  resolved "https://registry.yarnpkg.com/date-fns/-/date-fns-3.6.0.tgz#f20ca4fe94f8b754951b24240676e8618c0206bf"
+  integrity sha512-fRHTG8g/Gif+kSh50gaGEdToemgfj74aRX3swtiouboip5JDLAyDE9F11nHMIcvOaXeOC6D7SpNhi7uFyB7Uww==
 
 debug@^4.1.0, debug@^4.3.1, debug@^4.3.2, debug@^4.4.3:
   version "4.4.3"
@@ -3304,6 +3581,24 @@ tapable@^2.3.3:
   version "2.3.3"
   resolved "https://registry.yarnpkg.com/tapable/-/tapable-2.3.3.tgz#5da7c9992c46038221267985ab28421a8879f160"
   integrity sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A==
+
+temporal-polyfill@^1.0.6:
+  version "1.0.6"
+  resolved "https://registry.yarnpkg.com/temporal-polyfill/-/temporal-polyfill-1.0.6.tgz#533ad989010e604c4e8cbc3d0d3da1c7408c8671"
+  integrity sha512-tYyEry1HLGUDbm2356W3iYD0OZdo7rlP7h98Zr/EnjqLZQwTAfcBDUvJnJbfA15v/vQad57hJZScG5O0W2oKEA==
+  dependencies:
+    temporal-spec "1.0.1"
+    temporal-utils "1.0.3"
+
+temporal-spec@1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/temporal-spec/-/temporal-spec-1.0.1.tgz#5679ce2dd0089865afe80e0a8bd22a9033c16717"
+  integrity sha512-wxVoanmDeavXie1vu2JaQ3WIc3JZnWAOYFBsJyATaVsXsycKYUflGsyBmrRSnoCpZJpwPyr38VpgSUlQ8CbFxg==
+
+temporal-utils@1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/temporal-utils/-/temporal-utils-1.0.3.tgz#dbbe3e14adaa81fcf811d0f7380b30a9c6a2ada0"
+  integrity sha512-9jbTSX3HvkOWvDpNpFzwX/d1mkCrgQgwLmVTOEiuocZGKHsrQJtttGZFmybJ2zYP5zCSZuU5ZyeS8+eOEPABiQ==
 
 tiny-invariant@^1.3.3:
   version "1.3.3"

@@ -268,10 +268,10 @@ Encontrado en esta vuelta:
 
 ## Composer 1.4 y web-ui 1.0 (2026-10-31)
 
-Composer pasó a `^1.4.0` (publicado). **web-ui 1.0 todavía no está en npm** (sigue 0.2.0): para
-iterar, se compiló `~/dev/sincpro_web_ui` (commit `47cc830`), se empaquetó con `npm pack` y se
-puso en `node_modules` sin tocar `package.json` — `yarn link` traería un segundo React. El peer
-queda en `^0.2.0` hasta el release; entonces pasa a `^1.0.0`. Un `yarn install` vuelve a la 0.2.0.
+Composer pasó a `^1.4.0` y web-ui a `^1.0.0`, las dos publicadas. Mientras web-ui 1.0 no estaba
+en npm se iteró con un `npm pack` de `~/dev/sincpro_web_ui` puesto en `node_modules` (`yarn link`
+traería un segundo React); la CI, con el peer todavía en `^0.2.0`, no compilaba (`OpenTarget`,
+`onOpenIn`). Lección: el peer sube en el mismo commit que usa la API nueva.
 
 Nada de lo que este paquete importa de web-ui desapareció (lo que 1.0 quita — `Drill`,
 `CommandPalette`, `LookupDialog`, `ContactCard` — no se usaba). Con las dos versiones nuevas
