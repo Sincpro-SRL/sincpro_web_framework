@@ -14,11 +14,22 @@
     "noUnusedParameters": true,
     "noUncheckedIndexedAccess": true,
     "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
     "paths": {
       "@sincpro/web-framework": ["./src/index.ts"],
       "@sincpro/web-framework/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "stories/**/*.ts",
+    "stories/**/*.tsx",
+    ".storybook/*.ts",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

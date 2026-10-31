@@ -12,12 +12,14 @@ help:
 	@echo "  lint            eslint"
 	@echo "  typecheck       tsc --noEmit"
 	@echo "  doctor          the traps tsc does not catch"
-	@echo "  test            node --test over the TypeScript sources"
+	@echo "  test            vitest: the logic in Node + every use case (story + play) in Chrome"
 	@echo "  verify-format   format + lint + doctor, then fail if the tree is dirty (CI)"
 	@echo "  build           compile into dist/"
+	@echo "  dev             Storybook on :6008 — the use cases"
+	@echo "  storybook       static Storybook into storybook-static/"
 	@echo "  update-version  VERSION=x.y.z — release pipeline only, never by hand"
 	@echo "  publish         build + publish to NPM (release pipeline)"
-	@echo "  clean           remove dist/ and node_modules/"
+	@echo "  clean           remove dist/, storybook-static/ and node_modules/"
 
 prepare-environment:
 	@pipx install pre-commit
@@ -59,12 +61,26 @@ doctor:
 	if $(SCAN) 'from "[^"]+\.tsx?"' src | $(NOT_COMMENT); then \
 		echo >&2 "✘ .ts/.tsx extension in an import — the build emits it as-is and breaks"; found=1; \
 	fi; \
+	if $(SCAN) 'from "(react|react-dom|@sincpro/web-ui|@sincpro/criteria-react)["/]|from "$(PACKAGE)/(react|web)/' src/core | $(NOT_COMMENT); then \
+		echo >&2 "✘ core/ importing React, the DOM or a UI — core/ is plain logic, tested in Node"; found=1; \
+	fi; \
+	if $(SCAN) 'from "(react-dom|@sincpro/web-ui)["/]|from "$(PACKAGE)/web/' src/react | $(NOT_COMMENT); then \
+		echo >&2 "✘ react/ importing the DOM or web-ui — react/ holds state, web/ draws"; found=1; \
+	fi; \
+	if $(SCAN) 'from "@sincpro/web-composer' src/web/record | $(NOT_COMMENT); then \
+		echo >&2 "✘ web/record/ importing the composer — a form works outside a workspace"; found=1; \
+	fi; \
+	if $(SCAN) '(^|[^.A-Za-z_])(document|window)\.' src/core src/react | $(NOT_COMMENT); then \
+		echo >&2 "✘ document/window outside web/ — only web/ may touch the DOM"; found=1; \
+	fi; \
 	if [ "$$found" = "1" ]; then exit 1; fi; \
 	echo "✓ no traps found"
 
+# One runner, two projects (vitest.config.ts): `model` in Node, `storybook` in a real Chrome —
+# the stories ARE the tests, and Storybook's «Run tests» runs these same ones.
 test:
 	@echo "🧪 Running tests..."
-	@node --import tsx --test "tests/**/*.test.ts" "tests/**/*.test.tsx"
+	@VITE_CONFIG_NATIVE_IGNORE_WARNING=true npx vitest run
 
 verify-format: format lint doctor
 	@if ! git diff --quiet; then \
@@ -80,6 +96,12 @@ build:
 	@npx tsc -p tsconfig.build.json
 	@npx tsc-alias -p tsconfig.build.json
 	@echo "✓ Build ready in ./dist (JS + .d.ts, $(PACKAGE) resolved to relative)"
+
+dev:
+	@npx storybook dev -p 6008 --no-open
+
+storybook:
+	@npx storybook build -o storybook-static
 
 # `--package-lock=false`: npm (unlike yarn, which manages this repo's installs) doesn't read
 # yarn.lock, so without it `npm version` rebuilds a dependency tree against the real registry
@@ -112,8 +134,8 @@ deploy:
 	@echo "Deploy not applicable for library packages"
 
 clean:
-	@rm -rf dist node_modules
+	@rm -rf dist storybook-static node_modules
 	@echo "✓ Cleaned"
 
 .PHONY: help prepare-environment install init typecheck format lint doctor test verify-format build \
-	update-version publish deploy clean
+	dev storybook update-version publish deploy clean

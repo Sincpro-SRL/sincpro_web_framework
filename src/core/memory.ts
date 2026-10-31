@@ -1,0 +1,137 @@
+import type { AnyRecord, Criteria, Meta, Problem } from "@sincpro/criteria";
+import { answer } from "@sincpro/criteria/engine";
+import {
+  type Draft,
+  type Method,
+  type One,
+  type Transport,
+  TransportError,
+} from "@sincpro/web-framework/core/transport";
+
+/**
+ * A server held in memory: tables of rows with their definition, answered with the same
+ * engine sincpro_framework's criteria runs on.
+ *
+ * Context: not a test double. It is what a screen runs against before its server exists,
+ * what Storybook and the tests run against, and what a domain with no server at all uses —
+ * rows a screen already holds. It filters, orders, pages and counts
+ * exactly as the server would (`answer` from `@sincpro/criteria/engine`), drops what the
+ * model cannot answer and reports it, and refuses what the server would refuse. So the day a
+ * real server answers, only the transport changes.
+ *
+ * A record is found at `<list route>/<id>`, by the field the model fetches by (`get_id`, else
+ * the identity) — the convention sincpro_framework's REST routes follow.
+ *
+ *     const transport = memoryTransport({
+ *       "/invoices": { meta: invoiceMeta, rows: invoices },
+ *     }, { latency: 300 });
+ */
+export type MemoryTable = { meta: Meta; rows: readonly AnyRecord[] };
+
+export type MemoryOptions = {
+  /** Milliseconds every answer waits, so a screen's «loading» can be seen and tested. */
+  latency?: number;
+  /**
+   * Answer a Command — a write, an action, a preview — the way the service would. It may
+   * change the tables' rows (they are read on every request) and throw a `TransportError` to
+   * refuse. Without it, every Command is a 404.
+   */
+  handle?: (method: Method, route: string, body: unknown) => unknown;
+  /** The draft this caller kept of a record, answered with it — sincpro_framework's `Drafts`. */
+  draft?: (route: string) => Draft | null;
+  /** Every list request, as it arrived: what a story or a test checks was really asked. */
+  observe?: (route: string, criteria: Criteria) => void;
+  /** Refuse a route the way a server would: return the problem it answers with. */
+  refuse?: (route: string) => (Problem & { status?: number }) | undefined;
+};
+
+function wait(ms: number, signal?: AbortSignal): Promise<void> {
+  if (ms <= 0) return Promise.resolve();
+  return new Promise((done, failed) => {
+    const timer = setTimeout(done, ms);
+    signal?.addEventListener("abort", () => {
+      clearTimeout(timer);
+      failed(signal.reason);
+    });
+  });
+}
+
+export function memoryTransport(
+  tables: Readonly<Record<string, MemoryTable>>,
+  options: MemoryOptions = {},
+): Transport {
+  async function check(route: string, signal?: AbortSignal): Promise<void> {
+    await wait(options.latency ?? 0, signal);
+    const refused = options.refuse?.(route);
+    if (refused !== undefined)
+      throw new TransportError(route, refused.status ?? 400, refused);
+  }
+
+  function tableAt(route: string): MemoryTable {
+    const path = route.split("?")[0] ?? route;
+    const table = tables[path];
+    if (table === undefined)
+      throw new TransportError(route, 404, {
+        kind: "not_found",
+        reason: "ROUTE_NOT_FOUND",
+        next_step: "fix_request",
+        retryable: false,
+        errors: [],
+        extensions: {},
+        detail: `No table answers ${path}.`,
+      });
+    return table;
+  }
+
+  return {
+    async list(route, criteria, signal) {
+      options.observe?.(route, criteria as Criteria);
+      await check(route, signal);
+      const table = tableAt(route);
+      const page = answer(table.rows, criteria as never, table.meta);
+      // A copy, as over a wire: a screen holding a row must not see the server change it.
+      return { ...page, rows: structuredClone(page.rows) } as never;
+    },
+
+    async one<T>(route: string, signal?: AbortSignal): Promise<One<T>> {
+      await check(route, signal);
+      const slash = route.lastIndexOf("/");
+      const table = tableAt(route.slice(0, slash));
+      const id = decodeURIComponent(route.slice(slash + 1));
+      const key = table.meta.get_id || table.meta.identity;
+      const record = table.rows.find((row) => String(row[key]) === id);
+      if (record === undefined)
+        throw new TransportError(route, 404, {
+          kind: "not_found",
+          reason: "AGGREGATE_NOT_FOUND",
+          next_step: "do_not_retry",
+          retryable: false,
+          errors: [],
+          extensions: {},
+          detail: `${table.meta.aggregate} ${id} does not exist.`,
+        });
+      return {
+        record: structuredClone(record) as T,
+        meta: table.meta,
+        dropped: [],
+        draft: options.draft?.(route) ?? null,
+      };
+    },
+
+    async send<T>(method: Method, route: string, body: unknown, signal?: AbortSignal) {
+      await check(route, signal);
+      if (options.handle === undefined)
+        throw new TransportError(route, 404, {
+          kind: "not_found",
+          reason: "ROUTE_NOT_FOUND",
+          next_step: "fix_request",
+          retryable: false,
+          errors: [],
+          extensions: {},
+          detail: `Nothing answers ${method} ${route}.`,
+        });
+      // A deep copy: what the caller sent is not what the server keeps.
+      return (await options.handle(method, route, structuredClone(body))) as T;
+    },
+  };
+}
