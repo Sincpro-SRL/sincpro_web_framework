@@ -26,3 +26,4 @@ export {
   useRecord,
 } from "@sincpro/web-framework/react/useRecord";
 export { useRelated } from "@sincpro/web-framework/react/useRelated";
+export { useSummaryOf } from "@sincpro/web-framework/react/useSummary";

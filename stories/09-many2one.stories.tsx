@@ -119,7 +119,11 @@ export const AcotadoPorOtroCampo: Story = {
       await canvas.findByRole("combobox", { name: /Factura del cliente/ }),
     );
     await page.findByRole("option", { name: new RegExp(own[0]!) });
-    const offered = page.getAllByRole("option").map((o) => o.textContent ?? "");
+    // web-ui's own «Buscar más…» is an option too (the chooser), not a record of the scope.
+    const offered = page
+      .getAllByRole("option")
+      .map((o) => o.textContent ?? "")
+      .filter((text) => !text.startsWith("Buscar más…"));
     await expect(offered.every((text) => own.some((n) => text.includes(n)))).toBe(true);
     await userEvent.keyboard("{Escape}");
     // Another customer: the choices start over, under the new scope.

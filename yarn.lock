@@ -1030,10 +1030,10 @@
   resolved "https://registry.yarnpkg.com/@sincpro/criteria/-/criteria-0.3.0.tgz#3526d22871b9d8817fdbdaad4e1ab7ed3e38d319"
   integrity sha512-IfdvHDnKlDPkHmedsyf3wxQnDy6eiJh45z5tC+rKXQf14+xlTWiaORT6lAVo0WX4zv6KCSCZU/lz6wyYdybAOQ==
 
-"@sincpro/web-composer@^1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/web-composer/-/web-composer-1.1.0.tgz#f02351292746576c49e8fb09abda27e28e77029f"
-  integrity sha512-dKcEtOSOLuYyjrtrmVXIhbpbPSyagcJ9Duu8R1ToubSQgP97hFT8IrmzH81MBtcmfOFnvsIPecjob+gUkpQrMg==
+"@sincpro/web-composer@^1.4.0":
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/web-composer/-/web-composer-1.4.0.tgz#a33159db227ae161349050547105522c0703d024"
+  integrity sha512-GtjieuTOEPEqhpV3d0F9a1ZzxQUiTeECzzxkoN9V/+jx/GV3D+Kfx7zqLWl/dt9WQ9vV46BZvr6dol2j1PVM7g==
   dependencies:
     "@atlaskit/pragmatic-drag-and-drop" "^4.0.0"
 

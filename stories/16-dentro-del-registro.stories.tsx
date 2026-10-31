@@ -91,7 +91,8 @@ export const ElegirEntreDoscientosMil: Story = {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
     await userEvent.click(await canvas.findByRole("combobox", { name: /Movimiento/ }));
-    await userEvent.click(await page.findByText("ver todos…"));
+    // web-ui's «Buscar más…» option carries how many more there are in its name.
+    await userEvent.click(await page.findByRole("option", { name: /^Buscar más…/ }));
     const chooser = await page.findByRole("dialog", { name: "Movimientos" });
     // The box appears with the entity's definition, on the first answer.
     await userEvent.type(await within(chooser).findByLabelText("Buscar"), "Ajuste 123455");

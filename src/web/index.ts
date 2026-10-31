@@ -20,6 +20,7 @@ export {
 export { EntityPicker } from "@sincpro/web-framework/web/record/EntityPicker";
 export { countOf, factsOf, RecordLines } from "@sincpro/web-framework/web/record/record";
 export { RelatedList } from "@sincpro/web-framework/web/record/RelatedList";
+export { cardOf, relationOf } from "@sincpro/web-framework/web/record/summary";
 export { Refused } from "@sincpro/web-framework/web/Refused";
 export {
   entityView,
@@ -27,6 +28,13 @@ export {
   listView,
   type ListViewOptions,
 } from "@sincpro/web-framework/web/workspace/composer";
+export {
+  openIn,
+  openOptions,
+  RECORD_SIZE,
+  RelatedRecord,
+  targetsFor,
+} from "@sincpro/web-framework/web/workspace/open";
 export { SincproApp } from "@sincpro/web-framework/web/workspace/SincproApp";
 export { webUiSkin } from "@sincpro/web-framework/web/workspace/skin";
 export {

@@ -1,4 +1,5 @@
 import type { AnyRecord } from "@sincpro/criteria";
+import type { SummaryFields } from "@sincpro/web-framework/core/summary";
 import type { Method } from "@sincpro/web-framework/core/transport";
 
 /**
@@ -49,6 +50,9 @@ export type Entity<T extends AnyRecord = AnyRecord> = {
   draft?: WriteRoute;
   /** Its business events: the context's events route, and the `entity_type` they carry. */
   history?: { route: string; type: string };
+  /** Which fields are its description, state, picture… when they are not the conventional
+   *  ones (`summaryOf`). Empty: the convention decides. */
+  summary: SummaryFields;
   /** Only carries the record type; never read. */
   readonly _record?: T;
 };
@@ -84,6 +88,9 @@ export type EntityRoutes = {
   preview?: string;
   draft?: string;
   history?: { route: string; type: string };
+  /** `{ image: "logo", state: "estado_pago", person: true }` — not a route, but declared once
+   *  with the rest of what a screen should not have to know. */
+  summary?: SummaryFields;
 };
 
 const METHODS = new Set<Method>(["POST", "PUT", "PATCH", "DELETE"]);
@@ -127,5 +134,6 @@ export function entity<T extends AnyRecord = AnyRecord>(
     ...(routes.preview === undefined ? {} : { preview: writeRoute(routes.preview) }),
     ...(routes.draft === undefined ? {} : { draft: writeRoute(routes.draft) }),
     ...(routes.history === undefined ? {} : { history: routes.history }),
+    summary: routes.summary ?? {},
   };
 }

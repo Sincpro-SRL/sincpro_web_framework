@@ -43,21 +43,23 @@ permiso. Por eso:
 
 ## Las abstracciones
 
-| Abstracción                  | Qué resuelve                                                                        | Estado            |
-| ---------------------------- | ----------------------------------------------------------------------------------- | ----------------- |
-| `Transport`                  | El puerto hacia el backend: REST hoy, JSON-RPC/gRPC después                         | ✅ REST + memoria |
-| `Meta`                       | Qué es cada campo: del servidor, a mano (`defineMeta`) o completada con OpenAPI     | ✅                |
-| `entity()`                   | La declaración única: lista, registro, comandos, historial, su clave para composer  | ✅                |
-| `useListing` / `EntityList`  | N registros: criteria, barra de búsqueda, constructor, paginación                   | ✅                |
-| `useLookup` / `EntityPicker` | **Búsqueda literal**: el select de un many2one y ⌘K (`LiteralSearch`)               | ✅                |
-| `useRecord`                  | 1 registro: leer, editar, preview, hints, **draft**, guardar, conflicto             | ✅                |
-| `useCommand`                 | Las acciones de una entidad, con dry-run antes de lo destructivo                    | ✅                |
-| `useHistory`                 | Eventos de negocio (y comentarios, cuando el backend los tenga) → `Record.Activity` | ✅                |
-| `entityView()`               | La entidad como vistas de composer: abrir, buscar en ⌘K, sus acciones               | ✅ (`entityView`) |
-| `<SincproApp>`               | El contexto de la aplicación: transporte, idioma, metas, composer, atajos           | ✅                |
-| `defineList` / `listView`    | Una entidad con un corte fijo (por cobrar, borradores): dato, lista y vista         | ✅                |
-| `useGroups`                  | Agrupar en el servidor: grupos contados sobre todo el conjunto, filas al abrir      | ✅                |
-| `useFollowed`                | Un panel de detalle que sigue el registro en el que está la persona                 | ✅                |
+| Abstracción                  | Qué resuelve                                                                             | Estado                      |
+| ---------------------------- | ---------------------------------------------------------------------------------------- | --------------------------- |
+| `Transport`                  | El puerto hacia el backend: REST hoy, JSON-RPC/gRPC después                              | ✅ REST + memoria           |
+| `Meta`                       | Qué es cada campo: del servidor, a mano (`defineMeta`) o completada con OpenAPI          | ✅                          |
+| `entity()`                   | La declaración única: lista, registro, comandos, historial, su clave para composer       | ✅                          |
+| `useListing` / `EntityList`  | N registros: criteria, barra de búsqueda, constructor, paginación                        | ✅                          |
+| `useLookup` / `EntityPicker` | **Búsqueda literal**: el select de un many2one y ⌘K (`LiteralSearch`)                    | ✅                          |
+| `useRecord`                  | 1 registro: leer, editar, preview, hints, **draft**, guardar, conflicto                  | ✅                          |
+| `useCommand`                 | Las acciones de una entidad, con dry-run antes de lo destructivo                         | ✅                          |
+| `useHistory`                 | Eventos de negocio (y comentarios, cuando el backend los tenga) → `Record.Activity`      | ✅                          |
+| `entityView()`               | La entidad como vistas de composer: abrir, buscar en ⌘K, sus acciones                    | ✅ (`entityView`)           |
+| `<SincproApp>`               | El contexto de la aplicación: transporte, idioma, metas, composer, atajos                | ✅                          |
+| `defineList` / `listView`    | Una entidad con un corte fijo (por cobrar, borradores): dato, lista y vista              | ✅                          |
+| `useGroups`                  | Agrupar en el servidor: grupos contados sobre todo el conjunto, filas al abrir           | ✅                          |
+| `useFollowed`                | Un panel de detalle que sigue el registro en el que está la persona                      | ✅                          |
+| `summaryOf` / `useSummaryOf` | Lo que se sabe de cualquier registro: nombre, descripción, estado, tipo, imagen, autoría | ✅ (`cardOf`, `relationOf`) |
+| `openIn` / `RelatedRecord`   | Abrir un registro donde corresponde: modal por defecto, nunca un modal sobre otro        | ✅                          |
 
 ### Búsqueda literal
 
