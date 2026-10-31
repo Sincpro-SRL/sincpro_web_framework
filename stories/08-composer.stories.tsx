@@ -1,5 +1,5 @@
 import type { AnyRecord } from "@sincpro/criteria";
-import { Composer, useWorkspace, type ViewProps } from "@sincpro/web-composer";
+import { Composer, useCrumbs, useWorkspace, type ViewProps } from "@sincpro/web-composer";
 import { createRegistry } from "@sincpro/web-composer/domain";
 import {
   EntityList,
@@ -52,6 +52,7 @@ function RegistroDe({
   facts,
 }: ViewProps & { entity: typeof facturas | typeof clientes; facts: string[] }) {
   const one = useRecord(entity as never, resource.id ?? "");
+  const crumbs = useCrumbs(api);
   if (one.status === "loading") return <Skeleton rows={5} label="Cargando" />;
   if (one.status === "failed") return <Refused error={one.error} onRetry={one.reload} />;
   const record = one.record as AnyRecord;
@@ -62,7 +63,7 @@ function RegistroDe({
       identity={{ title: textOf(model, display, record[display], "es") ?? resource.id }}
     >
       <Record.Rail>
-        {api.crumbs().length === 0 ? null : <Record.Crumbs crumbs={api.crumbs()} />}
+        {crumbs.length === 0 ? null : <Record.Crumbs crumbs={crumbs} />}
       </Record.Rail>
       <Record.Paper layout="horizontal">
         <Record.Facts fields={factsOf(record, model, facts, { locale: "es" })} />

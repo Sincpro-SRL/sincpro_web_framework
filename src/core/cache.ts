@@ -1,5 +1,10 @@
 import type { Criteria, Page } from "@sincpro/criteria";
-import type { Method, One, Transport } from "@sincpro/web-framework/core/transport";
+import type {
+  Method,
+  One,
+  SendOptions,
+  Transport,
+} from "@sincpro/web-framework/core/transport";
 
 /**
  * A transport that remembers what it read, for a while, and forgets it when something writes.
@@ -71,11 +76,17 @@ export function cachedTransport(
     one<T>(route: string, signal?: AbortSignal): Promise<One<T>> {
       return remembered(`one ${route}`, () => transport.one<T>(route, signal));
     },
-    async send<T>(method: Method, route: string, body: unknown, signal?: AbortSignal) {
+    async send<T>(
+      method: Method,
+      route: string,
+      body: unknown,
+      signal?: AbortSignal,
+      sending?: SendOptions,
+    ) {
       // A preview writes nothing; anything else may have changed what was read.
       const preview = route.endsWith("/preview");
       try {
-        return await transport.send<T>(method, route, body, signal);
+        return await transport.send<T>(method, route, body, signal, sending);
       } finally {
         // Even a refused write may have changed something (a 409 says someone else did).
         if (!preview) invalidate(rootOf(route));

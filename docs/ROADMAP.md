@@ -70,8 +70,8 @@ criteria, en memoria). Dominio a mano: `defineMeta` + `field.*`.
   en el servidor. `web/` dividido en `list/`, `record/`, `workspace/`. Historias 15–16, 200 000
   filas.
 - **Pendiente para escala real**: la tabla de web-ui no virtualiza filas (una página grande se
-  dibuja entera — por eso el techo y las páginas); agrupar y medir en el servidor
-  (`useBuckets` de criteria-react) no tiene todavía su pieza en `EntityList`.
+  dibuja entera — por eso el techo y las páginas). Agrupar en el servidor ya está (ver «Agrupar»
+  abajo); medir (sumas, promedios por grupo) todavía no tiene su pieza.
 - **Fase 2 — editar** (hecha): `useRecord` con dirty, preview/onchange (`Preview` del framework),
   hints `*_when` evaluados con `matches`, guardar/descartar, conflicto 409, errores por campo
   (`Problem.errors`). `RecordField` con un control por tipo y `as` para reemplazarlo.
@@ -100,6 +100,170 @@ criteria, en memoria). Dominio a mano: `defineMeta` + `field.*`.
   campos propios. Hace falta que la entidad publique el campo (`customer_name`) o que su
   plantilla de búsqueda lo incluya; no se resuelve en el cliente.
 - **Ordenar**: `orderBy` le pide el orden al servidor; falta un caso que lo verifique.
+
+## La consola de forge migrada (2026-10-31)
+
+El criterio de éxito de `PURPOSE.md`: la consola de forge (`~/dev/sincpro_forge/web`) migrada a
+0.1.0 con composer 1.0. Desaparecieron `forge_client.ts`, `forge_context.tsx`, `collection.tsx`,
+`model.ts`, `history.ts` y `views.tsx`; `records.ts` quedó en dos tipos del cable y
+`tenant_select.tsx` se quedó (hueco 2). `web/src` pasó de 3 049 a 2 195 líneas. Probado contra un
+forge corriendo, como admin y como usuario de un tenant: listar, buscar, ordenar (llega al
+servidor), vistazo, ⌘K, compartir, revocar, emitir token e historial.
+
+Lo que no se pudo reemplazar, con su dueño:
+
+| #   | Hueco                                                                                                                                                                                                                                                                                                                             | Dueño                            |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| 1   | `commands` sólo llena `{id}`: `POST /projects/{id}/shares/{tenant}/revoke` y `POST /users/{email}/tenants/{tenant}/leave` van por `transport.send`                                                                                                                                                                                | web-framework                    |
+| 2   | `EntityPicker` sin opción «ninguno» (forge escribe «sin tenant» como `""`) ni `exclude` (compartir oculta los tenants que ya lo tienen): `TenantSelect` sigue en forge, ahora sobre `useListing` + `lookupOf`. Agregar un usuario a un tenant sí usa `EntityPicker`                                                               | web-framework                    |
+| 3   | `entityView` cubre lista y registro, no alta: `new-project`, `new-tenant` y `new-user` son `ViewSpec` a mano                                                                                                                                                                                                                      | web-framework                    |
+| 4   | Permisos: `caller === "admin"` decide vistas y páginas; `useHistory` pide el historial aunque quien mira no pueda leerlo (forge contesta 403 y la vista lo omite: un request perdido por registro). Permisos y grupos son de negocio, fuera del framework (`PURPOSE.md`)                                                          | forge                            |
+| 5   | Labels: `project` y parte de `auth` ya los declaran (backend sin commitear), pero `id`, `created_at` y las `choice_labels` de `Role` («member») no. La UI no los tapa                                                                                                                                                             | backend de forge                 |
+| 6   | `<SincproApp>` es dueño de su workspace y no dibuja barra: los menús de la barra de la app no pueden hacer `workspace.start(ref)`, y su raíz `h-dvh` no deja lugar a una barra alrededor. forge monta las piezas (`FrameworkProvider` + `Composer` con `webUiSkin` + las tres tablas de textos)                                   | web-framework                    |
+| 7   | `cachedTransport` olvida sólo la primera parte de la ruta escrita: compartir (`/projects/…`) deja viejo `/project-events` 30 s, y unirse a un tenant (`/users/…`) deja viejos los miembros de `/tenants/{id}`. forge no monta la caché                                                                                            | web-framework                    |
+| 8   | La búsqueda ⌘K de `entityView` usa `entity.list` sin `params`: en forge `/projects` sin `tenant_id` son los proyectos SIN tenant, así que ⌘K nunca encuentra un proyecto de un tenant. O `entityView` acepta un scope, o forge lista todos para el admin                                                                          | web-framework + backend de forge |
+| 9   | `historyOf` lee un hecho sin `label` como su id (`01a18fc5…`); la consola decía «Cambio registrado». Falta esa palabra en `frameworkCopy`                                                                                                                                                                                         | web-framework                    |
+| 10  | `EntityList`/`RecordLines` no exponen acciones por fila (el `List` de web-ui ya tiene `rowActions`): las membresías de un usuario («Quitar») siguen como tabla a mano, con `relatedOf` + `textOf`                                                                                                                                 | web-framework                    |
+| 11  | `CommandButton` no tiene `disabled`: «Mover» (sin cambio de tenant) y «Compartir» (sin tenant elegido) usan `useCommand` + `Button`                                                                                                                                                                                               | web-framework                    |
+| 12  | `entityView` recibe los componentes, no un `load`: las vistas dejaron de ser chunks perezosos y el bundle de forge quedó en uno de 1,5 MB                                                                                                                                                                                         | web-framework                    |
+| 13  | La vista «filas» de `EntityList` arma la fila sólo con display + campos: las etiquetas que forge ponía en `List.Rows` («compartido», «inactivo») sólo caben como celda de la tabla                                                                                                                                                | web-framework                    |
+| 14  | `webUiSkin` le daba al composer los íconos de lucide a 24 px (su default) dentro de controles de 22 px: el vistazo/al lado/ventana de un link y el marco del panel se veían más grandes que el nombre. **Arreglado en `skin.tsx`** (16 px, como los glifos del composer), falta release; forge usa `DEFAULT_ICONS` mientras tanto | web-framework                    |
+| 15  | El composer dibuja un ícono de la piel como `<Icon />` sin tamaño ni clase, y su CSS no acota el `svg` de `.sc-control`: cualquier piel con íconos de otro tamaño desborda. Acotarlo en `.sc-control svg` lo hace robusto                                                                                                         | composer                         |
+| 16  | `Record` no tiene densidad: en un panel o el vistazo el título, los hechos y la actividad tienen el mismo tamaño que en una página, y un hecho monoespaciado largo (un email) se pega al siguiente                                                                                                                                | web-ui                           |
+
+## Ciclo de vida y operación (2026-10-31)
+
+Lo que una app de negocio necesita de un registro además de leerlo y editarlo. Cada cosa vive
+donde tiene que vivir: el comportamiento acá, el componente en web-ui, el contrato en el backend.
+
+| Caso de uso                                    | Historia / test                      | Estado                               |
+| ---------------------------------------------- | ------------------------------------ | ------------------------------------ |
+| Crear con los `default` de la meta             | `17 · Crear un registro`             | ✅ `useRecord(entidad, "")`          |
+| Al crearse, la pantalla pasa a ser el registro | `17 · …SeCreaYSeVuelveElRegistro`    | ✅ por la identidad de la respuesta  |
+| Reintentar un alta o un Command sin duplicarlo | `17 · ReintentarNoDuplica`, `tests/` | ✅ `Idempotency-Key` (`retryKeys`)   |
+| «Nuevo» en la lista, en página o ventana       | `18 · Las ventanas de composer`      | ✅ `entity.newRef()` + `api.replace` |
+| Elegir un registro con el selector de composer | `18 · ElegirEnUnaVentana`            | ✅ `chooserIn` + `api.answer`        |
+| Many2one acotado por otro campo                | `09 · AcotadoPorOtroCampo`           | ✅ `criteria` en `EntityPicker`      |
+
+Con esto el hueco 3 de la consola de forge (`new-project`, `new-tenant`, `new-user` como
+`ViewSpec` a mano) se cierra: `create` en la entidad, `newRef()` y la vista del registro con id
+vacío.
+
+### Encontrado al escribirlo
+
+Composer [#6](https://github.com/Sincpro-SRL/sincpro_web_composer/issues/6) quedó resuelto en
+composer 1.1.0 (`useCrumbs`, ya instalado). El
+[#5](https://github.com/Sincpro-SRL/sincpro_web_composer/issues/5) estaba mal diagnosticado: no
+era de composer (ver abajo). Pedidos abiertos en sincpro_framework:
+[#228](https://github.com/Sincpro-SRL/sincpro_framework/issues/228) (un alta contesta su
+identidad), [#229](https://github.com/Sincpro-SRL/sincpro_framework/issues/229) (escribir las
+líneas de un agregado) y [#230](https://github.com/Sincpro-SRL/sincpro_framework/issues/230)
+(acciones, referencias y formato en la meta; los permisos quedan en la aplicación, ver
+`PURPOSE.md`).
+
+- **useRecord** (arreglado): con el id nuevo, un render mostraba el registro anterior bajo la
+  identidad nueva — la pantalla leía `record.customer` de un formulario vacío. Ahora un estado
+  sólo se muestra para el id con que se leyó.
+- **Una lista en un panel se quedaba vacía** (arreglado; era de acá, no de composer — composer #5
+  lo contestó). Una lista angosta (ventana, panel lateral, teléfono) web-ui la dibuja como filas
+  después del primer pintado (`useNarrowList`), pida lo que pida la pantalla; `EntityList` sólo
+  escribía `List.Rows` si la pantalla pedía esa vista, así que ahí no dibujaba nada. Ahora la
+  escribe siempre. El test veía «la fila se desconecta» porque apretaba la fila de la tabla que
+  web-ui acababa de reemplazar.
+- **web-ui — una `List` sin cara de filas** cae igual a filas cuando es angosta y no dibuja nada.
+  Debería quedarse en la cara que tiene, o avisar.
+- **composer — una vista no sabe que la abrieron para elegir**: `api.answer` existe siempre y no
+  hace nada si no hay quien espere. Viaja como parámetro `pick` de la referencia
+  (`entity.chooserRef()`); lo correcto es que composer lo diga (`api.choosing`).
+- **La miga de un registro con su nombre real** (arreglado con composer 1.1.0): `EntityList` y las
+  vistas de las historias dibujan la miga con `useCrumbs(api)`, que sigue a `setTitle`; con
+  `api.crumbs()` en el render quedaba la referencia («Nuevo», «C-004»). El peer pasó a `^1.1.0`.
+- **web-ui `Picker`**: sigue sin ofrecer «ver todos…» cuando dibuja todas sus filas, así que con
+  pocos registros el selector de composer necesita un botón propio. Tampoco tiene «crear
+  "Globex"…» (crear desde el selector), que ya podría usar `newRef()`.
+- **Duplicar** no se hace en el cliente: copiaría el número correlativo. Falta que el backend
+  publique qué campos no se copian (`copy: false`, como Odoo) o un `Duplicate`.
+- **Líneas editables** (one2many): web-ui ya tiene `LineItems`; falta el contrato del backend para
+  escribir las líneas de un agregado (reemplazar el conjunto o comandos por línea).
+- **Una alta que no contesta su identidad** (forge contesta `{project_id}`, no `{id}`): el hook
+  deja la respuesta en `edit.created` y la pantalla decide. Mejor que el framework conteste la
+  identidad bajo el nombre de la `identity` de la meta.
+
+## Agrupar (2026-10-31)
+
+Agrupar una lista es gestión de datos, no tablero: estaba en la fase 5 junto con los tableros y
+nunca llegó. Ahora «Agrupar por», en el panel de la barra, ofrece los campos `groupable` de la
+meta (una fecha con sus cortes) y la lista muestra los grupos **contados por el servidor** sobre
+todo el conjunto (`useGroups`: la pregunta de la lista + `group_by`, con techo de 100 grupos). Un
+grupo empieza cerrado y sus filas se piden al abrirlo, con el criteria del propio grupo. El
+servidor en memoria también contesta grupos (`answerGroups` de criteria), como el backend.
+Historias `19 · Agrupar` y `15 · AgruparDoscientosMil` (cuatro grupos de 50 000, cincuenta filas
+al abrir uno).
+
+Lo que falta, con su dueño:
+
+- **web-ui — la tabla agrupa la página**: `DataTable` arma los grupos con las filas que tiene y
+  cuenta `getLeafRows()`; ignora `group.piles`. Por eso, agrupada, la lista se ve en filas, que sí
+  dibuja los montones que recibe. Pedido: que la tabla dibuje `piles` contados afuera.
+- **web-ui — un montón no dice «hay más»**: un grupo abierto muestra su primera página (50) y su
+  total real en el encabezado, pero no puede ofrecer «cargar más» adentro.
+- **acá — medir**: sumas y promedios por grupo (`measures`) ya los contesta el servidor; falta
+  mostrarlos en el encabezado del grupo.
+
+## Casos de UI con datos: dónde está cada uno (2026-10-31)
+
+El mapa contra el que se mide lo que falta. «Dueño» es quien tiene que moverse para cerrarlo.
+
+| Caso                                                | Cómo se usa                                    | Historia   | Estado | Dueño de lo que falta                    |
+| --------------------------------------------------- | ---------------------------------------------- | ---------- | ------ | ---------------------------------------- |
+| Lista paginada por el cursor del servidor           | `useListing` + `EntityList`                    | 01, 15     | ✅     |                                          |
+| Buscar literal (plantilla de la entidad)            | `search="box"`, `listing.search`               | 02, 09     | ✅     |                                          |
+| Filtrar con barra, constructor y filtros con nombre | `EntitySearchBar`, `filters`                   | 06         | ✅     |                                          |
+| Ordenar en el servidor                              | encabezado → `order`                           | 20         | ✅     |                                          |
+| Agrupar en el servidor                              | «Agrupar por», `useGroups`                     | 19, 15     | ✅     | web-ui: la tabla agrupa la página        |
+| Medir por grupo (sumas, promedios)                  | —                                              | —          | ❌     | acá (el servidor ya contesta)            |
+| Listas con dominio (sub-filtro fijo)                | `defineList`, `useListing(lista)`, `listView`  | 21         | ✅     |                                          |
+| Una vista de lista propia con la misma búsqueda     | `List` de web-ui + `EntitySearchBar` (nivel 2) | 21         | ✅     |                                          |
+| Varias caras del mismo conjunto                     | `views`                                        | 15         | ✅     |                                          |
+| Relaciones dentro de un registro                    | `RelatedList`, `RecordLines`                   | 16         | ✅     |                                          |
+| Elegir un registro (many2one)                       | `EntityPicker`                                 | 09, 12     | ✅     |                                          |
+| …acotado por otro campo                             | `criteria`                                     | 09         | ✅     |                                          |
+| …desde una lista con dominio                        | `EntityPicker entity={lista}`                  | 09         | ✅     |                                          |
+| …buscando en todos, como tabla                      | botón «Buscar en todos», `columns`             | 09         | ✅     |                                          |
+| …con el selector de composer                        | `chooserIn`, `api.pick`                        | 18         | ✅     |                                          |
+| …con un selector propio                             | `useLookup` (literal en el servidor)           | 09         | ✅     |                                          |
+| Búsqueda literal DENTRO del desplegable             | —                                              | —          | ❌     | web-ui: `Picker` no expone lo tipeado    |
+| Crear desde el selector («Crear "Globex"…»)         | —                                              | —          | ❌     | web-ui: `Picker` sin `onCreate`          |
+| Leer, editar, preview, hints, 409, drafts           | `useRecord`, `RecordField`                     | 03, 10, 12 | ✅     |                                          |
+| Crear con los valores por defecto                   | `useRecord(entidad, "")`, `newRef()`           | 17, 18     | ✅     | backend #228 (alta → identidad)          |
+| Duplicar                                            | —                                              | —          | ❌     | backend (`copy: false`)                  |
+| Archivar / eliminar                                 | —                                              | —          | ❌     | backend (convención)                     |
+| Anterior / siguiente desde el registro              | —                                              | —          | ❌     | acá                                      |
+| Líneas editables (one2many)                         | —                                              | —          | ❌     | backend #229; web-ui `LineItems` ya está |
+| Comandos con prueba en seco                         | `useCommand`, `CommandButton`                  | 10         | ✅     |                                          |
+| Reintentar sin duplicar                             | `Idempotency-Key`, `retryKeys`                 | 17         | ✅     |                                          |
+| Acciones por fila                                   | `commands`, `useRowCommands`                   | 23         | ✅     |                                          |
+| Acción masiva sobre «todos los que cumplen»         | —                                              | —          | ❌     | backend + acá                            |
+| Exportar lo filtrado                                | —                                              | —          | ❌     | backend (`data_analysis`) + acá          |
+| Página, vistazo, panel, ventana, ⌘K                 | `entityView`, `RecordLink`                     | 08, 13, 18 | ✅     |                                          |
+| Lista y detalle que la sigue                        | `useFollowed`                                  | 22         | ✅     |                                          |
+| La miga con el nombre real                          | `useCrumbs` (composer 1.1)                     | 18         | ✅     |                                          |
+| Abrir en un modal                                   | —                                              | —          | ⏳     | composer (en curso)                      |
+| Contexto del llamado (empresa, zona horaria)        | —                                              | —          | ❌     | acá                                      |
+| Filtros guardados por persona                       | —                                              | —          | ❌     | backend                                  |
+
+Encontrado en esta vuelta:
+
+- **useListing perdía lo tipeado antes de que llegara la definición** (arreglado): sin plantilla
+  no había qué llenar, y nada volvía a preguntar. `EntityList` lo escondía porque no dibuja la caja
+  hasta tener la meta; un selector propio lo mostró (09 · UnSelectorPropio).
+- **web-ui — las sugerencias de la barra no tienen rol**: «Nombre del cliente · contiene Globex»
+  son `span` sin `option`; un lector de pantalla no las anuncia y un `play` las busca por texto.
+- **web-ui — lo que viene** (sin publicar en 0.2.0): `List readOnly`, «vistazo/abrir» como
+  acciones de fila, `collapseAfter` y limpiar todo en la barra, y la medición angosta antes del
+  primer pintado. Al publicarse: `EntityList` pasa `readOnly` y deja de dibujar sus aperturas.
+- **composer — modal como superficie** (en curso, avisado): cuando exista, el chooser de
+  `EntityPicker` y la confirmación de un comando deberían abrirse con él en vez del `Dialog`.
 
 ## Decisiones abiertas
 

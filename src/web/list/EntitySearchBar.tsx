@@ -2,7 +2,10 @@
 
 import type { AnyRecord, Expression } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
+import type { GroupLevel, NamedFilter } from "@sincpro/web-framework/core/list";
+import type { Groups } from "@sincpro/web-framework/react/useGroups";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
+import { groupableOf } from "@sincpro/web-framework/web/list/groups";
 import { facetsOf, modelOf } from "@sincpro/web-framework/web/list/search";
 import {
   type BuiltFilter,
@@ -10,10 +13,12 @@ import {
   describeFilter,
   Dialog,
   filterCriteria,
+  GroupingLevels,
   hasNamed,
   SearchBar,
   type SearchCriteria,
   toggleNamed,
+  useGroupingControl,
   whereOf,
 } from "@sincpro/web-ui";
 import { useMemo, useState } from "react";
@@ -28,23 +33,27 @@ import { useMemo, useState } from "react";
  *   - «search by name»: facets are the fields the entity's search template names first;
  *   - a typed question («total > 5000») is checked against each field's operators;
  *   - a named filter is one click; the builder writes what nobody foresaw (all/any/not);
- *   - everything put becomes ONE `where` the SERVER answers (`listing.filter`).
+ *   - everything put becomes ONE `where` the SERVER answers (`listing.filter`);
+ *   - with `groups`, «Group by» offers the fields the model says may split the set, and the
+ *     SERVER counts the groups (`useGroups`).
  *
  *     <List.Search><EntitySearchBar listing={listing} filters={…} /></List.Search>
  */
-export type NamedFilter<T> = {
-  id: string;
-  label: string;
-  where: Expression<T>;
-};
+export type { NamedFilter };
+
+/** No grouping: one constant, so the control is not handed a new array on every render. */
+const NO_LEVELS: readonly GroupLevel[] = [];
 
 export function EntitySearchBar<T extends AnyRecord>({
   listing,
   filters = [],
+  groups,
 }: {
   listing: Listing<T>;
   /** The cuts this set offers by name: «sólo pagadas», «vencidas». */
   filters?: readonly NamedFilter<T>[];
+  /** The grouping of the same set (`useGroups(listing)`): offers «Group by». */
+  groups?: Groups<T>;
 }) {
   const copy = frameworkCopy().list;
   const { meta, locale } = listing;
@@ -52,6 +61,11 @@ export function EntitySearchBar<T extends AnyRecord>({
   const [building, setBuilding] = useState(false);
   const model = useMemo(() => (meta ? modelOf(meta, locale) : undefined), [meta, locale]);
   const facets = useMemo(() => (meta ? facetsOf(meta, locale) : []), [meta, locale]);
+  const groupable = useMemo(() => groupableOf(meta, locale), [meta, locale]);
+  const control = useGroupingControl({
+    levels: groups?.levels ?? NO_LEVELS,
+    onLevelsChange: (next) => groups?.group(next),
+  });
 
   if (model === undefined) return null;
 
@@ -86,6 +100,9 @@ export function EntitySearchBar<T extends AnyRecord>({
                   place(toggleNamed(put, { ...named, where: named.where as BuiltFilter }));
               },
             })}
+        {...(groups === undefined || groupable.length === 0
+          ? {}
+          : { grouping: <GroupingLevels fields={groupable} control={control} /> })}
         onOpenBuilder={() => setBuilding(true)}
       />
       {building ? (

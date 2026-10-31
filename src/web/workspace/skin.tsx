@@ -1,12 +1,13 @@
 "use client";
 
-import type { ComposerSkin } from "@sincpro/web-composer";
+import type { ComposerSkin, IconProps } from "@sincpro/web-composer";
 import { Button, Dialog, Missing, Peek } from "@sincpro/web-ui";
 import {
   AppWindow,
   ArrowLeft,
   Ellipsis,
   Eye,
+  type LucideIcon,
   Maximize2,
   Minimize2,
   Minus,
@@ -27,21 +28,34 @@ import {
  * `Peek` drawer, its `Dialog` for «discard what you typed?», its `Missing` where a view could not
  * be drawn. `<SincproApp>` uses it by default; any piece can still be replaced on top of it.
  */
+/**
+ * A lucide icon at the composer's size. The composer draws an icon as `<Icon />`, sized by the
+ * icon itself (its own glyphs are 16 px), and lucide's default is 24 px: unsized, every glyph
+ * overflowed its 22 px control — a record link's peek/side/window grew larger than the name.
+ */
+function sized(Icon: LucideIcon) {
+  function Sized({ className, strokeWidth = 2 }: IconProps) {
+    return <Icon size={16} strokeWidth={strokeWidth} className={className} aria-hidden />;
+  }
+  Sized.displayName = Icon.displayName ?? "Icon";
+  return Sized;
+}
+
 export const webUiSkin: ComposerSkin = {
   icons: {
-    more: Ellipsis,
-    expand: SquareArrowOutUpRight,
-    minimize: Minus,
-    maximize: Maximize2,
-    restore: Minimize2,
-    close: X,
-    left: PanelLeft,
-    right: PanelRight,
-    bottom: PanelBottom,
-    window: AppWindow,
-    back: ArrowLeft,
-    search: Search,
-    peek: Eye,
+    more: sized(Ellipsis),
+    expand: sized(SquareArrowOutUpRight),
+    minimize: sized(Minus),
+    maximize: sized(Maximize2),
+    restore: sized(Minimize2),
+    close: sized(X),
+    left: sized(PanelLeft),
+    right: sized(PanelRight),
+    bottom: sized(PanelBottom),
+    window: sized(AppWindow),
+    back: sized(ArrowLeft),
+    search: sized(Search),
+    peek: sized(Eye),
   },
   Peek: ({ title, onClose, actions, children }) => (
     <Peek open title={title} onClose={onClose} actions={actions}>

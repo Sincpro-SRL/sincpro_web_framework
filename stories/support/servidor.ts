@@ -7,7 +7,7 @@ import {
   TransportError,
 } from "@sincpro/web-framework";
 
-import { type Factura, FACTURAS, VENTAS } from "./ventas";
+import { CLIENTES, type Factura, FACTURAS, VENTAS } from "./ventas";
 
 /**
  * The sales service the use cases run against — what a sincpro_framework service does, in
@@ -85,6 +85,41 @@ export function servidorVentas() {
       by: "ana@sincpro.com.bo",
     });
 
+  /** A new invoice: the server numbers it, starts it as a draft and answers its identity. */
+  function crear(route: string, sent: AnyRecord): unknown {
+    const cliente = CLIENTES.find((c) => c.id === sent["customer_id"]);
+    if (cliente === undefined)
+      throw refuse(route, 422, {
+        kind: "invalid",
+        reason: "VALIDATION",
+        title: "La factura no se creó",
+        errors: [{ pointer: "/customer_id", detail: "Elegí un cliente que exista." }],
+      });
+    const number = `F-2026-${String(facturas.length + 1).padStart(4, "0")}`;
+    const f: Factura = {
+      number,
+      customer_id: cliente.id,
+      customer_name: cliente.name,
+      customer: { id: cliente.id, name: cliente.name },
+      state: "draft",
+      invoice_date: String(sent["invoice_date"] ?? "2026-10-31"),
+      due_date: null,
+      amount_total: "0.00",
+      tags: (sent["tags"] as string[] | undefined) ?? [],
+      payment: (sent["payment"] as Factura["payment"] | undefined) ?? "cash",
+      card_reference: String(sent["card_reference"] ?? ""),
+      notes: String(sent["notes"] ?? ""),
+      discount: String(sent["discount"] ?? "0"),
+      urgent: sent["urgent"] === true,
+      lines: { items: [], count: { value: 0, exact: true }, cursor: null },
+      created_at: new Date(Date.UTC(2026, 9, 31, 12, ++seq)).toISOString(),
+      version: 1,
+    };
+    facturas.push(f);
+    event(f, "Factura creada");
+    return { number, version: 1 };
+  }
+
   function handle(method: Method, route: string, body: unknown): unknown {
     const sent = (body ?? {}) as AnyRecord;
     const [, , number, action] = route.split("/");
@@ -101,6 +136,8 @@ export function servidorVentas() {
             : [],
       };
     }
+
+    if (method === "POST" && route === "/facturas") return crear(route, sent);
 
     const f = find(route, decodeURIComponent(number ?? ""));
 

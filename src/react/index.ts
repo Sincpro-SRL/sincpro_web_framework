@@ -9,6 +9,7 @@ export {
   type Rehearsal,
   useCommand,
 } from "@sincpro/web-framework/react/useCommand";
+export { type Groups, useGroups } from "@sincpro/web-framework/react/useGroups";
 export { useHistory } from "@sincpro/web-framework/react/useHistory";
 export {
   type Listing,

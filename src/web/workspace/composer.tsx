@@ -2,9 +2,12 @@
 
 import { type AnyRecord, matching, type Meta } from "@sincpro/criteria";
 import type { SearchHit, ViewProps, ViewSpec } from "@sincpro/web-composer";
-import type { Entity } from "@sincpro/web-framework/core/entity";
+import { type Entity, NEW_PARAM } from "@sincpro/web-framework/core/entity";
+import type { ListDefinition } from "@sincpro/web-framework/core/list";
 import { lookupOf } from "@sincpro/web-framework/core/lookup";
 import type { Transport } from "@sincpro/web-framework/core/transport";
+import { useListing } from "@sincpro/web-framework/react/useListing";
+import { EntityList } from "@sincpro/web-framework/web/list/EntityList";
 import type { ComponentType } from "react";
 
 /**
@@ -16,6 +19,10 @@ import type { ComponentType } from "react";
  * text finds one of its records (the framework's `LiteralSearch`: `meta.search` filled by
  * `matching`), so its spec is written here once instead of by hand per kind (forge wrote
  * eight). The screens stay the application's: `list` and `record` are its components.
+ *
+ * A reference with no id is the list — opened to choose one when it carries `pick` — and one
+ * with `new` is the record's own view with no id: the form of a record that does not exist yet
+ * (`entity.newRef()`), which `useRecord(entity, "")` fills with the model's defaults.
  *
  * ⌘K asks the server with `matching` — 8 records, identity and display — the same question a
  * many2one asks. The model definition is asked for once, on the first search, unless `meta`
@@ -43,7 +50,9 @@ export function entityView<T extends AnyRecord>(
   let meta: Meta | null = options.meta ?? null;
 
   function EntityView(props: ViewProps) {
-    return props.resource.id === undefined ? <List {...props} /> : <One {...props} />;
+    const record =
+      props.resource.id !== undefined || props.resource.params?.[NEW_PARAM] !== undefined;
+    return record ? <One {...props} /> : <List {...props} />;
   }
 
   return {
@@ -70,4 +79,42 @@ export function entityView<T extends AnyRecord>(
     },
     load: async () => EntityView,
   };
+}
+
+/**
+ * A named list as a view of its own: «Por cobrar» in ⌘K's «Go to», its own breadcrumb, the
+ * list the definition declares. Its rows open the ENTITY's record — the view `entityView`
+ * registered — so a list view needs no record screen of its own.
+ *
+ *     views: [entityView(facturas, …), listView(porCobrar), listView(borradores)]
+ */
+export type ListViewOptions = {
+  /** The screen; without it, `EntityList` over the definition, as it declares. */
+  list?: ComponentType<ViewProps>;
+  icon?: ViewSpec["icon"];
+  /** Listed under «Go to» in ⌘K. On by default. */
+  goto?: boolean;
+};
+
+export function listView<T extends AnyRecord>(
+  list: ListDefinition<T>,
+  options: ListViewOptions = {},
+): ViewSpec {
+  const Screen = options.list ?? definedList(list);
+  return {
+    domain: list.entity.domain,
+    kind: list.ref().kind,
+    title: () => list.title,
+    goto: options.goto ?? true,
+    ...(options.icon === undefined ? {} : { icon: options.icon }),
+    load: async () => Screen,
+  };
+}
+
+function definedList<T extends AnyRecord>(list: ListDefinition<T>): ComponentType<ViewProps> {
+  function DefinedList({ api }: ViewProps) {
+    return <EntityList listing={useListing(list)} api={api} />;
+  }
+  DefinedList.displayName = `List(${list.key})`;
+  return DefinedList;
 }

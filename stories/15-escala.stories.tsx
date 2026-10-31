@@ -115,3 +115,34 @@ export const ElMismoConjuntoEnVariasVistas: Story = {
     await expect(await canvas.findByRole("columnheader", { name: /Concepto/ })).toBeVisible();
   },
 };
+
+export const AgruparDoscientosMil: Story = {
+  render: function Render() {
+    const listing = useListing(movimientos, { pageSize: 50 });
+    return <EntityList listing={listing} columns={["id", "concept", "account", "amount"]} />;
+  },
+  decorators: [
+    (Story) => (
+      <Escenario tables={TABLAS} latency={50}>
+        <Story />
+      </Escenario>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await canvas.findByText("M-0200000");
+    await userEvent.click(canvas.getByRole("button", { name: /agrupar/i }));
+    await userEvent.click(
+      await page.findByRole("button", { name: "Cuenta", pressed: false }),
+    );
+    await userEvent.keyboard("{Escape}");
+    // Four groups counted over the 200 000 rows by the server — never the page's fifty.
+    const banco = await canvas.findByRole("button", { name: /Banco.*50[.,]?000/ });
+    await expect(canvas.getByText(/4 grupos · 200[.,]?000 registros/)).toBeVisible();
+    await expect(canvas.queryAllByText(/M-\d{7}/)).toHaveLength(0);
+    // Opening one reads ITS first page: fifty rows, not fifty thousand.
+    await userEvent.click(banco);
+    await waitFor(() => expect(canvas.queryAllByText(/M-\d{7}/)).toHaveLength(50));
+  },
+};

@@ -11,6 +11,7 @@ import {
   type Draft,
   type Method,
   type One,
+  type SendOptions,
   type Transport,
   TransportError,
 } from "@sincpro/web-framework/core/transport";
@@ -60,11 +61,17 @@ export function restTransport(options: RestOptions = {}): Transport {
     route: string,
     url: string,
     signal?: AbortSignal,
-    write?: { method: Method; body: unknown },
+    write?: { method: Method; body: unknown; key?: string | undefined },
   ): Promise<unknown> {
     const own =
       typeof options.headers === "function" ? options.headers() : (options.headers ?? {});
-    const headers = write ? { ...own, "Content-Type": "application/json" } : own;
+    const headers = write
+      ? {
+          ...own,
+          "Content-Type": "application/json",
+          ...(write.key === undefined ? {} : { "Idempotency-Key": write.key }),
+        }
+      : own;
     const response = await doFetch(url, {
       headers,
       ...(write ? { method: write.method, body: JSON.stringify(write.body) } : {}),
@@ -104,8 +111,18 @@ export function restTransport(options: RestOptions = {}): Transport {
       };
     },
 
-    async send<T>(method: Method, route: string, body: unknown, signal?: AbortSignal) {
-      return (await get(route, urlOf(base, route), signal, { method, body })) as T;
+    async send<T>(
+      method: Method,
+      route: string,
+      body: unknown,
+      signal?: AbortSignal,
+      sending?: SendOptions,
+    ) {
+      return (await get(route, urlOf(base, route), signal, {
+        method,
+        body,
+        key: sending?.idempotencyKey,
+      })) as T;
     },
   };
 }

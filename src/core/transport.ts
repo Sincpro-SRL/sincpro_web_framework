@@ -19,10 +19,29 @@ export interface Transport {
   /** One record, with the definition of its model. */
   one<T>(route: string, signal?: AbortSignal): Promise<One<T>>;
   /** A Command — a write, an action, a preview: `method` and a JSON body, its answer back. */
-  send<T>(method: Method, route: string, body: unknown, signal?: AbortSignal): Promise<T>;
+  send<T>(
+    method: Method,
+    route: string,
+    body: unknown,
+    signal?: AbortSignal,
+    options?: SendOptions,
+  ): Promise<T>;
 }
 
 export type Method = "POST" | "PUT" | "PATCH" | "DELETE";
+
+/**
+ * How a Command travels besides its body.
+ *
+ * Context: sincpro_framework runs a Command declared `@idempotency` once per key (REST: the
+ * `Idempotency-Key` header; 400 `IDEMPOTENCY_KEY_MISSING` without it) and answers a repeat with
+ * the first answer. That is what makes «retry» safe after a request that got no answer: the
+ * server may have created the invoice, and the same key cannot create it twice.
+ */
+export type SendOptions = {
+  /** One per gesture, kept while it is retried — `retryKeys()`. */
+  idempotencyKey?: string;
+};
 
 /** One record as sincpro_framework answers it (`ResponseRecord`): the record, its model. */
 export type One<T> = {

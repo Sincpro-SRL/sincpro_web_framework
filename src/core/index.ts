@@ -17,6 +17,8 @@ export {
 } from "@sincpro/web-framework/core/copy";
 export {
   changesOf,
+  creationOf,
+  defaultsOf,
   errorsByField,
   type FieldState,
   fieldStateOf,
@@ -28,11 +30,22 @@ export {
   entity,
   type EntityRef,
   type EntityRoutes,
+  NEW_PARAM,
   pathFor,
+  PICK_PARAM,
   type WriteRoute,
   writeRoute,
 } from "@sincpro/web-framework/core/entity";
 export { type HistoryEntry, historyOf } from "@sincpro/web-framework/core/history";
+export {
+  defineList,
+  type GroupLevel,
+  isList,
+  type ListDefinition,
+  type ListSpec,
+  type NamedFilter,
+  scopeOf,
+} from "@sincpro/web-framework/core/list";
 export { lookupOf, type LookupOption } from "@sincpro/web-framework/core/lookup";
 export {
   type MemoryOptions,
@@ -57,6 +70,7 @@ export {
 } from "@sincpro/web-framework/core/present";
 export { type Related, relatedOf } from "@sincpro/web-framework/core/related";
 export { type RestOptions, restTransport, urlOf } from "@sincpro/web-framework/core/rest";
+export { type RetryKeys, retryKeys, unanswered } from "@sincpro/web-framework/core/retry";
 export {
   completeMeta,
   type JsonSchema,
@@ -68,6 +82,7 @@ export {
   explain,
   type Method,
   type One,
+  type SendOptions,
   type Transport,
   TransportError,
 } from "@sincpro/web-framework/core/transport";

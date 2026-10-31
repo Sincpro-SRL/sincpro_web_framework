@@ -2,6 +2,7 @@
 
 import type { AnyRecord } from "@sincpro/criteria";
 import { type Entity, pathFor } from "@sincpro/web-framework/core/entity";
+import { type RetryKeys, retryKeys } from "@sincpro/web-framework/core/retry";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -14,7 +15,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * destructive action deserves: not «are you sure?», but what is about to happen. forge's
  * console had the backend for it and no screen that asked.
  *
- * One at a time: `busy` turns the button off, because a payment sent twice is two payments.
+ * One at a time: `busy` turns the button off, because a payment sent twice is two payments. And
+ * once sent, the same gesture keeps its `Idempotency-Key` until the server answers: a retry
+ * after a dropped request is the same payment, never a second one (`retryKeys`).
  */
 export type Rehearsal = { text: string; data: Record<string, unknown> };
 
@@ -47,13 +50,31 @@ export function useCommand<T extends AnyRecord, R = unknown>(
     return () => void (mounted.current = false);
   }, []);
 
+  // One key per gesture, kept while it goes unanswered: «retry» after a dropped request must
+  // not run it twice. A dry run touches nothing, so each one gets a key of its own.
+  const keys = useRef(retryKeys());
+
   const send = useCallback(
-    async <A>(id: string | undefined, body: AnyRecord): Promise<A | undefined> => {
+    async <A>(
+      id: string | undefined,
+      body: AnyRecord,
+      gesture: RetryKeys,
+    ): Promise<A | undefined> => {
       setBusy(true);
       setError(null);
+      const idempotencyKey = gesture.keyFor({ id, body });
       try {
-        return await transport.send<A>(route.method, pathFor(route, id), body);
+        const answer = await transport.send<A>(
+          route.method,
+          pathFor(route, id),
+          body,
+          undefined,
+          { idempotencyKey },
+        );
+        gesture.settle(null);
+        return answer;
       } catch (failure) {
+        gesture.settle(failure);
         if (mounted.current) setError(failure);
         return undefined;
       } finally {
@@ -64,9 +85,9 @@ export function useCommand<T extends AnyRecord, R = unknown>(
   );
 
   return {
-    run: (id, body = {}) => send<R>(id, body),
+    run: (id, body = {}) => send<R>(id, body, keys.current),
     rehearse: async (id, body = {}) => {
-      const answer = await send<Rehearsal>(id, { ...body, dry_run: true });
+      const answer = await send<Rehearsal>(id, { ...body, dry_run: true }, retryKeys());
       if (answer !== undefined && mounted.current) setRehearsal(answer);
       return answer;
     },

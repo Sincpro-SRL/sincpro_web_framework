@@ -1,7 +1,8 @@
 "use client";
 
-import type { AnyRecord } from "@sincpro/criteria";
+import type { AnyRecord, Criteria } from "@sincpro/criteria";
 import type { Entity } from "@sincpro/web-framework/core/entity";
+import type { ListDefinition } from "@sincpro/web-framework/core/list";
 import { lookupOf, type LookupOption } from "@sincpro/web-framework/core/lookup";
 import { useListing } from "@sincpro/web-framework/react/useListing";
 
@@ -23,11 +24,23 @@ export type Lookup = {
 };
 
 export function useLookup<T extends AnyRecord>(
-  entity: Entity<T>,
-  options: { pageSize?: number } = {},
+  /** The entity, or a named list of it: «active customers» chooses only those. */
+  entity: Entity<T> | ListDefinition<T>,
+  options: {
+    pageSize?: number;
+    /**
+     * Which records may be chosen at all — the contacts OF the chosen customer, the warehouses
+     * OF the branch. The server applies it under whatever is typed; a new scope starts over.
+     */
+    criteria?: Criteria<T>;
+  } = {},
 ): Lookup {
   // «More», not pages: a choice list grows downwards, and its ceiling keeps it light.
-  const listing = useListing(entity, { paging: "more", pageSize: options.pageSize ?? 50 });
+  const listing = useListing(entity, {
+    paging: "more",
+    pageSize: options.pageSize ?? 50,
+    ...(options.criteria === undefined ? {} : { criteria: options.criteria }),
+  });
   return {
     options: lookupOf(listing.meta, listing.rows),
     text: listing.text,

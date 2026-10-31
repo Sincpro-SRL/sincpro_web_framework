@@ -24,7 +24,7 @@ import type { servidorVentas } from "./servidor";
  *
  * `calls` keeps every request, for a story or a test to check what really travelled.
  */
-export type Call = { method: string; url: string; body: unknown };
+export type Call = { method: string; url: string; body: unknown; key?: string };
 
 export function restServer(
   servidor: ReturnType<typeof servidorVentas>,
@@ -38,8 +38,24 @@ export function restServer(
   const json = (status: number, body: unknown, type = "application/json") =>
     new Response(JSON.stringify(body), { status, headers: { "Content-Type": type } });
 
-  async function answer(method: string, path: string, query: URLSearchParams, body: unknown) {
-    if (method !== "GET") return json(200, await engine.send(method as Method, path, body));
+  async function answer(
+    method: string,
+    path: string,
+    query: URLSearchParams,
+    body: unknown,
+    key: string | undefined,
+  ) {
+    if (method !== "GET")
+      return json(
+        200,
+        await engine.send(
+          method as Method,
+          path,
+          body,
+          undefined,
+          key === undefined ? {} : { idempotencyKey: key },
+        ),
+      );
 
     const table = tables[path];
     if (table !== undefined) {
@@ -73,14 +89,15 @@ export function restServer(
     const url = new URL(String(input), "http://ventas.local");
     const method = init?.method ?? "GET";
     const body = init?.body === undefined ? undefined : JSON.parse(String(init.body));
-    const call = { method, url: url.pathname + url.search, body };
+    const key = new Headers(init?.headers).get("Idempotency-Key") ?? undefined;
+    const call = { method, url: url.pathname + url.search, body, ...(key ? { key } : {}) };
     calls.push(call);
     onCall?.(call);
     const path = url.pathname.startsWith(base)
       ? url.pathname.slice(base.length)
       : url.pathname;
     try {
-      return await answer(method, path, url.searchParams, body);
+      return await answer(method, path, url.searchParams, body, key);
     } catch (error) {
       if (error instanceof TransportError && error.problem !== null)
         return json(
