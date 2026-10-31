@@ -248,7 +248,8 @@ function SelectorPropio({ onChoose }: { onChoose: (id: string) => void }) {
       keyOf={(one) => one.id}
       present="rows"
       onOpen={(one) => onChoose(one.id)}
-      state={{ loading: lookup.loading }}
+      // The skeleton only before anything is shown: refining keeps the rows (see AGENTS.md).
+      state={{ loading: lookup.loading && lookup.options.length === 0 }}
     >
       <List.Bar>
         <List.Search>

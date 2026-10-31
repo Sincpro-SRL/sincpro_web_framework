@@ -123,6 +123,10 @@ Rules for any agent (or person) changing this package. Read the README for the i
   `loading` only on the FIRST reading: refining keeps the rows on screen until the server
   answers. Passing every reading's status made the rows vanish under the pointer, and a play
   that clicked one failed on a slower CI only.
+- **A play waits up to 5 s** (`configure({ asyncUtilTimeout })` in `.storybook/preview.ts`).
+  On the CI runner every story file shares one Chrome, and a 250 ms fake-server timer can take
+  over a second: with Testing Library's default (1 s) plays failed there and never locally.
+  Do not lower it; a play that needs a deadline measures it itself.
 - **`useHistory`, not `useActivity`**: web-ui already exports `useActivity` (the panel's open
   state). Do not shadow a name of the stack.
 
