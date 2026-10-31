@@ -334,6 +334,13 @@ Encontrado:
 - **El estado no tiene tono**: se dibuja neutro. Que «Bloqueado» sea rojo es una regla del
   dominio: la meta tendría que decirlo (un tono por valor), no un diccionario de acá.
 
+- **Una lista que se vuelve a preguntar** (arreglado acá): `EntityList` le pasaba a web-ui
+  `loading` en cada pregunta, y web-ui cambia las filas por un esqueleto: al tipear, la tabla
+  parpadeaba y un clic en una fila podía caer sobre una que ya no estaba (la CI, más lenta, lo
+  mostró en `09 · BuscarEnTodosConUnaTabla`). Ahora el esqueleto es sólo de la primera lectura.
+  **web-ui**: le falta un estado «refrescando» — las filas quedan y algo discreto dice que se
+  está preguntando.
+
 Lo que sigue, sobre esta base: `EntityPicker` completo (avatar, «Abrir en…», «Buscar más…» como
 modal de composer, crear), `EntityTags` (many2many que agrega), y `RecordField` que elige el
 control de una relación solo — para eso falta saber a qué entidad apunta una relación

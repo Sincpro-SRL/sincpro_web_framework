@@ -183,6 +183,15 @@ export const BuscarEnTodosConUnaTabla: Story = {
     await waitFor(() =>
       expect(within(chooser).queryByText("Clínica San Gabriel")).toBeNull(),
     );
+    await within(chooser).findByText(/Bolivia/);
+    // Refining asks the server again — and the rows on screen STAY until it answers: a row
+    // that vanished under the pointer for a skeleton was a click lost (it failed on a slow CI).
+    await userEvent.type(within(chooser).getByLabelText("Buscar"), " B");
+    const until = Date.now() + 700; // past the typing pause (200 ms) and the answer (250 ms)
+    while (Date.now() < until) {
+      await expect(within(chooser).queryByText(/Bolivia/)).not.toBeNull();
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
     // What was searched for is highlighted inside the name: found by the rest of it.
     await userEvent.click(await within(chooser).findByText(/Bolivia/));
     await expect(await canvas.findByDisplayValue("Globex Bolivia")).toBeVisible();

@@ -303,7 +303,12 @@ export function EntityList<T extends AnyRecord>({
         )
       }
       state={{
-        loading: grouped ? groups.status === "loading" : listing.status === "loading",
+        // Only the FIRST reading shows the skeleton. Refining (typing, a filter, the next
+        // page) keeps the rows on screen until the server answers: web-ui swaps the body for
+        // a skeleton while `loading`, and a row that vanished under the pointer lost a click.
+        loading: grouped
+          ? groups.status === "loading"
+          : listing.status === "loading" && listing.rows.length === 0,
         error:
           failure === null
             ? null
