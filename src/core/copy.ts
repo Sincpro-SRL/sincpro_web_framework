@@ -31,6 +31,12 @@ export type FrameworkCopy = {
     capped: (shown: number) => string;
     /** Conditions the server could not answer: the list is WIDER than asked. */
     dropped: (fields: readonly string[]) => string;
+    /** The group of the records that hold no value in the field grouped by. */
+    noValue: string;
+    /** More groups than shown: narrow the set instead of scrolling them. */
+    groupsCapped: (shown: number) => string;
+    /** «12 groups · 187 records»: what the grouping split. */
+    groups: (groups: number, records: number) => string;
   };
   record: {
     /** A draft this caller kept is back on screen. */
@@ -44,6 +50,14 @@ export type FrameworkCopy = {
     loading: string;
     /** Under an embedded list the record holds only one page of. */
     partial: (shown: number, total: number) => string;
+    /** The title of a record that does not exist yet, after the model's name. */
+    creating: (name: string) => string;
+    /** The list's button that opens the form of a new record. */
+    create: string;
+  };
+  picker: {
+    /** The button beside a many2one that opens the chooser over the whole set. */
+    browse: string;
   };
   command: {
     /** The confirmation of an action that cannot be undone, after its dry run. */
@@ -81,6 +95,10 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
     capped: (shown) => `Showing the first ${shown}. Narrow the search to see the rest.`,
     dropped: (fields) =>
       `The server ignored a condition on ${fields.join(", ")}: the list shows more than asked.`,
+    noValue: "No value",
+    groupsCapped: (shown) => `The first ${shown} groups. Narrow the search to see the rest.`,
+    groups: (groups, records) =>
+      `${groups} ${groups === 1 ? "group" : "groups"} · ${records} ${records === 1 ? "record" : "records"}`,
   },
   record: {
     restored: "A draft you kept is back. Save it or discard it.",
@@ -91,6 +109,11 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
     keep: "Keep draft",
     loading: "Loading the record",
     partial: (shown, total) => `Showing ${shown} of ${total}.`,
+    creating: (name) => (name ? `${name} · new` : "New"),
+    create: "New",
+  },
+  picker: {
+    browse: "Search all",
   },
   command: {
     confirm: "Do it",
@@ -138,6 +161,11 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
       `Se muestran los primeros ${shown}. Refiná la búsqueda para ver el resto.`,
     dropped: (fields) =>
       `El servidor ignoró una condición sobre ${fields.join(", ")}: la lista muestra más de lo pedido.`,
+    noValue: "Sin valor",
+    groupsCapped: (shown) =>
+      `Los primeros ${shown} grupos. Acotá la búsqueda para ver el resto.`,
+    groups: (groups, records) =>
+      `${groups} ${groups === 1 ? "grupo" : "grupos"} · ${records} ${records === 1 ? "registro" : "registros"}`,
   },
   record: {
     restored: "Volvió un borrador que guardaste. Guardalo o descartalo.",
@@ -148,6 +176,11 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
     keep: "Guardar borrador",
     loading: "Cargando el registro",
     partial: (shown, total) => `Se muestran ${shown} de ${total}.`,
+    creating: (name) => (name ? `${name} · nuevo` : "Nuevo"),
+    create: "Nuevo",
+  },
+  picker: {
+    browse: "Buscar en todos",
   },
   command: {
     confirm: "Hacerlo",

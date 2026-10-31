@@ -16,6 +16,7 @@ import {
 } from "@sincpro/criteria";
 import { useReading } from "@sincpro/criteria-react";
 import type { Entity } from "@sincpro/web-framework/core/entity";
+import { isList, type ListDefinition, scopeOf } from "@sincpro/web-framework/core/list";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -36,6 +37,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
  */
 export type Listing<T> = {
   entity: Entity<T & AnyRecord>;
+  /** The named list it reads, when it was handed one (`defineList`): what `EntityList` draws
+   *  by default — its columns, filters, faces, title — and how `useGroups` starts. */
+  definition?: ListDefinition<T & AnyRecord>;
+  /** The route this list reads, with its own parameters (`/projects?tenant_id=acme`). */
+  route: string;
+  /**
+   * The question on screen — scope, search, filter and order — without a page: what a grouping
+   * of the same set asks with (`useGroups`), so groups and rows never disagree.
+   */
+  question: Criteria<T>;
   rows: T[];
   meta: Meta | null;
   count: Count | null;
@@ -108,10 +119,23 @@ function routeOf(list: string, params: Readonly<Record<string, string>> | undefi
 }
 
 export function useListing<T extends AnyRecord>(
-  entity: Entity<T>,
-  options: ListingOptions<T> = {},
+  given: Entity<T> | ListDefinition<T>,
+  own: ListingOptions<T> = {},
 ): Listing<T> {
   const { transport, locale, metas } = useFramework();
+  // A named list is its entity under a fixed scope: the scope ANDs under the caller's own.
+  const definition = isList(given) ? given : undefined;
+  const entity = definition?.entity ?? (given as Entity<T>);
+  const options: ListingOptions<T> =
+    definition === undefined
+      ? own
+      : {
+          ...own,
+          criteria:
+            own.criteria === undefined
+              ? scopeOf(definition)
+              : merge<T>(scopeOf(definition), own.criteria),
+        };
   const route = routeOf(entity.list, options.params);
   const source = useMemo(
     () => resource<T>((criteria, signal) => transport.list<T>(route, criteria, signal)),
@@ -169,6 +193,19 @@ export function useListing<T extends AnyRecord>(
     [reading.refine, meta],
   );
 
+  // Typed before the definition arrived: the text had no template to fill, so it asked nothing.
+  // The moment the definition is known, the question on screen is asked again — what a person
+  // typed is never lost to a slow first answer.
+  const typedBeforeModel = useRef(false);
+  if (meta === null && narrowing.text !== "") typedBeforeModel.current = true;
+  useEffect(() => {
+    if (meta === null || !typedBeforeModel.current) return;
+    typedBeforeModel.current = false;
+    refine(narrowing);
+    // Only the arrival of the definition re-asks; `narrowing` is read as it is then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta]);
+
   const index = cursors.length - 1;
   const turn = (to: (string | null)[]) => {
     setCursors(to);
@@ -186,6 +223,9 @@ export function useListing<T extends AnyRecord>(
 
   return {
     entity,
+    ...(definition === undefined ? {} : { definition }),
+    route,
+    question: narrowed(narrowing),
     rows: reading.rows,
     meta,
     count: reading.count,

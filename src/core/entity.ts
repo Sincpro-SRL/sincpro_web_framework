@@ -14,6 +14,7 @@ import type { Method } from "@sincpro/web-framework/core/transport";
  *
  *     export const invoices = entity<Invoice>("billing:invoice", {
  *       list: "/invoices",
+ *       create: "POST /invoices",
  *       save: "PUT /invoices/{id}",
  *       preview: "POST /invoices/preview",
  *       commands: { confirm: "POST /invoices/{id}/confirm", cancel: "POST /invoices/{id}/cancel" },
@@ -28,12 +29,18 @@ export type Entity<T extends AnyRecord = AnyRecord> = {
   /** Where the workspace finds it: the list without an id, one record with it — the shape of a
    *  composer `ResourceRef`, built here so no screen writes `{ domain, kind, id }` by hand. */
   ref: (id?: string) => EntityRef;
+  /** A record that does not exist yet — the form that creates one. Its view is the record's. */
+  newRef: () => EntityRef;
+  /** Its list opened to CHOOSE one: a row answers whoever asked (composer's `api.pick`). */
+  chooserRef: () => EntityRef;
   /** The route of its list. */
   list: string;
   /** The route of one record. */
   one: (id: string) => string;
   /** Its Commands, by name. */
   commands: Readonly<Record<string, WriteRoute>>;
+  /** How a new record is created: the list's own route, usually. */
+  create?: WriteRoute;
   /** How an edit is saved: the record's own route with `{id}`. */
   save?: WriteRoute;
   /** «What does this record become?» before saving — sincpro_framework's `Preview`. */
@@ -47,7 +54,20 @@ export type Entity<T extends AnyRecord = AnyRecord> = {
 };
 
 /** A composer `ResourceRef`, structurally: `core/` does not import the composer. */
-export type EntityRef = { domain: string; kind: string; id?: string };
+export type EntityRef = {
+  domain: string;
+  kind: string;
+  id?: string;
+  params?: Readonly<Record<string, string>>;
+};
+
+/**
+ * The params that say what a reference without an id is for: `new` is the form of a record
+ * that does not exist yet, `pick` is the list opened to choose one. Params, because they are
+ * what a composer reference carries and survives a reload with.
+ */
+export const NEW_PARAM = "new";
+export const PICK_PARAM = "pick";
 
 /** A write: its method and its path, `{id}` where the record's key goes. */
 export type WriteRoute = { method: Method; path: string };
@@ -58,6 +78,8 @@ export type EntityRoutes = {
   one?: string;
   /** `"POST /invoices/{id}/confirm"`, by name. */
   commands?: Readonly<Record<string, string>>;
+  /** `"POST /invoices"`: where a new record goes. */
+  create?: string;
   save?: string;
   preview?: string;
   draft?: string;
@@ -93,11 +115,14 @@ export function entity<T extends AnyRecord = AnyRecord>(
     domain,
     kind,
     ref: (id) => ({ domain, kind, ...(id === undefined || id === "" ? {} : { id }) }),
+    newRef: () => ({ domain, kind, params: { [NEW_PARAM]: "1" } }),
+    chooserRef: () => ({ domain, kind, params: { [PICK_PARAM]: "1" } }),
     list: routes.list,
     one: (id) => template.replace("{id}", encodeURIComponent(id)),
     commands: Object.fromEntries(
       Object.entries(routes.commands ?? {}).map(([name, text]) => [name, writeRoute(text)]),
     ),
+    ...(routes.create === undefined ? {} : { create: writeRoute(routes.create) }),
     ...(routes.save === undefined ? {} : { save: writeRoute(routes.save) }),
     ...(routes.preview === undefined ? {} : { preview: writeRoute(routes.preview) }),
     ...(routes.draft === undefined ? {} : { draft: writeRoute(routes.draft) }),

@@ -55,6 +55,9 @@ permiso. Por eso:
 | `useHistory`                 | Eventos de negocio (y comentarios, cuando el backend los tenga) → `Record.Activity` | ✅                |
 | `entityView()`               | La entidad como vistas de composer: abrir, buscar en ⌘K, sus acciones               | ✅ (`entityView`) |
 | `<SincproApp>`               | El contexto de la aplicación: transporte, idioma, metas, composer, atajos           | ✅                |
+| `defineList` / `listView`    | Una entidad con un corte fijo (por cobrar, borradores): dato, lista y vista         | ✅                |
+| `useGroups`                  | Agrupar en el servidor: grupos contados sobre todo el conjunto, filas al abrir      | ✅                |
+| `useFollowed`                | Un panel de detalle que sigue el registro en el que está la persona                 | ✅                |
 
 ### Búsqueda literal
 
@@ -129,4 +132,4 @@ en entidad + JSX, cumple. Lo que no desaparezca es lo que falta.
   (el «chatter» de Odoo). Hay que definir su contrato en el backend antes de dibujarlo.
 - **Acciones de una entidad**: la meta no dice qué comandos tiene una entidad. Hasta que lo
   publique, se declaran en `entity()`.
-- **Permisos**: qué puede hacer quien mira. Hoy forge lo decide a mano (`caller === "admin"`).
+- **Permisos y grupos** (decidido 2026-10-31): lógica de negocio, fuera de este paquete.

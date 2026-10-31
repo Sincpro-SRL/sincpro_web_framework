@@ -174,6 +174,16 @@ Everything is imported from `@sincpro/web-framework`.
 | `EntityList` views                     | The same set as table, rows or board                                                       | ✅     |
 | `useRelated`, `RelatedList`            | A record's relation as a live list: searched and paged by the server, inside a form        | ✅     |
 | `EntityPicker` chooser                 | «see all…» opens the whole set, searched on the server: a many2one over millions           | ✅     |
+| `useRecord(entity, "")`, `create`      | A new record: the model's defaults, saved to `create`, then it IS the record it became     | ✅     |
+| `retryKeys`, `Idempotency-Key`         | A Command or a create retried after a lost answer runs once, not twice                     | ✅     |
+| `entity.newRef()`, «New» in the list   | The record's form with no id, in a page or a window; replaced by the record once created   | ✅     |
+| `EntityPicker criteria`                | A many2one narrowed by another field: the invoices OF the chosen customer                  | ✅     |
+| `chooserIn`, `entity.chooserRef()`     | «see all…» as the composer's chooser: a row answers (`api.pick`)                           | ✅     |
+| `useGroups`, «Group by»                | Groups counted by the server over the whole set; a group's rows read when it is opened     | ✅     |
+| `defineList`, `listView`               | A named list (a fixed scope, its columns and filters) as data, and as a workspace view     | ✅     |
+| `EntityPicker` `browse`, `columns`     | The chooser always a click away, as a table searched literally by the server               | ✅     |
+| `useFollowed`                          | A detail panel follows the record the person is on, without knowing the list               | ✅     |
+| `commands`, `useRowCommands`           | An entity's Commands on each row, idempotent, offered only where `when` holds              | ✅     |
 
 What it does **not** do: mobile (`sincpro_mobile` has its own core), sessions and login (the
 application's), routing (composer's), string-named widget registries, technical logs on a

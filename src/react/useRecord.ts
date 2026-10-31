@@ -3,6 +3,8 @@
 import type { AnyRecord, Meta } from "@sincpro/criteria";
 import {
   changesOf,
+  creationOf,
+  defaultsOf,
   errorsByField,
   type FieldState,
   fieldStateOf,
@@ -10,6 +12,7 @@ import {
   missingOf,
 } from "@sincpro/web-framework/core/edit";
 import { type Entity, pathFor } from "@sincpro/web-framework/core/entity";
+import { retryKeys } from "@sincpro/web-framework/core/retry";
 import { type Draft, TransportError } from "@sincpro/web-framework/core/transport";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -30,6 +33,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
  *     in between, the server answers 409 and the screen says so instead of overwriting.
  *   - **drafts** — an edit kept between requests (sincpro_framework's `Drafts`) comes back with
  *     the record and is shown as restored; `keep()` stores the current one.
+ *   - **creating** — with no id it is a record that does not exist yet: it starts from the
+ *     defaults the model publishes, previews like any other, and `save()` sends it to the
+ *     entity's `create` route with an `Idempotency-Key` (a retry never creates two). When the
+ *     answer carries the new identity, the hook becomes that record; otherwise `edit.created`
+ *     holds the answer and the screen decides where to go.
+ *
+ *     const invoice = useRecord(invoices, "");          // a new one
+ *     const invoice = useRecord(invoices, "F-2026-7");  // an existing one
  */
 export type RecordState<T> =
   | { status: "loading"; record: null; meta: Meta | null; error: null }
@@ -61,12 +72,19 @@ export type Editing = {
   draft: Draft | null;
   save: () => Promise<boolean>;
   discard: () => void;
-  /** Store the current edit as a draft — only when the entity declares where. */
+  /** Store the current edit as a draft — only when the entity declares where, and the record
+   *  exists: a draft is kept against a record. */
   keep?: () => Promise<void>;
+  /** What the last create answered, when it did not say the new record's identity. */
+  created: unknown;
 };
 
 export type RecordReading<T> = RecordState<T> & {
   entity: Entity<T & AnyRecord>;
+  /** The record's key — `""` while it is new, its identity once created. */
+  id: string;
+  /** It does not exist on the server yet. */
+  isNew: boolean;
   locale: string | undefined;
   reload: () => void;
   edit: Editing;
@@ -79,15 +97,25 @@ const PREVIEW_PAUSE = 300;
 
 export function useRecord<T extends AnyRecord>(
   entity: Entity<T>,
-  id: string,
+  given: string,
 ): RecordReading<T> {
   const { transport, locale, metas } = useFramework();
+  // A create that answered its identity turns this into that record — until the screen asks
+  // for another one.
+  const [born, setBorn] = useState<{ from: string; id: string } | null>(null);
+  const id = born !== null && born.from === given ? born.id : given;
+  const isNew = id === "";
+  const [created, setCreated] = useState<unknown>(null);
+  const creating = useRef(retryKeys());
   const [state, setState] = useState<RecordState<T>>({
     status: "loading",
     record: null,
     meta: null,
     error: null,
   });
+  // Which record `state` was read for: the render after the id changed — a create that answered,
+  // another record asked — must not show the previous one under the new id.
+  const [readFor, setReadFor] = useState<string | null>(null);
   const [round, setRound] = useState(0);
   const [typed, setTyped] = useState<AnyRecord>({});
   const [computed, setComputed] = useState<AnyRecord>({});
@@ -121,11 +149,42 @@ export function useRecord<T extends AnyRecord>(
   useEffect(() => {
     const aborter = new AbortController();
     setState((now) => ({ status: "loading", record: null, meta: now.meta, error: null }));
+    if (isNew) {
+      // Nothing to read but the model: known already, or asked of the list with no rows.
+      const known = metas.get(entity.key);
+      const asked = known
+        ? Promise.resolve(known)
+        : transport
+            .list<T>(entity.list, { pagination: { limit: 1 } }, aborter.signal)
+            .then((page) => page.meta);
+      asked.then(
+        (meta) => {
+          if (meta) metas.set(entity.key, meta);
+          if (aborter.signal.aborted) return;
+          forget();
+          setDraft(null);
+          setReadFor(id);
+          setState({
+            status: "ready",
+            record: defaultsOf(meta) as T,
+            meta: meta ?? null,
+            error: null,
+          });
+        },
+        (error: unknown) => {
+          if (aborter.signal.aborted) return;
+          setReadFor(id);
+          setState((now) => ({ status: "failed", record: null, meta: now.meta, error }));
+        },
+      );
+      return () => aborter.abort();
+    }
     transport.one<T>(entity.one(id), aborter.signal).then(
       (answer) => {
         if (answer.meta) metas.set(entity.key, answer.meta);
         if (aborter.signal.aborted) return;
         forget();
+        setReadFor(id);
         setDraft(answer.draft);
         if (answer.draft) setTyped(answer.draft.values);
         setState({
@@ -136,15 +195,16 @@ export function useRecord<T extends AnyRecord>(
         });
       },
       (error: unknown) => {
-        if (!aborter.signal.aborted)
-          setState((now) => ({ status: "failed", record: null, meta: now.meta, error }));
+        if (aborter.signal.aborted) return;
+        setReadFor(id);
+        setState((now) => ({ status: "failed", record: null, meta: now.meta, error }));
       },
     );
     return () => aborter.abort();
     // `forget` only resets this hook's own state; listing it would reload the record on every
     // render. What reloads it is the transport, the entity, the id or an explicit `reload()`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transport, metas, entity, id, round]);
+  }, [transport, metas, entity, id, isNew, round]);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -172,8 +232,12 @@ export function useRecord<T extends AnyRecord>(
       transport
         .send<Preview>(
           preview.method,
-          pathFor(preview, id),
-          { id, values: changesOf(record, next), changed: [name] },
+          pathFor(preview, isNew ? undefined : id),
+          {
+            id: isNew ? null : id,
+            values: isNew ? { ...record, ...next } : changesOf(record, next),
+            changed: [name],
+          },
           aborter.signal,
         )
         .then(
@@ -213,6 +277,7 @@ export function useRecord<T extends AnyRecord>(
     restored: draft !== null && Object.keys(changed).length > 0,
     draft,
     save: async () => {
+      if (isNew) return create();
       const route = entity.save;
       if (route === undefined) throw new Error(`${entity.key} declares no save route`);
       cancelPreview();
@@ -236,7 +301,8 @@ export function useRecord<T extends AnyRecord>(
       }
     },
     discard: forget,
-    ...(entity.draft === undefined
+    created,
+    ...(entity.draft === undefined || isNew
       ? {}
       : {
           keep: async () => {
@@ -254,5 +320,47 @@ export function useRecord<T extends AnyRecord>(
         }),
   };
 
-  return { ...state, entity, locale, reload, edit };
+  async function create(): Promise<boolean> {
+    const route = entity.create;
+    if (route === undefined) throw new Error(`${entity.key} declares no create route`);
+    cancelPreview();
+    setSaving(true);
+    setFailure(null);
+    setCreated(null);
+    const body = creationOf(state.meta, values);
+    const idempotencyKey = creating.current.keyFor(body);
+    try {
+      const answer = await transport.send<unknown>(
+        route.method,
+        pathFor(route),
+        body,
+        undefined,
+        { idempotencyKey },
+      );
+      creating.current.settle(null);
+      if (!mounted.current) return true;
+      const key = state.meta?.get_id || state.meta?.identity || "id";
+      const made =
+        typeof answer === "object" && answer !== null
+          ? (answer as AnyRecord)[key]
+          : undefined;
+      forget();
+      if (typeof made === "string" || typeof made === "number")
+        setBorn({ from: given, id: String(made) });
+      else setCreated(answer);
+      return true;
+    } catch (error) {
+      creating.current.settle(error);
+      if (mounted.current) refused(error);
+      return false;
+    } finally {
+      if (mounted.current) setSaving(false);
+    }
+  }
+
+  const shown: RecordState<T> =
+    readFor === id
+      ? state
+      : { status: "loading", record: null, meta: state.meta, error: null };
+  return { ...shown, entity, id, isNew, locale, reload, edit };
 }

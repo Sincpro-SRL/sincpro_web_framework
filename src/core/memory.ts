@@ -1,9 +1,10 @@
 import type { AnyRecord, Criteria, Meta, Problem } from "@sincpro/criteria";
-import { answer } from "@sincpro/criteria/engine";
+import { answer, answerGroups } from "@sincpro/criteria/engine";
 import {
   type Draft,
   type Method,
   type One,
+  type SendOptions,
   type Transport,
   TransportError,
 } from "@sincpro/web-framework/core/transport";
@@ -60,6 +61,8 @@ export function memoryTransport(
   tables: Readonly<Record<string, MemoryTable>>,
   options: MemoryOptions = {},
 ): Transport {
+  const answered = new Map<string, unknown>();
+
   async function check(route: string, signal?: AbortSignal): Promise<void> {
     await wait(options.latency ?? 0, signal);
     const refused = options.refuse?.(route);
@@ -88,7 +91,12 @@ export function memoryTransport(
       options.observe?.(route, criteria as Criteria);
       await check(route, signal);
       const table = tableAt(route);
-      const page = answer(table.rows, criteria as never, table.meta);
+      // A grouped question is answered with the groups — counted over EVERY row that matches,
+      // each with the criteria that opens it — the way the server's aggregation answers it.
+      const grouped = ((criteria as Criteria).grouping?.group_by?.length ?? 0) > 0;
+      const page = grouped
+        ? answerGroups(table.rows, criteria as never, table.meta)
+        : answer(table.rows, criteria as never, table.meta);
       // A copy, as over a wire: a screen holding a row must not see the server change it.
       return { ...page, rows: structuredClone(page.rows) } as never;
     },
@@ -118,8 +126,19 @@ export function memoryTransport(
       };
     },
 
-    async send<T>(method: Method, route: string, body: unknown, signal?: AbortSignal) {
+    async send<T>(
+      method: Method,
+      route: string,
+      body: unknown,
+      signal?: AbortSignal,
+      sending?: SendOptions,
+    ) {
       await check(route, signal);
+      // A key already answered is answered again, without running the Command twice — what
+      // sincpro_framework's `@idempotency` does with a repeated `Idempotency-Key`.
+      const key = sending?.idempotencyKey;
+      if (key !== undefined && answered.has(key))
+        return structuredClone(answered.get(key)) as T;
       if (options.handle === undefined)
         throw new TransportError(route, 404, {
           kind: "not_found",
@@ -131,7 +150,9 @@ export function memoryTransport(
           detail: `Nothing answers ${method} ${route}.`,
         });
       // A deep copy: what the caller sent is not what the server keeps.
-      return (await options.handle(method, route, structuredClone(body))) as T;
+      const answer = await options.handle(method, route, structuredClone(body));
+      if (key !== undefined) answered.set(key, structuredClone(answer));
+      return answer as T;
     },
   };
 }

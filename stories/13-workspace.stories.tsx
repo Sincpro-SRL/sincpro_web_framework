@@ -1,6 +1,7 @@
 import {
   Composer,
   type ResourceRef,
+  useCrumbs,
   useWorkspace,
   type ViewProps,
   type ViewSpec,
@@ -59,6 +60,7 @@ function Facturas({ api }: ViewProps) {
 
 function Factura({ api, resource }: ViewProps) {
   const factura = useRecord(facturas, resource.id ?? "");
+  const crumbs = useCrumbs(api);
   useRecordInWorkspace(api, factura);
   const dirty = dirtyOf(factura);
   if (factura.status === "loading") return <Skeleton rows={4} label="Cargando" />;
@@ -70,7 +72,7 @@ function Factura({ api, resource }: ViewProps) {
       {...(dirty === undefined ? {} : { dirty })}
     >
       <Record.Rail>
-        {api.crumbs().length === 0 ? null : <Record.Crumbs crumbs={api.crumbs()} />}
+        {crumbs.length === 0 ? null : <Record.Crumbs crumbs={crumbs} />}
         <Record.Actions>
           <Button size="sm" role="ghost" onClick={factura.reload}>
             Volver a leer

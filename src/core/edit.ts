@@ -87,3 +87,32 @@ export function errorsByField(
   }
   return found;
 }
+
+/**
+ * A record that does not exist yet: the defaults the model publishes for each field
+ * (`FieldMeta.default`, sincpro_framework's `defaults_of`), and nothing else.
+ *
+ *     defaultsOf(invoiceMeta)  ->  { state: "draft", payment: "cash", discount: "0" }
+ */
+export function defaultsOf(meta: Meta | null | undefined): AnyRecord {
+  const values: AnyRecord = {};
+  for (const [name, field] of Object.entries(meta?.fields ?? {}))
+    if (field.default !== null && field.default !== undefined) values[name] = field.default;
+  return values;
+}
+
+/**
+ * What a create sends: every value on screen the caller may write. A field the model marks
+ * `readonly` is the server's to fill (the number, the totals), and an empty one is left for
+ * the server's own default — never sent as `""`.
+ */
+export function creationOf(meta: Meta | null | undefined, values: AnyRecord): AnyRecord {
+  const sent: AnyRecord = {};
+  for (const [name, value] of Object.entries(values)) {
+    const field = meta?.fields[name];
+    if (field?.readonly === true) continue;
+    if (value === undefined || value === null || value === "") continue;
+    sent[name] = value;
+  }
+  return sent;
+}

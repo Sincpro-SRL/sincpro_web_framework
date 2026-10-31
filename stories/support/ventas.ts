@@ -93,7 +93,7 @@ export const facturaMeta = defineMeta({
   defaultOrder: "-invoice_date",
   fields: {
     number: field.text({ label: "Número", readonly: true }),
-    customer_id: field.text({ label: "Cliente (código)" }),
+    customer_id: field.text({ label: "Cliente (código)", required: true }),
     // Published by the server beside the relation: criteria compares an aggregate's OWN
     // fields, so «search invoices by the customer's name» needs the name here.
     customer_name: field.text({ label: "Nombre del cliente" }),
@@ -104,6 +104,8 @@ export const facturaMeta = defineMeta({
     ),
     state: field.choice(["draft", "posted", "paid", "cancelled"], {
       label: "Estado",
+      readonly: true,
+      default: "draft",
       labels: {
         draft: "Borrador",
         posted: "Publicada",
@@ -117,6 +119,7 @@ export const facturaMeta = defineMeta({
     tags: field.tags({ label: "Etiquetas" }),
     payment: field.choice(["cash", "card"], {
       label: "Forma de pago",
+      default: "cash",
       labels: { cash: "Efectivo", card: "Tarjeta" },
       readonlyWhen: { field: "state", operator: "!=", value: "draft" },
     }),
@@ -128,8 +131,8 @@ export const facturaMeta = defineMeta({
       visibleWhen: { field: "payment", operator: "=", value: "card" },
     }),
     notes: field.text({ label: "Nota" }),
-    discount: field.number({ label: "Descuento %", exact: true }),
-    urgent: field.boolean({ label: "Urgente" }),
+    discount: field.number({ label: "Descuento %", exact: true, default: "0" }),
+    urgent: field.boolean({ label: "Urgente", default: false }),
     lines: field.one2many(
       "LineaFactura",
       { identifiedBy: "invoice_number", definition: lineaMeta },
@@ -143,6 +146,7 @@ export const facturaMeta = defineMeta({
 export const clientes = entity<Cliente>("ventas:cliente", { list: "/clientes" });
 export const facturas = entity<Factura>("ventas:factura", {
   list: "/facturas",
+  create: "POST /facturas",
   save: "PUT /facturas/{id}",
   preview: "POST /facturas/preview",
   draft: "PUT /facturas/{id}/draft",

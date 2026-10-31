@@ -1,4 +1,5 @@
 import type { ViewProps } from "@sincpro/web-composer";
+import { useCrumbs } from "@sincpro/web-composer";
 import {
   EntityList,
   entityView,
@@ -53,6 +54,7 @@ function Facturas({ api }: ViewProps) {
 
 function Factura({ api, resource }: ViewProps) {
   const factura = useRecord(facturas, resource.id ?? "");
+  const crumbs = useCrumbs(api);
   useRecordInWorkspace(api, factura);
   if (factura.status === "loading") return <Skeleton rows={4} label="Cargando" />;
   if (factura.status === "failed")
@@ -62,7 +64,7 @@ function Factura({ api, resource }: ViewProps) {
       identity={{ title: factura.record.number, subtitle: factura.record.customer.name }}
     >
       <Record.Rail>
-        {api.crumbs().length === 0 ? null : <Record.Crumbs crumbs={api.crumbs()} />}
+        {crumbs.length === 0 ? null : <Record.Crumbs crumbs={crumbs} />}
       </Record.Rail>
       <Record.Paper layout="horizontal">
         <Record.Facts
