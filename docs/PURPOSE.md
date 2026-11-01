@@ -59,18 +59,25 @@ permiso. Por eso:
 | `useGroups`                  | Agrupar en el servidor: grupos contados sobre todo el conjunto, filas al abrir           | ✅                          |
 | `useFollowed`                | Un panel de detalle que sigue el registro en el que está la persona                      | ✅                          |
 | `summaryOf` / `useSummaryOf` | Lo que se sabe de cualquier registro: nombre, descripción, estado, tipo, imagen, autoría | ✅ (`cardOf`, `relationOf`) |
+| `EntityRecord` / `formOf`    | El registro de cualquier entidad dibujado desde su meta, sin escribir la pantalla        | ✅                          |
+| `EntityTags`                 | Varios registros (many2many): búsqueda literal en el servidor, con caras                 | ✅                          |
+| `RecordField` + `entities`   | Un many2one / one2many armado solo desde la meta (`relationFieldOf`, `entityFor`)        | ✅                          |
 | `openIn` / `RelatedRecord`   | Abrir un registro donde corresponde: modal por defecto, nunca un modal sobre otro        | ✅                          |
 
 ### Búsqueda literal
 
-Hay dos búsquedas, y son distintas:
+Un texto tipeado es **siempre la búsqueda literal de la entidad** — su plantilla (`meta.search`,
+el `LiteralSearch` del framework), todos sus campos a la vez — y la contesta el **servidor**.
+Cambia sólo cuándo se pregunta:
 
-- **En una lista** (hecha): lo tipeado llena la plantilla de la entidad (`meta.search`, el
-  `DEFAULT_LITERAL_SEARCH` del framework) o una faceta de la barra, y filtra la lista.
-- **Para elegir un registro** (hecha): un many2one, el «compartir con» de forge, el ⌘K. Es el
-  `LiteralSearch` del framework: lo tipeado → 8 registros con su identidad y su `display`.
-  `useLookup(entity)` lo lee y `EntityPicker` lo dibuja con el `Picker` de web-ui, con «abrir»
-  (composer) y «buscar más» (`api.pick`).
+- **Para elegir un registro** (many2one, «compartir con», ⌘K): abre con los **primeros 10 en el
+  orden de la entidad**, y mientras se escribe pregunta al servidor (`useLookup` +
+  `Picker onSearch`). El elegido conserva su nombre aunque no esté entre los diez. «Buscar más…»
+  abre la lista entera para elegir (`api.pick`).
+- **En una tabla**: con **Enter**, nunca a cada tecla. La barra ofrece primero «Buscar «X»» (la
+  plantilla), salvo que el modelo lea lo escrito como pregunta suya — un operador
+  («total <= 1000»), un valor de un enum («pagada»), el nombre de un campo —: entonces eso va
+  primero y la literal al final. La caja simple (`search="box"`) busca lo mismo, con Enter.
 
 Buscar por un campo de **otra** entidad («facturas del cliente Globex») no se resuelve en el
 cliente: criteria compara campos propios, así que la entidad publica el campo

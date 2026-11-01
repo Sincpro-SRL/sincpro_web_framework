@@ -59,8 +59,9 @@ export type Listing<T> = {
   reload: () => void;
   /** What was typed in the search box. */
   text: string;
-  /** Debounced: a request per pause, not per keystroke. */
-  search: (text: string) => void;
+  /** Debounced: a request per pause, not per keystroke. `now` asks at once — an explicit
+   *  Enter does not wait for a pause. */
+  search: (text: string, options?: { now?: boolean }) => void;
   /** What the search bar put; `undefined` is nothing. */
   where: Expression<T> | undefined;
   filter: (where: Expression<T> | undefined) => void;
@@ -77,6 +78,10 @@ export type Listing<T> = {
     to: number;
     hasPrev: boolean;
     hasNext: boolean;
+    /** The server's cursors that start each page up to this one (`null` is the first) — and
+     *  the one that starts the next: what a record opened from here walks on (`trailOf`). */
+    cursors: readonly (string | null)[];
+    after: string | null;
   };
   next: () => void;
   prev: () => void;
@@ -239,7 +244,7 @@ export function useListing<T extends AnyRecord>(
     },
     reload: () => void reading.reload(),
     text: narrowing.text,
-    search: (text) => narrow({ text }, true),
+    search: (text, options) => narrow({ text }, options?.now !== true),
     where: narrowing.where,
     filter: (where) => narrow({ where }, false),
     order: narrowing.order,
@@ -252,6 +257,8 @@ export function useListing<T extends AnyRecord>(
       to: index * size + reading.rows.length,
       hasPrev: paging === "pages" && index > 0,
       hasNext: paging === "pages" && reading.cursor !== null,
+      cursors,
+      after: reading.cursor,
     },
     next: () => {
       if (paging === "pages" && reading.cursor !== null) turn([...cursors, reading.cursor]);

@@ -71,9 +71,14 @@ export function chooserIn<T extends AnyRecord>(
   entity: Entity<T>,
   onChange: (id: string) => void,
   options?: Parameters<WorkspaceApi["pick"]>[2],
-): () => void {
-  return () =>
-    api.pick(entity.chooserRef(), (ref) => ref.id === undefined || onChange(ref.id), options);
+): (query?: unknown) => void {
+  // A button's `onClick` hands it the event: only a text is what was typed.
+  return (query) =>
+    api.pick(
+      entity.chooserRef(typeof query === "string" ? query : undefined),
+      (ref) => ref.id === undefined || onChange(ref.id),
+      options,
+    );
 }
 
 /**

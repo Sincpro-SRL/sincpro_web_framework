@@ -168,7 +168,20 @@ export const invoices = entity<Invoice>("sales:invoice", {
 ```
 
 **4. The views** — each entity becomes a composer view: its list without an id, its record with
-one, its search in ⌘K. The screens are yours.
+one, its search in ⌘K. Declared and nothing more, it already has both screens, drawn from its
+model: `EntityList` (literal search on Enter, pages, «New») and `EntityRecord` (its name, type and
+state on top; its fields in the model's order, a many2one as a picker of its entity; each
+one2many in a tab; «save / discard», the conflict, the restored draft, who made it, its history;
+«3 / 64» and the arrows to its neighbours when it was opened from a list).
+
+```ts
+const views = [
+  entityView(invoices, { transport, name: "Invoices" }), // both screens, from the model
+];
+```
+
+They are defaults, not cages: give your own screens, or keep `EntityRecord` and choose what it
+shows.
 
 ```ts
 const views = [
@@ -191,7 +204,13 @@ const views = [
 cache, toasts and the workspace, in one place:
 
 ```tsx
-<SincproApp transport={transport} views={views} start={invoices.ref()} language="es" />
+<SincproApp
+  transport={transport}
+  views={views}
+  entities={[invoices, customers]} // a relation of a model resolves to one of these, alone
+  start={invoices.ref()}
+  language="es"
+/>
 ```
 
 An application with its own shell mounts the same pieces itself: `FrameworkProvider`, composer's
@@ -291,20 +310,25 @@ const tickets = defineMeta({
 Each answers one question, and each comes in the three levels — use the component, drop to the
 hook and draw your own, or go straight to the loose piece.
 
-| Question                        | Declarative                             | Hook                                  | Loose piece                          |
-| ------------------------------- | --------------------------------------- | ------------------------------------- | ------------------------------------ |
-| Where is the data?              | `entity()`                              | —                                     | `restTransport`, `memoryTransport`   |
-| What is each field?             | `Meta` from the server, or `defineMeta` | —                                     | `textOf`, `viewOf`, `metaFromSchema` |
-| What is a record, at any size?  | `cardOf`, `relationOf`                  | `useSummaryOf`                        | `summaryOf`                          |
-| N records: search, filter, page | `EntityList`, `EntitySearchBar`         | `useListing`, `useGroups`             | `transport.list(route, criteria)`    |
-| A named slice (to collect, …)   | `defineList` + `listView`               | `useListing(list)`                    | `scopeOf`                            |
-| One record: read, edit, save    | `RecordField`, `factsOf`, `RecordLines` | `useRecord`                           | `transport.one`, `transport.send`    |
-| Its relations, inside it        | `RelatedList`                           | `useRelated`                          | `relatedOf`                          |
-| Choose one (literal search)     | `EntityPicker`, `chooserIn`             | `useLookup`                           | `lookupOf` + criteria's `matching`   |
-| Open it where it belongs        | `RelatedRecord`, `entityView`           | —                                     | `openIn`, `targetsFor`               |
-| Act on it (with a dry run)      | `CommandButton`, `commands` on rows     | `useCommand`                          | `transport.send`                     |
-| What happened to it             | `Record.Activity` fed by `useHistory`   | `useHistory`                          | `historyOf`                          |
-| The application context         | `SincproApp`                            | `useRecordInWorkspace`, `useFollowed` | `FrameworkProvider`, `webUiSkin`     |
+| Question                         | Declarative                                   | Hook                                  | Loose piece                          |
+| -------------------------------- | --------------------------------------------- | ------------------------------------- | ------------------------------------ |
+| Where is the data?               | `entity()`                                    | —                                     | `restTransport`, `memoryTransport`   |
+| What is each field?              | `Meta` from the server, or `defineMeta`       | —                                     | `textOf`, `viewOf`, `metaFromSchema` |
+| What is a record, at any size?   | `cardOf`, `relationOf`                        | `useSummaryOf`                        | `summaryOf`                          |
+| N records: search, filter, page  | `EntityList`, `EntitySearchBar`               | `useListing`, `useGroups`             | `transport.list(route, criteria)`    |
+| A named slice (to collect, …)    | `defineList` + `listView`                     | `useListing(list)`                    | `scopeOf`                            |
+| A record's whole screen          | `EntityRecord`, `entityView` without `record` | —                                     | `formOf`                             |
+| Previous / next from a record    | `EntityRecord` (from a list)                  | —                                     | `placeOf`, `stepIn` (`Trail`)        |
+| How much each group adds up      | `EntityList sums`                             | `useGroups` (`sums`)                  | `sumsOf`, `detailOf`                 |
+| One record: read, edit, save     | `RecordField`, `factsOf`, `RecordLines`       | `useRecord`                           | `transport.one`, `transport.send`    |
+| Its relations, inside it         | `RelatedList`                                 | `useRelated`                          | `relatedOf`                          |
+| Choose one (literal search)      | `EntityPicker`, `chooserIn`                   | `useLookup`                           | `lookupOf` + criteria's `matching`   |
+| Choose several (many2many)       | `EntityTags`                                  | `useLookup` (`values`)                | `lookupOf`                           |
+| A relation, from the model alone | `RecordField name="customer_id"`              | `useEntityFor`                        | `relationFieldOf`, `entityFor`       |
+| Open it where it belongs         | `RelatedRecord`, `entityView`                 | —                                     | `openIn`, `targetsFor`               |
+| Act on it (with a dry run)       | `CommandButton`, `commands` on rows           | `useCommand`                          | `transport.send`                     |
+| What happened to it              | `Record.Activity` fed by `useHistory`         | `useHistory`                          | `historyOf`                          |
+| The application context          | `SincproApp`                                  | `useRecordInWorkspace`, `useFollowed` | `FrameworkProvider`, `webUiSkin`     |
 
 The rules behind them, in short:
 
@@ -365,6 +389,12 @@ Everything is imported from `@sincpro/web-framework`.
 | `commands`, `useRowCommands`           | An entity's Commands on each row, idempotent, offered only where `when` holds              | ✅     |
 | `summaryOf`, `cardOf`, `relationOf`    | Any record at any size: name, description, state, type, picture, who made and changed it   | ✅     |
 | `openIn`, `RelatedRecord`              | A related record opens in a modal; «Abrir en…» for the rest; never a modal over a modal    | ✅     |
+| Literal search everywhere              | Picker: the first ten, the server's search as you type; tables: «Buscar «X»» on Enter      | ✅     |
+| `EntityTags`                           | A many2many as chips over thousands: the server's search, faces, the chosen never again    | ✅     |
+| `RecordField` + `entities`             | A many2one / one2many drawn from the model alone, opened where the view says               | ✅     |
+| `EntityRecord`, `formOf`               | Any entity's record screen without writing it                                              | ✅     |
+| `Trail`, `Record.Pager`                | Previous / next from a record, across the server's pages                                   | ✅     |
+| `EntityList sums`                      | Each group says how much it adds up, summed by the server over all of it                   | ✅     |
 
 What it does **not** do: mobile (`sincpro_mobile` has its own core), sessions and login (the
 application's), routing (composer's), string-named widget registries, technical logs on a

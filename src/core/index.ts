@@ -33,9 +33,12 @@ export {
   NEW_PARAM,
   pathFor,
   PICK_PARAM,
+  QUERY_PARAM,
+  TRAIL_PARAM,
   type WriteRoute,
   writeRoute,
 } from "@sincpro/web-framework/core/entity";
+export { type FormLayout, formOf } from "@sincpro/web-framework/core/form";
 export { type HistoryEntry, historyOf } from "@sincpro/web-framework/core/history";
 export {
   defineList,
@@ -47,6 +50,7 @@ export {
   scopeOf,
 } from "@sincpro/web-framework/core/list";
 export { lookupOf, type LookupOption } from "@sincpro/web-framework/core/lookup";
+export { detailOf, measuresOf, sumsOf } from "@sincpro/web-framework/core/measure";
 export {
   type MemoryOptions,
   type MemoryTable,
@@ -69,6 +73,11 @@ export {
   viewOf,
 } from "@sincpro/web-framework/core/present";
 export { type Related, relatedOf } from "@sincpro/web-framework/core/related";
+export {
+  entityFor,
+  type RelationField,
+  relationFieldOf,
+} from "@sincpro/web-framework/core/relation";
 export { type RestOptions, restTransport, urlOf } from "@sincpro/web-framework/core/rest";
 export { type RetryKeys, retryKeys, unanswered } from "@sincpro/web-framework/core/retry";
 export {
@@ -84,6 +93,7 @@ export {
   summaryOf,
   type SummaryPart,
 } from "@sincpro/web-framework/core/summary";
+export { placeOf, stepIn, type Trail } from "@sincpro/web-framework/core/trail";
 export {
   type Draft,
   explain,

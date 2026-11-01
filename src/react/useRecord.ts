@@ -148,7 +148,12 @@ export function useRecord<T extends AnyRecord>(
 
   useEffect(() => {
     const aborter = new AbortController();
-    setState((now) => ({ status: "loading", record: null, meta: now.meta, error: null }));
+    // Read again — after a save, a reload — the record on screen STAYS until the answer: a form
+    // that blinked through a skeleton lost its focus, its scroll and the click that landed then.
+    // Only a record not shown yet (another id, the first read) starts as «loading».
+    const again = !isNew && readFor === id;
+    if (!again)
+      setState((now) => ({ status: "loading", record: null, meta: now.meta, error: null }));
     if (isNew) {
       // Nothing to read but the model: known already, or asked of the list with no rows.
       const known = metas.get(entity.key);

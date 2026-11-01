@@ -1,18 +1,26 @@
 "use client";
 
-import { choicesOf } from "@sincpro/criteria";
+import { type AnyRecord, choicesOf } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
+import { relationFieldOf } from "@sincpro/web-framework/core/relation";
+import { useEntityFor, useFramework } from "@sincpro/web-framework/react/context";
 import type { RecordReading } from "@sincpro/web-framework/react/useRecord";
+import { EntityPicker } from "@sincpro/web-framework/web/record/EntityPicker";
+import { useRecordOpening } from "@sincpro/web-framework/web/record/opening";
+import { RecordLines } from "@sincpro/web-framework/web/record/record";
+import { RelatedList } from "@sincpro/web-framework/web/record/RelatedList";
 import {
   Checkbox,
   DatePicker,
   type DirtyState,
   Field,
   NumberInput,
+  type OpenTarget,
   ReadValue,
+  RelationValue,
   Select,
-  TextArea,
+  TagsField,
   TextInput,
 } from "@sincpro/web-ui";
 import type { ReactNode } from "react";
@@ -25,12 +33,17 @@ import type { ReactNode } from "react";
  * Context: forge's forms wrote `<Field label="Nombre" required><TextInput … /></Field>` once per
  * field, with the label, the «required» and the value plumbing by hand, while the server already
  * said all three. Here a field is a NAME. The control by type is a default, never the only way:
- * `as` draws any control — a many2one with `EntityPicker`, a rich text, a domain widget — and
- * still receives the value, the setter and the state.
+ * `as` draws any control — a rich text, a domain widget — and still receives the value, the
+ * setter and the state.
+ *
+ * A many2one needs no `as`: the model says what it points at (`relation: "Cliente"`, the key
+ * `customer_id` it is written by), the application declared that entity
+ * (`SincproApp entities`), so the field is an `EntityPicker` of it — the server's literal
+ * search, the ten first, «Buscar más…» — and, read-only, the record's name as a link. Where it
+ * opens is the view's (`RecordOpening`: a modal in a workspace, nothing outside one).
  *
  *     <RecordField record={invoice} name="due_date" />
- *     <RecordField record={invoice} name="customer_id"
- *       as={({ value, set }) => <EntityPicker entity={customers} value={String(value)} onChange={set} />} />
+ *     <RecordField record={invoice} name="customer_id" />
  */
 export type FieldControl = {
   value: unknown;
@@ -44,15 +57,51 @@ export function RecordField<T extends Record<string, unknown>>({
   record,
   name,
   as,
+  bare = false,
 }: {
   record: RecordReading<T>;
   name: string;
   as?: (control: FieldControl) => ReactNode;
+  /** The control without its label — inside a page or a section that already names it. */
+  bare?: boolean;
 }) {
   const { meta, locale, edit } = record;
   const view = viewOf(meta, name, locale);
   const state = edit.state(name);
+  const relation = relationFieldOf(meta, name);
+  const target = useEntityFor(relation?.target);
+  const opening = useRecordOpening();
+  const { metas } = useFramework();
   if (!state.visible) return null;
+  // A one2many of a declared entity is that entity's own list, filtered to this record by
+  // the server — never the page the record happened to bring — and a row opens its record.
+  // A one2many of no declared entity (the lines of an invoice): the page the record brought,
+  // with its real total.
+  if (as === undefined && relation?.field.type === "one2many" && target === undefined) {
+    const lines = (
+      <RecordLines record={record.record ?? {}} meta={meta} name={name} locale={locale} />
+    );
+    return bare ? lines : <Field label={view.label}>{lines}</Field>;
+  }
+  if (as === undefined && relation?.field.type === "one2many" && target !== undefined) {
+    const list = (
+      <RelatedList
+        record={record}
+        name={name}
+        entity={target}
+        {...(opening === null
+          ? {}
+          : {
+              onOpen: (row: AnyRecord) => {
+                const known = metas.get(target.key);
+                const key = known?.get_id || known?.identity || "id";
+                opening.open(target.ref(String(row[key])), opening.targets[0] ?? "page");
+              },
+            })}
+      />
+    );
+    return bare ? list : <Field label={view.label}>{list}</Field>;
+  }
   const value = edit.values[name];
   const error = edit.errors[name];
   const control: FieldControl = {
@@ -63,6 +112,49 @@ export function RecordField<T extends Record<string, unknown>>({
     label: view.label,
   };
   const field = meta?.fields[name];
+
+  /** A many2one of a declared entity: chosen by the server's literal search, opened where the
+   *  view says. Written by its key; read by the record it points at. */
+  function manyToOne(): ReactNode {
+    if (relation === undefined || target === undefined) return null;
+    const key = edit.values[relation.key];
+    const id = key === null || key === undefined ? "" : String(key);
+    if (state.readonly)
+      return (
+        <RelationValue
+          name={textOf(meta, relation.relation, edit.values[relation.relation], locale) ?? id}
+          {...(opening === null || id === ""
+            ? {}
+            : {
+                onOpenIn: (to: OpenTarget) => opening.open(target.ref(id), to),
+                openTargets: opening.targets,
+              })}
+        />
+      );
+    const answer = (next: string) => edit.set(relation.key, next);
+    return (
+      <EntityPicker
+        entity={target}
+        value={id}
+        onChange={answer}
+        // «Buscar más…» is an option of the picker already: no second button beside it.
+        browse={false}
+        aria-label={view.label}
+        {...(opening === null
+          ? {}
+          : {
+              onOpen: (chosen: string, to: OpenTarget) =>
+                opening.open(target.ref(chosen), to),
+              openTargets: opening.targets,
+              ...(opening.choose === undefined
+                ? {}
+                : {
+                    onBrowseAll: (query: string) => opening.choose?.(target, answer, query),
+                  }),
+            })}
+      />
+    );
+  }
 
   if (view.type === "boolean" && as === undefined)
     return (
@@ -83,6 +175,8 @@ export function RecordField<T extends Record<string, unknown>>({
     >
       {as !== undefined ? (
         as(control)
+      ) : relation !== undefined && !relation.many && target !== undefined ? (
+        manyToOne()
       ) : state.readonly ? (
         <ReadValue value={textOf(meta, name, value, locale) ?? "—"} />
       ) : (
@@ -124,20 +218,18 @@ function controlFor(
           onChange={set}
         />
       );
-    case "text[]":
+    case "text[]": {
+      // A list of words is chips: each word is its own key, and typing a new one adds it.
+      const words = Array.isArray(value) ? value.map(String) : [];
       return (
-        <TextArea
-          value={Array.isArray(value) ? value.join("\n") : ""}
-          onChange={(next) =>
-            set(
-              next
-                .split("\n")
-                .map((line) => line.trim())
-                .filter(Boolean),
-            )
-          }
+        <TagsField
+          value={words}
+          options={words.map((word) => ({ value: word, label: word }))}
+          onChange={set}
+          onCreate={(word) => word}
         />
       );
+    }
     default:
       return (
         <TextInput

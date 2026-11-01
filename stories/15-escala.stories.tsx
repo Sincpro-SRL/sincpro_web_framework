@@ -56,7 +56,10 @@ export const PorPaginas: Story = {
     await expect(await canvas.findByText("M-0200000")).toBeVisible();
 
     // A search is a question to the server, and starts on its first page.
-    await userEvent.type(canvas.getByRole("searchbox", { name: "Buscar" }), "Ajuste 199995");
+    await userEvent.type(
+      canvas.getByRole("searchbox", { name: "Buscar" }),
+      "Ajuste 199995{Enter}",
+    );
     await expect(await canvas.findByText("M-0199995")).toBeVisible();
     await waitFor(() => expect(bodyRows(canvasElement)).toBe(1));
   },

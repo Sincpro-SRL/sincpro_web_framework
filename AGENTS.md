@@ -127,6 +127,9 @@ Rules for any agent (or person) changing this package. Read the README for the i
   On the CI runner every story file shares one Chrome, and a 250 ms fake-server timer can take
   over a second: with Testing Library's default (1 s) plays failed there and never locally.
   Do not lower it; a play that needs a deadline measures it itself.
+- **Reading the same record again keeps it on screen** (`useRecord`): after a save or a
+  `reload()` the record stays until the answer; only another id starts as «loading». A record
+  that blinked through a skeleton lost its focus and the click that landed then.
 - **`useHistory`, not `useActivity`**: web-ui already exports `useActivity` (the panel's open
   state). Do not shadow a name of the stack.
 

@@ -1,12 +1,13 @@
 "use client";
 
-import { type AnyRecord, nameOf } from "@sincpro/criteria";
+import { type AnyRecord, type Criteria, nameOf } from "@sincpro/criteria";
 import { RecordLink, useCrumbs, type WorkspaceApi } from "@sincpro/web-composer";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
-import { PICK_PARAM } from "@sincpro/web-framework/core/entity";
+import { PICK_PARAM, QUERY_PARAM, TRAIL_PARAM } from "@sincpro/web-framework/core/entity";
 import type { NamedFilter } from "@sincpro/web-framework/core/list";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
 import { explain } from "@sincpro/web-framework/core/transport";
+import { useFramework } from "@sincpro/web-framework/react/context";
 import { useGroups } from "@sincpro/web-framework/react/useGroups";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
 import { columnsOf } from "@sincpro/web-framework/web/list/columns";
@@ -23,7 +24,7 @@ import {
   SearchField,
   Tag,
 } from "@sincpro/web-ui";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useId, useMemo, useState } from "react";
 
 /**
  * A whole collection from a `Listing`: the bar, the search, the set in the views it offers,
@@ -55,6 +56,9 @@ const NO_WORKSPACE = {
   context: { subscribe: () => () => undefined },
 } as unknown as WorkspaceApi;
 
+/** How many lists' trails are kept: the records opened from the last fifty lists page on. */
+const TRAILS = 50;
+
 export type EntityListProps<T extends AnyRecord> = {
   listing: Listing<T>;
   /**
@@ -85,8 +89,13 @@ export type EntityListProps<T extends AnyRecord> = {
   /**
    * `"bar"` (the default) is the full search bar with the criteria builder; `"box"` is one
    * text box over the entity's search template — a chooser, a narrow panel; `false` is none.
+   * Both ask the server on Enter, never per keystroke: a table is searched on purpose.
    */
   search?: "bar" | "box" | false;
+  /** What each group adds up when the list is grouped — «Total 1.204.933,00» in its header,
+   *  summed by the server over every row of it. Without it, the figures the model computes
+   *  (read-only exact numbers, `sumsOf`); `false` adds nothing up. */
+  sums?: readonly string[] | false;
   /** The cuts this list offers by name: «sólo pagadas», «vencidas». */
   filters?: readonly NamedFilter<T>[];
   /**
@@ -132,6 +141,7 @@ export function EntityList<T extends AnyRecord>({
   onPeek,
   empty,
   search = "bar",
+  sums,
   filters: askedFilters,
   selectable = false,
   selectionActions,
@@ -155,16 +165,66 @@ export function EntityList<T extends AnyRecord>({
   const failed = listing.status === "failed" ? explain(listing.error) : null;
   const dropped = listing.dropped.map((d) => viewOf(meta, d.field, locale).label);
   const [present, setPresent] = useState<View>(views[0] ?? "table");
+  // Opened to choose on what was typed in a picker (`chooserRef(query)`): it starts searched.
+  const asked = api?.self.params?.[QUERY_PARAM] ?? "";
+  // The box's text is a draft until Enter: typing asks the server nothing.
+  const [draft, setDraft] = useState(asked === "" ? listing.text : asked);
+  useEffect(() => {
+    if (asked !== "" && search === "box") listing.search(asked, { now: true });
+    // Once, as it opens: what the person types next is theirs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Opened by `api.pick` (`entity.chooserRef()`): a row ANSWERS whoever asked, it does not open.
   const choosing = api?.self.params?.[PICK_PARAM] !== undefined;
+  // The record opened from a row knows the page it came from: «3 / 64» and its neighbours.
+  const { trails } = useFramework();
+  const trailKey = `trail:${useId()}`;
+  // Kept current with the page on screen: the row and its name (`RecordLink`) open the same
+  // reference, and whichever opens it, the record finds where it came from.
+  useEffect(() => {
+    if (api === undefined) return;
+    const pages = listing.paging === "pages";
+    trails.set(trailKey, {
+      route: listing.route,
+      question: listing.question as Criteria,
+      key: identity,
+      ids: listing.rows.map(idOf),
+      offset: pages ? Math.max(0, listing.page.from - 1) : 0,
+      size: listing.page.size,
+      cursors: pages ? listing.page.cursors : [null],
+      after: pages ? listing.page.after : null,
+      total: pages ? (listing.count?.value ?? null) : listing.rows.length,
+    });
+    // Never forgotten when the list unmounts — the record it opened replaced it and still walks
+    // on it — so the oldest go past a ceiling instead: one per list ever shown, fifty at most.
+    for (const old of trails.keys()) {
+      if (trails.size <= TRAILS) break;
+      if (old !== trailKey) trails.delete(old);
+    }
+    // The page on screen is what the trail is: its rows, its cursors, its count.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    api,
+    trails,
+    trailKey,
+    listing.rows,
+    listing.count,
+    listing.page.from,
+    listing.page.after,
+  ]);
+  const refOf = (row: T) => {
+    const ref = listing.entity.ref(idOf(row));
+    return { ...ref, params: { ...ref.params, [TRAIL_PARAM]: trailKey } };
+  };
+  const openWithTrail = (row: T) => api?.open(refOf(row));
   const opening =
     onOpen ??
     (api === undefined
       ? undefined
       : choosing
         ? (row: T) => api.answer(listing.entity.ref(idOf(row)))
-        : (row: T) => api.open(listing.entity.ref(idOf(row))));
+        : openWithTrail);
   const creating =
     create &&
     api !== undefined &&
@@ -182,7 +242,7 @@ export function EntityList<T extends AnyRecord>({
       : {
           ...cells,
           [identity]: (row: T) => (
-            <RecordLink api={api} resource={listing.entity.ref(idOf(row))}>
+            <RecordLink api={api} resource={refOf(row)}>
               {idOf(row)}
             </RecordLink>
           ),
@@ -238,7 +298,7 @@ export function EntityList<T extends AnyRecord>({
   // Grouped: the SERVER counts the groups; a group's rows are read when it is opened, so every
   // group starts closed. web-ui's table groups the rows it holds — the page — so a grouped list
   // shows rows, the face that draws the piles it is given.
-  const groups = useGroups(listing);
+  const groups = useGroups(listing, sums === undefined ? {} : { sums: sums || [] });
   const grouped = groups.levels.length > 0;
   const { piles, bucketAt } = pilesOf(
     groups.buckets,
@@ -333,14 +393,24 @@ export function EntityList<T extends AnyRecord>({
         )}
         {search === "bar" ? (
           <List.Search>
-            <EntitySearchBar listing={listing} filters={filters} groups={groups} />
+            <EntitySearchBar
+              listing={listing}
+              filters={filters}
+              groups={groups}
+              {...(asked === "" ? {} : { seed: asked })}
+            />
           </List.Search>
         ) : null}
         {search === "box" && meta?.search != null ? (
           <List.Search>
             <SearchField
-              value={listing.text}
-              onChange={listing.search}
+              value={draft}
+              onChange={(next) => {
+                setDraft(next);
+                // Emptied (or cleared with ×): the whole set again, at once.
+                if (next === "" && listing.text !== "") listing.search("", { now: true });
+              }}
+              onSubmit={(text) => listing.search(text, { now: true })}
               placeholder={copy.search}
               aria-label={copy.search}
             />

@@ -153,7 +153,46 @@ export const notas = entity<Nota>("crm:nota", { list: "/notas" });
 
 export const NOTAS: Nota[] = [{ id: "N-001", name: "Llamar el martes" }];
 
+export type Persona = { id: string; name: string; email: string; image: string };
+
+export const personaMeta = defineMeta({
+  aggregate: "Persona",
+  identity: "id",
+  display: "name",
+  search: ["name", "email"],
+  name: "Personas",
+  fields: {
+    id: field.text({ label: "Código", readonly: true }),
+    name: field.text({ label: "Nombre", required: true }),
+    email: field.text({ label: "Correo" }),
+    image: field.text({ label: "Foto" }),
+  },
+});
+
+/** People: followers, salespeople, approvers. Chosen by their face. */
+export const personas = entity<Persona>("crm:persona", {
+  list: "/personas",
+  summary: { person: true },
+});
+
+const NOMBRES_PILA = ["Ana", "Luis", "María", "Jorge", "Carla", "Diego", "Paola", "Raúl"];
+const APELLIDOS = ["Rojas", "Pérez", "Quispe", "Mamani", "Vargas", "Flores", "Gutiérrez"];
+const COLORES = ["#2f6f62", "#8a6d3b", "#5b4b8a", "#8a3b4f"];
+
+/** Five hundred, a third of them with a photo: the rest are their initials. */
+export const PERSONAS: Persona[] = Array.from({ length: 500 }, (_, i) => {
+  const name = `${NOMBRES_PILA[i % NOMBRES_PILA.length]} ${APELLIDOS[i % APELLIDOS.length]} ${i + 1}`;
+  return {
+    id: `U-${String(i + 1).padStart(4, "0")}`,
+    name,
+    email: `persona${i + 1}@sincpro.bo`,
+    image:
+      i % 3 === 0 ? picture(COLORES[i % COLORES.length] ?? "#2f6f62", name[0] ?? "?") : "",
+  };
+});
+
 export const CONTACTOS_TABLAS = {
+  "/personas": { meta: personaMeta, rows: PERSONAS },
   "/contactos": { meta: contactoMeta, rows: CONTACTOS },
   "/productos": { meta: productoMeta, rows: PRODUCTOS },
   "/notas": { meta: notaMeta, rows: NOTAS },

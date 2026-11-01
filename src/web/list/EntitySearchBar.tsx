@@ -1,6 +1,6 @@
 "use client";
 
-import type { AnyRecord, Expression } from "@sincpro/criteria";
+import { type AnyRecord, type Expression, matching } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import type { GroupLevel, NamedFilter } from "@sincpro/web-framework/core/list";
 import type { Groups } from "@sincpro/web-framework/react/useGroups";
@@ -12,6 +12,7 @@ import {
   CriteriaBuilder,
   describeFilter,
   Dialog,
+  fillCopy,
   filterCriteria,
   GroupingLevels,
   hasNamed,
@@ -19,9 +20,10 @@ import {
   type SearchCriteria,
   toggleNamed,
   useGroupingControl,
+  useUiCopy,
   whereOf,
 } from "@sincpro/web-ui";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 /**
  * web-ui's search bar and criteria builder, bound to a `Listing`.
@@ -30,6 +32,9 @@ import { useMemo, useState } from "react";
  * of a record, a chooser — so it is a piece of its own, not something only `EntityList` can do.
  * A screen that writes its own `List` drops it in `List.Search` and gets the same behaviour:
  *
+ *   - a free text is the entity's LITERAL search — its whole template, every field at once
+ *     (sincpro_framework's `LiteralSearch`, the same question a many2one and ⌘K ask): it is
+ *     what Enter puts, unless the model reads the text as a question of its own;
  *   - «search by name»: facets are the fields the entity's search template names first;
  *   - a typed question («total > 5000») is checked against each field's operators;
  *   - a named filter is one click; the builder writes what nobody foresaw (all/any/not);
@@ -48,12 +53,16 @@ export function EntitySearchBar<T extends AnyRecord>({
   listing,
   filters = [],
   groups,
+  seed,
 }: {
   listing: Listing<T>;
   /** The cuts this set offers by name: «sólo pagadas», «vencidas». */
   filters?: readonly NamedFilter<T>[];
   /** The grouping of the same set (`useGroups(listing)`): offers «Group by». */
   groups?: Groups<T>;
+  /** A text to start on, put as the literal search chip — what was typed in a picker whose
+   *  «Buscar más…» opened this list. */
+  seed?: string;
 }) {
   const copy = frameworkCopy().list;
   const { meta, locale } = listing;
@@ -62,6 +71,19 @@ export function EntitySearchBar<T extends AnyRecord>({
   const model = useMemo(() => (meta ? modelOf(meta, locale) : undefined), [meta, locale]);
   const facets = useMemo(() => (meta ? facetsOf(meta, locale) : []), [meta, locale]);
   const groupable = useMemo(() => groupableOf(meta, locale), [meta, locale]);
+  const ui = useUiCopy();
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current || seed === undefined || seed === "" || meta?.search == null) return;
+    seeded.current = true;
+    const where = matching(meta, seed).where as BuiltFilter | undefined;
+    if (where === undefined) return;
+    const chip = filterCriteria(where, fillCopy(ui.search.literalChip, { text: seed }));
+    setPut([chip]);
+    listing.filter(whereOf([chip]) as Expression<T> | undefined);
+    // Once the definition is known; what the person changes afterwards is theirs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta, seed]);
   const control = useGroupingControl({
     levels: groups?.levels ?? NO_LEVELS,
     onLevelsChange: (next) => groups?.group(next),
@@ -104,6 +126,12 @@ export function EntitySearchBar<T extends AnyRecord>({
           ? {}
           : { grouping: <GroupingLevels fields={groupable} control={control} /> })}
         onOpenBuilder={() => setBuilding(true)}
+        {...(meta?.search == null
+          ? {}
+          : {
+              literal: (text: string) =>
+                (matching(meta, text).where as BuiltFilter | undefined) ?? null,
+            })}
       />
       {building ? (
         <Dialog open width="lg" title={copy.builder} onClose={() => setBuilding(false)}>

@@ -32,8 +32,9 @@ export type Entity<T extends AnyRecord = AnyRecord> = {
   ref: (id?: string) => EntityRef;
   /** A record that does not exist yet — the form that creates one. Its view is the record's. */
   newRef: () => EntityRef;
-  /** Its list opened to CHOOSE one: a row answers whoever asked (composer's `api.pick`). */
-  chooserRef: () => EntityRef;
+  /** Its list opened to CHOOSE one: a row answers whoever asked (composer's `api.pick`). With
+   *  `query`, the list opens on that literal search — what was typed in the picker. */
+  chooserRef: (query?: string) => EntityRef;
   /** The route of its list. */
   list: string;
   /** The route of one record. */
@@ -53,6 +54,9 @@ export type Entity<T extends AnyRecord = AnyRecord> = {
   /** Which fields are its description, state, picture… when they are not the conventional
    *  ones (`summaryOf`). Empty: the convention decides. */
   summary: SummaryFields;
+  /** The aggregate it is, as a relation of another model names it (`relation: "Cliente"`).
+   *  Without it, the `aggregate` of its model definition, once known. */
+  aggregate?: string;
   /** Only carries the record type; never read. */
   readonly _record?: T;
 };
@@ -72,6 +76,10 @@ export type EntityRef = {
  */
 export const NEW_PARAM = "new";
 export const PICK_PARAM = "pick";
+/** What was typed where the chooser was asked for: its list opens on that search. */
+export const QUERY_PARAM = "q";
+/** The list a record was opened from (its `Trail`): «3 / 64» and the arrows to its neighbours. */
+export const TRAIL_PARAM = "from";
 
 /** A write: its method and its path, `{id}` where the record's key goes. */
 export type WriteRoute = { method: Method; path: string };
@@ -91,6 +99,8 @@ export type EntityRoutes = {
   /** `{ image: "logo", state: "estado_pago", person: true }` — not a route, but declared once
    *  with the rest of what a screen should not have to know. */
   summary?: SummaryFields;
+  /** `"Cliente"`: what a many2one of another model calls it, so a form resolves it alone. */
+  aggregate?: string;
 };
 
 const METHODS = new Set<Method>(["POST", "PUT", "PATCH", "DELETE"]);
@@ -123,7 +133,16 @@ export function entity<T extends AnyRecord = AnyRecord>(
     kind,
     ref: (id) => ({ domain, kind, ...(id === undefined || id === "" ? {} : { id }) }),
     newRef: () => ({ domain, kind, params: { [NEW_PARAM]: "1" } }),
-    chooserRef: () => ({ domain, kind, params: { [PICK_PARAM]: "1" } }),
+    chooserRef: (query) => ({
+      domain,
+      kind,
+      params: {
+        [PICK_PARAM]: "1",
+        ...(query === undefined || query.trim() === ""
+          ? {}
+          : { [QUERY_PARAM]: query.trim() }),
+      },
+    }),
     list: routes.list,
     one: (id) => template.replace("{id}", encodeURIComponent(id)),
     commands: Object.fromEntries(
@@ -135,5 +154,6 @@ export function entity<T extends AnyRecord = AnyRecord>(
     ...(routes.draft === undefined ? {} : { draft: writeRoute(routes.draft) }),
     ...(routes.history === undefined ? {} : { history: routes.history }),
     summary: routes.summary ?? {},
+    ...(routes.aggregate === undefined ? {} : { aggregate: routes.aggregate }),
   };
 }
