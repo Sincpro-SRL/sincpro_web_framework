@@ -3,6 +3,14 @@ import assert from "node:assert/strict";
 import { entityView, lookupOf, memoryTransport } from "@sincpro/web-framework";
 import { test } from "vitest";
 
+import {
+  contactoMeta,
+  CONTACTOS,
+  contactos,
+  productoMeta,
+  PRODUCTOS,
+  productos,
+} from "../stories/support/contactos";
 import { tenantMeta } from "../stories/support/forge";
 import { clienteMeta, CLIENTES, clientes, VENTAS } from "../stories/support/ventas";
 
@@ -37,4 +45,13 @@ test("⌘K finds a record by the entity's own search template", async () => {
   );
   assert.deepEqual(await spec.search?.("  "), []);
   assert.equal(spec.title({ domain: "ventas", kind: "cliente" }), "Clientes");
+});
+
+test("a choice carries the record's picture: a person is chosen by their face", () => {
+  const [andina, maria] = lookupOf(contactoMeta, CONTACTOS, contactos.summary);
+  assert.equal(andina?.image, CONTACTOS[0]?.image);
+  assert.equal(maria?.image, undefined, "no photo: no picture, the initials are drawn");
+  // A picture the entity names by a field of its own.
+  const [cemento] = lookupOf(productoMeta, PRODUCTOS, productos.summary);
+  assert.equal(cemento?.image, PRODUCTOS[0]?.picture);
 });

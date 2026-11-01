@@ -138,7 +138,8 @@ export const CadaTipoConSuControl: Story = {
     const canvas = within(canvasElement);
     await canvas.findByRole("textbox", { name: "Nota" });
     await expect(canvas.getByRole("checkbox", { name: "Urgente" })).toBeInTheDocument();
-    await expect(canvas.getByRole("textbox", { name: "Etiquetas" })).toBeInTheDocument();
+    // A list of words is chips (`TagsField`), not a text area one word per line.
+    await expect(canvas.getByRole("combobox", { name: "Etiquetas" })).toBeInTheDocument();
     await expect(canvas.getByText("Total")).toBeInTheDocument();
     // Read-only by the model: drawn as a value, not a control.
     await expect(canvas.queryByRole("textbox", { name: "Total" })).toBeNull();

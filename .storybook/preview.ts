@@ -5,11 +5,18 @@ import { installFrameworkCopy, SPANISH_FRAMEWORK_COPY } from "@sincpro/web-frame
 import { installCopy, isTheme, SPANISH_COPY, ThemeProvider } from "@sincpro/web-ui";
 import type { Preview } from "@storybook/react-vite";
 import { createElement } from "react";
+import { configure } from "storybook/test";
 
 /* Stories read in Spanish, with the tables an application installs. */
 installCopy(SPANISH_COPY);
 installComposerCopy(SPANISH_COMPOSER_COPY);
 installFrameworkCopy(SPANISH_FRAMEWORK_COPY);
+
+/* A play waits on a fake server with latency (250 ms by default) and a typing pause (200 ms).
+   Testing Library gives up after 1 s, and on the CI runner — every story file at once in one
+   Chrome — a 250 ms timer can take longer than that: plays failed there and never here. Five
+   seconds only waits longer for what does come; what never comes still fails. */
+configure({ asyncUtilTimeout: 5000 });
 
 const preview: Preview = {
   parameters: {

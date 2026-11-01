@@ -58,12 +58,12 @@ export const LasFacturasDeUnCliente: Story = {
 
     // One of its own invoices is found…
     const suya = DE_GLOBEX.at(-1)!.number;
-    await userEvent.type(box, suya.slice(-4));
+    await userEvent.type(box, `${suya.slice(-4)}{Enter}`);
     await expect(await canvas.findByText(suya)).toBeVisible();
 
     // …and another customer's never is: the relation's scope is AND-ed with every search.
     await userEvent.clear(box);
-    await userEvent.type(box, "0007");
+    await userEvent.type(box, "0007{Enter}");
     await expect(await canvas.findByText("Nada coincide.")).toBeVisible();
   },
 };
@@ -91,10 +91,14 @@ export const ElegirEntreDoscientosMil: Story = {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
     await userEvent.click(await canvas.findByRole("combobox", { name: /Movimiento/ }));
-    await userEvent.click(await page.findByText("ver todos…"));
+    // web-ui's «Buscar más…» option carries how many more there are in its name.
+    await userEvent.click(await page.findByRole("option", { name: /^Buscar más…/ }));
     const chooser = await page.findByRole("dialog", { name: "Movimientos" });
     // The box appears with the entity's definition, on the first answer.
-    await userEvent.type(await within(chooser).findByLabelText("Buscar"), "Ajuste 123455");
+    await userEvent.type(
+      await within(chooser).findByLabelText("Buscar"),
+      "Ajuste 123455{Enter}",
+    );
     await userEvent.click(await within(chooser).findByText("M-0123455"));
     await waitFor(() => expect(canvas.getByText("elegido: M-0123455")).toBeVisible());
   },

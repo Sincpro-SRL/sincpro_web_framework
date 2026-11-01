@@ -1,14 +1,20 @@
 "use client";
 
 import { type AnyRecord, matching, type Meta } from "@sincpro/criteria";
-import type { SearchHit, ViewProps, ViewSpec } from "@sincpro/web-composer";
+import type { SearchHit, ViewProps, ViewSpec, WorkspaceApi } from "@sincpro/web-composer";
 import { type Entity, NEW_PARAM } from "@sincpro/web-framework/core/entity";
 import type { ListDefinition } from "@sincpro/web-framework/core/list";
 import { lookupOf } from "@sincpro/web-framework/core/lookup";
 import type { Transport } from "@sincpro/web-framework/core/transport";
 import { useListing } from "@sincpro/web-framework/react/useListing";
 import { EntityList } from "@sincpro/web-framework/web/list/EntityList";
-import type { ComponentType } from "react";
+import {
+  type RecordOpening,
+  RecordOpeningProvider,
+} from "@sincpro/web-framework/web/record/opening";
+import { openIn, RECORD_SIZE, targetsFor } from "@sincpro/web-framework/web/workspace/open";
+import { EntityRecord } from "@sincpro/web-framework/web/workspace/record";
+import { type ComponentType, type ReactNode, useMemo } from "react";
 
 /**
  * An entity as the composer's view: one `ViewSpec` for its list (a reference without an id)
@@ -32,8 +38,10 @@ export type EntityViewOptions = {
   transport: Transport;
   /** How it reads in the palette, a panel's frame and the breadcrumb. */
   name: string;
-  list: ComponentType<ViewProps>;
-  record: ComponentType<ViewProps>;
+  /** Its list. Without it, `EntityList` over the entity: search bar, pages, «Nuevo». */
+  list?: ComponentType<ViewProps>;
+  /** Its record. Without it, `EntityRecord`: the form the model describes. */
+  record?: ComponentType<ViewProps>;
   icon?: ViewSpec["icon"];
   /** Listed under «Go to» in ⌘K. On by default. */
   goto?: boolean;
@@ -42,17 +50,59 @@ export type EntityViewOptions = {
   actions?: ViewSpec["actions"];
 };
 
+/**
+ * The fields of a view open their records in the workspace: a modal over this surface by
+ * default, beside it from inside a modal, and «Buscar más…» as the entity's list that answers.
+ */
+function InWorkspace({ api, children }: { api: WorkspaceApi; children: ReactNode }) {
+  const targets = targetsFor(api);
+  const opening = useMemo<RecordOpening>(
+    () => ({
+      open: (ref, to) => openIn(api, ref, to),
+      targets,
+      choose: (entity, answer, query) =>
+        api.pick(entity.chooserRef(query), (ref) => ref.id === undefined || answer(ref.id), {
+          // Never a modal over a modal: from inside one, the chooser docks beside it.
+          ...(targets[0] === "modal"
+            ? { to: "modal" as const, size: RECORD_SIZE }
+            : { to: "side" as const }),
+        }),
+    }),
+    [api, targets],
+  );
+  return <RecordOpeningProvider value={opening}>{children}</RecordOpeningProvider>;
+}
+
+/** The entity's list when the application writes none. */
+function listOf<T extends AnyRecord>(entity: Entity<T>): ComponentType<ViewProps> {
+  return function DefaultList({ api }: ViewProps) {
+    return <EntityList listing={useListing(entity)} api={api} />;
+  };
+}
+
+/** The entity's record when the application writes none. */
+function recordOf<T extends AnyRecord>(entity: Entity<T>): ComponentType<ViewProps> {
+  return function DefaultRecord(props: ViewProps) {
+    return <EntityRecord {...props} entity={entity} />;
+  };
+}
+
 export function entityView<T extends AnyRecord>(
   entity: Entity<T>,
   options: EntityViewOptions,
 ): ViewSpec {
-  const { list: List, record: One } = options;
+  const List = options.list ?? listOf(entity);
+  const One = options.record ?? recordOf(entity);
   let meta: Meta | null = options.meta ?? null;
 
   function EntityView(props: ViewProps) {
     const record =
       props.resource.id !== undefined || props.resource.params?.[NEW_PARAM] !== undefined;
-    return record ? <One {...props} /> : <List {...props} />;
+    return (
+      <InWorkspace api={props.api}>
+        {record ? <One {...props} /> : <List {...props} />}
+      </InWorkspace>
+    );
   }
 
   return {

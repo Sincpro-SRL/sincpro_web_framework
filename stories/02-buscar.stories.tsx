@@ -41,7 +41,10 @@ export const UnaFacturaPorNumero: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByText("20 de 64");
-    await userEvent.type(await canvas.findByRole("searchbox", { name: "Buscar" }), "0007");
+    await userEvent.type(
+      await canvas.findByRole("searchbox", { name: "Buscar" }),
+      "0007{Enter}",
+    );
     await expect(await canvas.findByText("1 de 1")).toBeVisible();
     await expect(await canvas.findByText("F-2026-0007")).toBeVisible();
   },
@@ -62,7 +65,10 @@ export const UnClientePorNit: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByText("8 de 8");
-    await userEvent.type(await canvas.findByRole("searchbox", { name: "Buscar" }), "Globex");
+    await userEvent.type(
+      await canvas.findByRole("searchbox", { name: "Buscar" }),
+      "Globex{Enter}",
+    );
     await expect(await canvas.findByText("1 de 1")).toBeVisible();
   },
 };

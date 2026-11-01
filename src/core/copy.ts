@@ -59,6 +59,16 @@ export type FrameworkCopy = {
     /** The button beside a many2one that opens the chooser over the whole set. */
     browse: string;
   };
+  summary: {
+    /** The facts of a record's summary: when it was made and last changed. */
+    created: string;
+    updated: string;
+    /** «12 mar 2026 · Ana Rojas»: when, and who when it is known. */
+    when: (at: string, by: string | null) => string;
+    /** A card's last line: «Updated 12 Mar 2026 by Ana», or «Created …» if never changed. */
+    updatedLine: (at: string, by: string | null) => string;
+    createdLine: (at: string, by: string | null) => string;
+  };
   command: {
     /** The confirmation of an action that cannot be undone, after its dry run. */
     confirm: string;
@@ -114,6 +124,13 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
   },
   picker: {
     browse: "Search all",
+  },
+  summary: {
+    created: "Created",
+    updated: "Updated",
+    when: (at, by) => (by === null ? at : `${at} · ${by}`),
+    updatedLine: (at, by) => (by === null ? `Updated ${at}` : `Updated ${at} by ${by}`),
+    createdLine: (at, by) => (by === null ? `Created ${at}` : `Created ${at} by ${by}`),
   },
   command: {
     confirm: "Do it",
@@ -181,6 +198,14 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
   },
   picker: {
     browse: "Buscar en todos",
+  },
+  summary: {
+    created: "Creado",
+    updated: "Actualizado",
+    when: (at, by) => (by === null ? at : `${at} · ${by}`),
+    updatedLine: (at, by) =>
+      by === null ? `Actualizado el ${at}` : `Actualizado el ${at} por ${by}`,
+    createdLine: (at, by) => (by === null ? `Creado el ${at}` : `Creado el ${at} por ${by}`),
   },
   command: {
     confirm: "Hacerlo",

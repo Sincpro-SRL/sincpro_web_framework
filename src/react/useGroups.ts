@@ -2,6 +2,7 @@
 
 import type { AnyRecord, Bucket, Criteria } from "@sincpro/criteria";
 import type { GroupLevel } from "@sincpro/web-framework/core/list";
+import { measuresOf, sumsOf } from "@sincpro/web-framework/core/measure";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
 import { useCallback, useEffect, useState } from "react";
@@ -47,7 +48,12 @@ const keyOf = (bucket: Bucket<AnyRecord>) => JSON.stringify(bucket.criteria);
 
 export function useGroups<T extends AnyRecord>(
   listing: Listing<T>,
-  options: { pageSize?: number } = {},
+  options: {
+    pageSize?: number;
+    /** The fields each group adds up, over every row of it (`detailOf` reads them). Without
+     *  it, the figures the model computes (`sumsOf`); `[]` adds nothing up. */
+    sums?: readonly string[];
+  } = {},
 ): Groups<T> {
   const { transport } = useFramework();
   // A named list may open grouped (`groupBy`); a person regroups from there.
@@ -66,6 +72,10 @@ export function useGroups<T extends AnyRecord>(
   const { pagination: _page, ...asked } = listing.question;
   const question = JSON.stringify(asked);
   const route = listing.route;
+  const sums = (options.sums ?? sumsOf(listing.meta)).join(",");
+  // What adds up by default is read from the model: without it yet, asking now and again when
+  // it arrives would be two questions — and the groups on screen replaced under the pointer.
+  const waiting = options.sums === undefined && listing.meta === null;
 
   useEffect(() => {
     setRows(new Map());
@@ -75,11 +85,13 @@ export function useGroups<T extends AnyRecord>(
     }
     const aborter = new AbortController();
     setState((now) => ({ ...now, status: "loading", error: null }));
+    if (waiting) return () => aborter.abort();
     const criteria: Criteria<T> = {
       ...(JSON.parse(question) as Criteria<T>),
       meta: false,
       grouping: {
         group_by: levels.map((level) => ({ ...level })) as never,
+        ...(sums === "" ? {} : { measures: measuresOf(sums.split(",")) }),
         pagination: { limit: MAX_GROUPS },
       } as never,
       // One id per group is the least a grouped answer carries; the rows come on opening.
@@ -95,7 +107,7 @@ export function useGroups<T extends AnyRecord>(
       },
     );
     return () => aborter.abort();
-  }, [transport, route, question, levels]);
+  }, [transport, route, question, levels, sums, waiting]);
 
   const open = useCallback(
     (bucket: Bucket<T>) => {

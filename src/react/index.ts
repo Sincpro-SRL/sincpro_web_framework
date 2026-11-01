@@ -3,7 +3,11 @@
  * DOM, no design system — so a screen can drop `EntityList` and still keep it. `make doctor`
  * keeps it that way.
  */
-export { FrameworkProvider, useFramework } from "@sincpro/web-framework/react/context";
+export {
+  FrameworkProvider,
+  useEntityFor,
+  useFramework,
+} from "@sincpro/web-framework/react/context";
 export {
   type CommandState,
   type Rehearsal,
@@ -26,3 +30,4 @@ export {
   useRecord,
 } from "@sincpro/web-framework/react/useRecord";
 export { useRelated } from "@sincpro/web-framework/react/useRelated";
+export { useSummaryOf } from "@sincpro/web-framework/react/useSummary";

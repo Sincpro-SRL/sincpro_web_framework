@@ -1,5 +1,6 @@
 import { type AnyRecord, type Bucket, labelOf, type Meta } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
+import { detailOf } from "@sincpro/web-framework/core/measure";
 import { textOf } from "@sincpro/web-framework/core/present";
 import type { GroupLevel } from "@sincpro/web-framework/react/useGroups";
 import {
@@ -68,6 +69,11 @@ export function pilesOf<T extends AnyRecord>(
     return textOf(meta, bucket.field, bucket.value, locale) || key;
   };
 
+  const detailed = (bucket: Bucket<T>) => {
+    const detail = detailOf(meta, bucket.measures, locale);
+    return detail === undefined ? {} : { detail };
+  };
+
   const walk = (
     level: readonly Bucket<T>[],
     above: readonly string[],
@@ -86,6 +92,7 @@ export function pilesOf<T extends AnyRecord>(
         key,
         label: labelFor(bucket, depth, key),
         count: bucket.count,
+        ...detailed(bucket),
         items: below.length === 0 ? [...(rowsOf(bucket) ?? [])] : [],
         piles: walk(below, path, depth + 1),
       };

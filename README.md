@@ -8,7 +8,7 @@ server — entities, criteria, commands, drafts, events — and puts it on scree
 application declares its entities and names its fields; the rest follows.
 
 ```bash
-yarn add @sincpro/web-framework @sincpro/web-ui @sincpro/criteria @sincpro/criteria-react react react-dom
+yarn add @sincpro/web-framework @sincpro/web-ui @sincpro/web-composer @sincpro/criteria @sincpro/criteria-react react react-dom
 ```
 
 Requires React 19 or newer.
@@ -61,64 +61,231 @@ be able to build it here, without asking us and without fighting us. So:
 | **this package**        | The glue: entity + model definition + state + actions, drawn with web-ui, opened with composer                                                                     |
 | Your application        | What an invoice is                                                                                                                                                 |
 
-## How it works
+## How it fits together
 
-Declare an entity once — where it is read, and its key in the workspace:
+Three packages, one direction. **web-ui draws and tells** («they pressed this name, and asked
+for a modal»); it never imports composer and never knows where anything opens. **Composer
+decides where** — page, modal, preview, side panel, window, the breadcrumb, the phone — and never
+draws a record. **This package connects them**, from what the server publishes about each model.
+
+```mermaid
+flowchart LR
+  subgraph server["sincpro_framework · the backend"]
+    api["entities · criteria · commands<br/>drafts · events · model definition"]
+  end
+  subgraph fw["@sincpro/web-framework · connects"]
+    direction TB
+    core["core/<br/>Transport · entity() · Meta<br/>textOf · summaryOf"]
+    react["react/<br/>useListing · useRecord<br/>useLookup · useSummaryOf"]
+    web["web/<br/>EntityList · EntityPicker · RelatedRecord<br/>openIn · entityView · SincproApp"]
+    core --> react --> web
+  end
+  ui["@sincpro/web-ui · draws and tells<br/>List · Record · Picker<br/>RelationValue · RecordCard"]
+  composer["@sincpro/web-composer · decides where<br/>page · modal · preview · side · window<br/>crumbs · ⌘K · phone"]
+  app["your application<br/>entity() + its screens"]
+
+  api <-->|"criteria over the wire<br/>(@sincpro/criteria)"| core
+  web -->|"props read from the model"| ui
+  ui -->|"gestures: onOpenIn(to), onChoose,<br/>onBrowseAll, onCreate"| web
+  web -->|"api.open · api.pick · api.setTitle"| composer
+  composer -->|"mounts the entity's view"| web
+  app -->|"declares"| fw
+```
+
+What happens when a person presses the customer of an invoice:
+
+```mermaid
+sequenceDiagram
+  actor person as Person
+  participant value as RelationValue<br/>(web-ui)
+  participant related as RelatedRecord / openIn<br/>(this package)
+  participant composer as Composer
+  participant view as Customer view<br/>(entityView)
+  participant server as Server
+
+  person->>value: presses «Globex Bolivia»
+  value->>related: onOpenIn("modal") — the first of openTargets
+  related->>related: targetsFor(api): inside a modal? then beside, never a modal
+  related->>composer: api.open(ventas:cliente/C-004, { to: "modal", size: 760×560 })
+  composer->>view: mounts the registered view over the invoice
+  view->>server: useRecord → the record (and its model, once)
+  server-->>view: record + meta
+  view->>composer: api.setTitle("Globex Bolivia") — the modal and the crumb say its name
+```
+
+Everything a screen shows about a value or a record is read from the model the same way, so a
+cell, a fact, a card and a link cannot disagree:
+
+```mermaid
+flowchart LR
+  meta["Meta<br/>(server, defineMeta or OpenAPI)"] --> text["textOf<br/>«Pagada» · 12 mar 2026 · 1 150,50"]
+  meta --> summary["summaryOf<br/>name · description · state · type<br/>image · created · updated"]
+  record["a record"] --> text
+  record --> summary
+  declared["entity(…, { summary })"] -.->|"its own field names"| summary
+  text --> cells["columns · facts · chips"]
+  summary --> card["cardOf → RecordCard"]
+  summary --> relation["relationOf → RelationValue"]
+```
+
+## Integrating it in an application
+
+**1. Styles.** web-ui's tokens, and Tailwind told to look inside the packages (Tailwind v4 skips
+`node_modules`, so their classes would never be generated). Composer brings its own sheet.
+
+```css
+@import "@sincpro/web-ui/tokens.css";
+@source "../node_modules/@sincpro/web-ui/dist";
+@source "../node_modules/@sincpro/web-framework/dist";
+@source "./";
+```
+
+**2. The transport** — the one door to the backend. The session is the application's: it puts
+its headers here.
 
 ```ts
-import { entity, restTransport } from "@sincpro/web-framework";
-
-export const invoices = entity<Invoice>("billing:invoice", { list: "/invoices" });
 export const transport = restTransport({
   base: "/v1",
   headers: () => ({ Authorization: `Bearer ${session.token}` }),
 });
 ```
 
-Provide the transport where the application starts:
+**3. The entities** — declared once: where each is read and written, and its key in the
+workspace (`domain:kind`). `summary` only when its fields are not the conventional ones.
 
-```tsx
-<FrameworkProvider transport={transport} locale="es">
-  <App />
-</FrameworkProvider>
+```ts
+export const customers = entity<Customer>("sales:customer", {
+  list: "/customers",
+  summary: { image: "logo", person: true },
+});
+export const invoices = entity<Invoice>("sales:invoice", {
+  list: "/invoices",
+  create: "POST /invoices",
+  save: "PUT /invoices/{id}",
+  commands: { post: "POST /invoices/{id}/post" },
+  history: { route: "/sales-events", type: "Invoice" },
+});
 ```
 
-A list is the entity and the names of its fields. Headers come from the model's labels, each
-cell reads as its value means («Pagada», a local date, an amount with its decimals, a many2one
-as the name of what it points at), the search bar and the criteria builder ask the server, and
-«load more» pages with its cursor:
+**4. The views** — each entity becomes a composer view: its list without an id, its record with
+one, its search in ⌘K. Declared and nothing more, it already has both screens, drawn from its
+model: `EntityList` (literal search on Enter, pages, «New») and `EntityRecord` (its name, type and
+state on top; its fields in the model's order, a many2one as a picker of its entity; each
+one2many in a tab; «save / discard», the conflict, the restored draft, who made it, its history;
+«3 / 64» and the arrows to its neighbours when it was opened from a list).
+
+```ts
+const views = [
+  entityView(invoices, { transport, name: "Invoices" }), // both screens, from the model
+];
+```
+
+They are defaults, not cages: give your own screens, or keep `EntityRecord` and choose what it
+shows.
+
+```ts
+const views = [
+  entityView(invoices, {
+    transport,
+    name: "Invoices",
+    list: InvoiceList,
+    record: InvoiceView,
+  }),
+  entityView(customers, {
+    transport,
+    name: "Customers",
+    list: CustomerList,
+    record: CustomerView,
+  }),
+];
+```
+
+**5. The application** — transport, language (web-ui's, composer's and the framework's words),
+cache, toasts and the workspace, in one place:
 
 ```tsx
-function Invoices({ api }: ViewProps) {
+<SincproApp
+  transport={transport}
+  views={views}
+  entities={[invoices, customers]} // a relation of a model resolves to one of these, alone
+  start={invoices.ref()}
+  language="es"
+/>
+```
+
+An application with its own shell mounts the same pieces itself: `FrameworkProvider`, composer's
+`Composer` with `webUiSkin`, and the three copy tables.
+
+**6. The screens.** A list is the entity and the names of its fields — the server searches,
+filters, orders, groups and pages; a row opens the record's page:
+
+```tsx
+function InvoiceList({ api }: ViewProps) {
   const listing = useListing(invoices);
   return (
     <EntityList
       listing={listing}
-      columns={["number", "customer", "state", "invoice_date", "amount_total"]}
-      filters={[
-        {
-          id: "paid",
-          label: "Only paid",
-          where: { field: "state", operator: "=", value: "paid" },
-        },
-      ]}
-      onOpen={(row) => api.open(invoiceRef(row.number))}
+      api={api}
+      columns={["number", "customer", "state", "amount_total"]}
     />
   );
 }
 ```
 
-One record keeps writing web-ui's `Record` tree; what comes from the model are its props:
+A record keeps writing web-ui's `Record` tree. Its fields come from the model; a related record
+is read with its summary and opened where it belongs; a many2one is chosen with a literal search
+on the server, and «Buscar más…» opens the customers' own list to choose from:
 
 ```tsx
-const invoice = useRecord(invoices, id);
-// …
-<Record.Paper>
-  <Record.Facts fields={factsOf(invoice.record, invoice.meta, ["customer", "due_date"])} />
-  <Record.Page id="lines" label="Lines" count={countOf(invoice.record, "lines")}>
-    <RecordLines record={invoice.record} meta={invoice.meta} name="lines" />
-  </Record.Page>
-</Record.Paper>;
+function InvoiceView({ api, resource }: ViewProps) {
+  const invoice = useRecord(invoices, resource.id ?? "");
+  const crumbs = useCrumbs(api);
+  useRecordInWorkspace(api, invoice); // its real name in the crumb, «unsaved» asks first
+  const dirty = dirtyOf(invoice); // «Save / Discard» while something was typed
+  if (invoice.status !== "ready") return <Skeleton rows={4} label="Loading" />;
+  return (
+    <Record
+      identity={{ title: invoice.record.number }}
+      {...(dirty === undefined ? {} : { dirty })}
+    >
+      <Record.Rail>
+        <Record.Crumbs crumbs={crumbs} />
+        {/* Always there on an edited record: without them web-ui remounts the paper on «dirty». */}
+        <Record.Actions>
+          <CommandButton entity={invoices} id={invoice.id} command="post" label="Post" />
+        </Record.Actions>
+      </Record.Rail>
+      <Record.Paper>
+        <Field label="Customer">
+          <RelatedRecord api={api} entity={customers} value={invoice.record.customer} />
+        </Field>
+        <RecordField
+          record={invoice}
+          name="customer_id"
+          as={({ value, set }) => (
+            <EntityPicker
+              entity={customers}
+              value={String(value ?? "")}
+              onChange={set}
+              onBrowseAll={chooserIn(api, customers, set)}
+            />
+          )}
+        />
+        <RecordField record={invoice} name="notes" />
+      </Record.Paper>
+    </Record>
+  );
+}
+```
+
+Any record, at any size, from its summary:
+
+```tsx
+const summarize = useSummaryOf(customers);
+<RecordCard
+  {...cardOf(summarize(row))}
+  onOpen={() => openIn(api, customers.ref(row.id), "page")}
+/>;
 ```
 
 A domain with no sincpro_framework behind it declares its model by hand and is drawn the same
@@ -138,17 +305,53 @@ const tickets = defineMeta({
 });
 ```
 
+## The abstractions
+
+Each answers one question, and each comes in the three levels — use the component, drop to the
+hook and draw your own, or go straight to the loose piece.
+
+| Question                         | Declarative                                   | Hook                                  | Loose piece                          |
+| -------------------------------- | --------------------------------------------- | ------------------------------------- | ------------------------------------ |
+| Where is the data?               | `entity()`                                    | —                                     | `restTransport`, `memoryTransport`   |
+| What is each field?              | `Meta` from the server, or `defineMeta`       | —                                     | `textOf`, `viewOf`, `metaFromSchema` |
+| What is a record, at any size?   | `cardOf`, `relationOf`                        | `useSummaryOf`                        | `summaryOf`                          |
+| N records: search, filter, page  | `EntityList`, `EntitySearchBar`               | `useListing`, `useGroups`             | `transport.list(route, criteria)`    |
+| A named slice (to collect, …)    | `defineList` + `listView`                     | `useListing(list)`                    | `scopeOf`                            |
+| A record's whole screen          | `EntityRecord`, `entityView` without `record` | —                                     | `formOf`                             |
+| Previous / next from a record    | `EntityRecord` (from a list)                  | —                                     | `placeOf`, `stepIn` (`Trail`)        |
+| How much each group adds up      | `EntityList sums`                             | `useGroups` (`sums`)                  | `sumsOf`, `detailOf`                 |
+| One record: read, edit, save     | `RecordField`, `factsOf`, `RecordLines`       | `useRecord`                           | `transport.one`, `transport.send`    |
+| Its relations, inside it         | `RelatedList`                                 | `useRelated`                          | `relatedOf`                          |
+| Choose one (literal search)      | `EntityPicker`, `chooserIn`                   | `useLookup`                           | `lookupOf` + criteria's `matching`   |
+| Choose several (many2many)       | `EntityTags`                                  | `useLookup` (`values`)                | `lookupOf`                           |
+| A relation, from the model alone | `RecordField name="customer_id"`              | `useEntityFor`                        | `relationFieldOf`, `entityFor`       |
+| Open it where it belongs         | `RelatedRecord`, `entityView`                 | —                                     | `openIn`, `targetsFor`               |
+| Act on it (with a dry run)       | `CommandButton`, `commands` on rows           | `useCommand`                          | `transport.send`                     |
+| What happened to it              | `Record.Activity` fed by `useHistory`         | `useHistory`                          | `historyOf`                          |
+| The application context          | `SincproApp`                                  | `useRecordInWorkspace`, `useFollowed` | `FrameworkProvider`, `webUiSkin`     |
+
+The rules behind them, in short:
+
+- **A reference names any record** (`domain:kind/id`, `entity.ref(id)`). Two contexts talk by
+  reference, never by import; whatever must survive a reload travels in it.
+- **A related record opens in a modal** the size of a record, and «Abrir en…» offers preview,
+  side and page. **From inside a modal**, beside or as a preview — never a modal over a modal.
+  `openIn` decides it from what composer says about the view, so no screen writes it.
+- **What a record does not have is not drawn**: no picture, no image; no state, no tag.
+- **Every word on screen** is the model's (`labelOf`, `choiceLabelOf`) or the framework's copy
+  table (`frameworkCopy()`), never a string in a component.
+
 ### Inside
 
 Three folders, one direction — `make doctor` keeps the arrows:
 
-| Folder          | Knows                                                                                | Why apart                                             |
-| --------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| `core`          | transport, cache, entity, model definition, what a value reads as                    | plain logic, tested in Node in milliseconds           |
-| `react`         | `useListing`, `useRecord`, `useRelated`, `useCommand`…, the provider                 | state that draws nothing: usable without `EntityList` |
-| `web/list`      | a collection: `EntityList`, `EntitySearchBar`, `columnsOf`                           | N records, any size                                   |
-| `web/record`    | one record: `RecordField`, `factsOf`, `RelatedList`, `EntityPicker`, `CommandButton` | works outside a workspace (no composer)               |
-| `web/workspace` | the composer: `entityView`, `webUiSkin`, `useRecordInWorkspace`, `<SincproApp>`      | where it opens, the application context               |
+| Folder          | Knows                                                                         | Why apart                                             |
+| --------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `core`          | transport, cache, entity, model definition, what a value and a record read as | plain logic, tested in Node in milliseconds           |
+| `react`         | `useListing`, `useRecord`, `useRelated`, `useSummaryOf`…, the provider        | state that draws nothing: usable without `EntityList` |
+| `web/list`      | a collection: `EntityList`, `EntitySearchBar`, `columnsOf`                    | N records, any size                                   |
+| `web/record`    | one record: `RecordField`, `factsOf`, `RelatedList`, `EntityPicker`, `cardOf` | works outside a workspace (no composer)               |
+| `web/workspace` | the composer: `entityView`, `openIn`, `RelatedRecord`, `<SincproApp>`         | where it opens, the application context               |
 
 Everything is imported from `@sincpro/web-framework`.
 
@@ -184,6 +387,14 @@ Everything is imported from `@sincpro/web-framework`.
 | `EntityPicker` `browse`, `columns`     | The chooser always a click away, as a table searched literally by the server               | ✅     |
 | `useFollowed`                          | A detail panel follows the record the person is on, without knowing the list               | ✅     |
 | `commands`, `useRowCommands`           | An entity's Commands on each row, idempotent, offered only where `when` holds              | ✅     |
+| `summaryOf`, `cardOf`, `relationOf`    | Any record at any size: name, description, state, type, picture, who made and changed it   | ✅     |
+| `openIn`, `RelatedRecord`              | A related record opens in a modal; «Abrir en…» for the rest; never a modal over a modal    | ✅     |
+| Literal search everywhere              | Picker: the first ten, the server's search as you type; tables: «Buscar «X»» on Enter      | ✅     |
+| `EntityTags`                           | A many2many as chips over thousands: the server's search, faces, the chosen never again    | ✅     |
+| `RecordField` + `entities`             | A many2one / one2many drawn from the model alone, opened where the view says               | ✅     |
+| `EntityRecord`, `formOf`               | Any entity's record screen without writing it                                              | ✅     |
+| `Trail`, `Record.Pager`                | Previous / next from a record, across the server's pages                                   | ✅     |
+| `EntityList sums`                      | Each group says how much it adds up, summed by the server over all of it                   | ✅     |
 
 What it does **not** do: mobile (`sincpro_mobile` has its own core), sessions and login (the
 application's), routing (composer's), string-named widget registries, technical logs on a

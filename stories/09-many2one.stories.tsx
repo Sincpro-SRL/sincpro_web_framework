@@ -119,7 +119,11 @@ export const AcotadoPorOtroCampo: Story = {
       await canvas.findByRole("combobox", { name: /Factura del cliente/ }),
     );
     await page.findByRole("option", { name: new RegExp(own[0]!) });
-    const offered = page.getAllByRole("option").map((o) => o.textContent ?? "");
+    // web-ui's own «Buscar más…» is an option too (the chooser), not a record of the scope.
+    const offered = page
+      .getAllByRole("option")
+      .map((o) => o.textContent ?? "")
+      .filter((text) => !text.startsWith("Buscar más…"));
     await expect(offered.every((text) => own.some((n) => text.includes(n)))).toBe(true);
     await userEvent.keyboard("{Escape}");
     // Another customer: the choices start over, under the new scope.
@@ -175,10 +179,19 @@ export const BuscarEnTodosConUnaTabla: Story = {
     ).toBeVisible();
     await expect(within(chooser).getByRole("columnheader", { name: /Ciudad/ })).toBeVisible();
     // The literal search, answered by the server.
-    await userEvent.type(within(chooser).getByLabelText("Buscar"), "Globex");
+    await userEvent.type(within(chooser).getByLabelText("Buscar"), "Globex{Enter}");
     await waitFor(() =>
       expect(within(chooser).queryByText("Clínica San Gabriel")).toBeNull(),
     );
+    await within(chooser).findByText(/Bolivia/);
+    // Refining asks the server again — and the rows on screen STAY until it answers: a row
+    // that vanished under the pointer for a skeleton was a click lost (it failed on a slow CI).
+    await userEvent.type(within(chooser).getByLabelText("Buscar"), " B{Enter}");
+    const until = Date.now() + 700; // well past the answer (250 ms)
+    while (Date.now() < until) {
+      await expect(within(chooser).queryByText(/Bolivia/)).not.toBeNull();
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
     // What was searched for is highlighted inside the name: found by the rest of it.
     await userEvent.click(await within(chooser).findByText(/Bolivia/));
     await expect(await canvas.findByDisplayValue("Globex Bolivia")).toBeVisible();
@@ -235,7 +248,8 @@ function SelectorPropio({ onChoose }: { onChoose: (id: string) => void }) {
       keyOf={(one) => one.id}
       present="rows"
       onOpen={(one) => onChoose(one.id)}
-      state={{ loading: lookup.loading }}
+      // The skeleton only before anything is shown: refining keeps the rows (see AGENTS.md).
+      state={{ loading: lookup.loading && lookup.options.length === 0 }}
     >
       <List.Bar>
         <List.Search>

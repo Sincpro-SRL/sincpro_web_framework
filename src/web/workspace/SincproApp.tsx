@@ -16,6 +16,7 @@ import {
   installFrameworkCopy,
   SPANISH_FRAMEWORK_COPY,
 } from "@sincpro/web-framework/core/copy";
+import type { Entity } from "@sincpro/web-framework/core/entity";
 import type { Transport } from "@sincpro/web-framework/core/transport";
 import { FrameworkProvider } from "@sincpro/web-framework/react/context";
 import { webUiSkin } from "@sincpro/web-framework/web/workspace/skin";
@@ -39,6 +40,7 @@ export function SincproApp({
   start,
   language = "es",
   metas,
+  entities,
   empty,
   skin = webUiSkin,
   cache = {},
@@ -46,6 +48,8 @@ export function SincproApp({
   transport: Transport;
   /** The entities as composer views — `entityView(…)` — and any other view of the app. */
   views: readonly ViewSpec[];
+  /** The application's entities: a form draws a many2one of any of them without being told. */
+  entities?: readonly Entity[];
   /** What opens first: a list, usually — `invoices.ref()`. */
   start?: ResourceRef;
   /** The interface's language: web-ui's, the composer's and the framework's words. */
@@ -91,6 +95,7 @@ export function SincproApp({
       transport={cached}
       locale={language}
       {...(metas === undefined ? {} : { metas })}
+      {...(entities === undefined ? {} : { entities })}
     >
       <ToastProvider>
         <div className="flex h-dvh min-h-0 flex-col bg-ground">

@@ -119,6 +119,17 @@ Rules for any agent (or person) changing this package. Read the README for the i
 - **The composer has no look of its own to rely on** (1.0): it ships a minimal one. What reads as
   web-ui comes from `webUiSkin`; a new composer part to dress goes there, never as CSS overrides
   of `sc-*` classes.
+- **web-ui's `List` swaps its body for a skeleton while `state.loading`.** `EntityList` says
+  `loading` only on the FIRST reading: refining keeps the rows on screen until the server
+  answers. Passing every reading's status made the rows vanish under the pointer, and a play
+  that clicked one failed on a slower CI only.
+- **A play waits up to 5 s** (`configure({ asyncUtilTimeout })` in `.storybook/preview.ts`).
+  On the CI runner every story file shares one Chrome, and a 250 ms fake-server timer can take
+  over a second: with Testing Library's default (1 s) plays failed there and never locally.
+  Do not lower it; a play that needs a deadline measures it itself.
+- **Reading the same record again keeps it on screen** (`useRecord`): after a save or a
+  `reload()` the record stays until the answer; only another id starts as «loading». A record
+  that blinked through a skeleton lost its focus and the click that landed then.
 - **`useHistory`, not `useActivity`**: web-ui already exports `useActivity` (the panel's open
   state). Do not shadow a name of the stack.
 

@@ -85,7 +85,7 @@ criteria, en memoria). Dominio a mano: `defineMeta` + `field.*`.
 - **web-ui `Record`** sin `Record.Actions` vuelve a montar su papel cuando aparece `dirty`: el
   campo que se está escribiendo pierde el foco después de la primera letra. Mientras web-ui no
   lo arregle, un registro editable lleva `Record.Actions` siempre (está en `AGENTS.md`).
-- **web-ui `Picker`** ofrece «ver todos…» sólo cuando tiene filas que no dibuja (y nunca si recibe
+- **web-ui `Picker`** (resuelto en web-ui 1.0: ver «Composer 1.4 y web-ui 1.0») ofrecía «ver todos…» sólo cuando tenía filas que no dibuja (y nunca si recibe
   `onLoadMore`): no puede decir «hay más en el servidor». `EntityPicker` no le pasa `onLoadMore`
   para que el selector siempre esté a mano; un `browsable` explícito es de web-ui.
 - **web-ui `Picker`** filtra sólo lo que ya cargó y no sabe pedir más por texto: `EntityPicker`
@@ -178,7 +178,7 @@ líneas de un agregado) y [#230](https://github.com/Sincpro-SRL/sincpro_framewor
 - **La miga de un registro con su nombre real** (arreglado con composer 1.1.0): `EntityList` y las
   vistas de las historias dibujan la miga con `useCrumbs(api)`, que sigue a `setTitle`; con
   `api.crumbs()` en el render quedaba la referencia («Nuevo», «C-004»). El peer pasó a `^1.1.0`.
-- **web-ui `Picker`**: sigue sin ofrecer «ver todos…» cuando dibuja todas sus filas, así que con
+- **web-ui `Picker`** (resuelto en web-ui 1.0, que además trae `onCreate`): no ofrecía «ver todos…» cuando dibujaba todas sus filas, así que con
   pocos registros el selector de composer necesita un botón propio. Tampoco tiene «crear
   "Globex"…» (crear desde el selector), que ya podría usar `newRef()`.
 - **Duplicar** no se hace en el cliente: copiaría el número correlativo. Falta que el backend
@@ -214,43 +214,45 @@ Lo que falta, con su dueño:
 
 El mapa contra el que se mide lo que falta. «Dueño» es quien tiene que moverse para cerrarlo.
 
-| Caso                                                | Cómo se usa                                    | Historia   | Estado | Dueño de lo que falta                    |
-| --------------------------------------------------- | ---------------------------------------------- | ---------- | ------ | ---------------------------------------- |
-| Lista paginada por el cursor del servidor           | `useListing` + `EntityList`                    | 01, 15     | ✅     |                                          |
-| Buscar literal (plantilla de la entidad)            | `search="box"`, `listing.search`               | 02, 09     | ✅     |                                          |
-| Filtrar con barra, constructor y filtros con nombre | `EntitySearchBar`, `filters`                   | 06         | ✅     |                                          |
-| Ordenar en el servidor                              | encabezado → `order`                           | 20         | ✅     |                                          |
-| Agrupar en el servidor                              | «Agrupar por», `useGroups`                     | 19, 15     | ✅     | web-ui: la tabla agrupa la página        |
-| Medir por grupo (sumas, promedios)                  | —                                              | —          | ❌     | acá (el servidor ya contesta)            |
-| Listas con dominio (sub-filtro fijo)                | `defineList`, `useListing(lista)`, `listView`  | 21         | ✅     |                                          |
-| Una vista de lista propia con la misma búsqueda     | `List` de web-ui + `EntitySearchBar` (nivel 2) | 21         | ✅     |                                          |
-| Varias caras del mismo conjunto                     | `views`                                        | 15         | ✅     |                                          |
-| Relaciones dentro de un registro                    | `RelatedList`, `RecordLines`                   | 16         | ✅     |                                          |
-| Elegir un registro (many2one)                       | `EntityPicker`                                 | 09, 12     | ✅     |                                          |
-| …acotado por otro campo                             | `criteria`                                     | 09         | ✅     |                                          |
-| …desde una lista con dominio                        | `EntityPicker entity={lista}`                  | 09         | ✅     |                                          |
-| …buscando en todos, como tabla                      | botón «Buscar en todos», `columns`             | 09         | ✅     |                                          |
-| …con el selector de composer                        | `chooserIn`, `api.pick`                        | 18         | ✅     |                                          |
-| …con un selector propio                             | `useLookup` (literal en el servidor)           | 09         | ✅     |                                          |
-| Búsqueda literal DENTRO del desplegable             | —                                              | —          | ❌     | web-ui: `Picker` no expone lo tipeado    |
-| Crear desde el selector («Crear "Globex"…»)         | —                                              | —          | ❌     | web-ui: `Picker` sin `onCreate`          |
-| Leer, editar, preview, hints, 409, drafts           | `useRecord`, `RecordField`                     | 03, 10, 12 | ✅     |                                          |
-| Crear con los valores por defecto                   | `useRecord(entidad, "")`, `newRef()`           | 17, 18     | ✅     | backend #228 (alta → identidad)          |
-| Duplicar                                            | —                                              | —          | ❌     | backend (`copy: false`)                  |
-| Archivar / eliminar                                 | —                                              | —          | ❌     | backend (convención)                     |
-| Anterior / siguiente desde el registro              | —                                              | —          | ❌     | acá                                      |
-| Líneas editables (one2many)                         | —                                              | —          | ❌     | backend #229; web-ui `LineItems` ya está |
-| Comandos con prueba en seco                         | `useCommand`, `CommandButton`                  | 10         | ✅     |                                          |
-| Reintentar sin duplicar                             | `Idempotency-Key`, `retryKeys`                 | 17         | ✅     |                                          |
-| Acciones por fila                                   | `commands`, `useRowCommands`                   | 23         | ✅     |                                          |
-| Acción masiva sobre «todos los que cumplen»         | —                                              | —          | ❌     | backend + acá                            |
-| Exportar lo filtrado                                | —                                              | —          | ❌     | backend (`data_analysis`) + acá          |
-| Página, vistazo, panel, ventana, ⌘K                 | `entityView`, `RecordLink`                     | 08, 13, 18 | ✅     |                                          |
-| Lista y detalle que la sigue                        | `useFollowed`                                  | 22         | ✅     |                                          |
-| La miga con el nombre real                          | `useCrumbs` (composer 1.1)                     | 18         | ✅     |                                          |
-| Abrir en un modal                                   | —                                              | —          | ⏳     | composer (en curso)                      |
-| Contexto del llamado (empresa, zona horaria)        | —                                              | —          | ❌     | acá                                      |
-| Filtros guardados por persona                       | —                                              | —          | ❌     | backend                                  |
+| Caso                                                | Cómo se usa                                      | Historia   | Estado | Dueño de lo que falta                          |
+| --------------------------------------------------- | ------------------------------------------------ | ---------- | ------ | ---------------------------------------------- |
+| Lista paginada por el cursor del servidor           | `useListing` + `EntityList`                      | 01, 15     | ✅     |                                                |
+| Buscar literal (plantilla de la entidad)            | `search="box"`, `listing.search`                 | 02, 09     | ✅     |                                                |
+| Filtrar con barra, constructor y filtros con nombre | `EntitySearchBar`, `filters`                     | 06         | ✅     |                                                |
+| Ordenar en el servidor                              | encabezado → `order`                             | 20         | ✅     |                                                |
+| Agrupar en el servidor                              | «Agrupar por», `useGroups`                       | 19, 15     | ✅     | web-ui: la tabla agrupa la página              |
+| Medir por grupo (sumas)                             | `EntityList sums`, `useGroups` (`sumsOf`)        | 19         | ✅     | backend: cómo se agrega cada campo             |
+| Listas con dominio (sub-filtro fijo)                | `defineList`, `useListing(lista)`, `listView`    | 21         | ✅     |                                                |
+| Una vista de lista propia con la misma búsqueda     | `List` de web-ui + `EntitySearchBar` (nivel 2)   | 21         | ✅     |                                                |
+| Varias caras del mismo conjunto                     | `views`                                          | 15         | ✅     |                                                |
+| Relaciones dentro de un registro                    | `RelatedList`, `RecordLines`                     | 16         | ✅     |                                                |
+| Elegir un registro (many2one)                       | `EntityPicker`                                   | 09, 12     | ✅     |                                                |
+| …acotado por otro campo                             | `criteria`                                       | 09         | ✅     |                                                |
+| …desde una lista con dominio                        | `EntityPicker entity={lista}`                    | 09         | ✅     |                                                |
+| …buscando en todos, como tabla                      | botón «Buscar en todos», `columns`               | 09         | ✅     |                                                |
+| …con el selector de composer                        | `chooserIn`, `api.pick`                          | 18         | ✅     |                                                |
+| …con un selector propio                             | `useLookup` (literal en el servidor)             | 09         | ✅     |                                                |
+| Búsqueda literal DENTRO del desplegable             | `EntityPicker` (`Picker onSearch`)               | 26         | ✅     | publicar web-ui (`onSearch`, `valueLabel`)     |
+| Buscar en una tabla: literal primero, con Enter     | `EntitySearchBar` (`SearchBar literal`), box     | 26         | ✅     | publicar web-ui (`literal`)                    |
+| Crear desde el selector («Crear "Globex"…»)         | —                                                | —          | ❌     | backend + acá (web-ui 1.0 ya tiene `onCreate`) |
+| Leer, editar, preview, hints, 409, drafts           | `useRecord`, `RecordField`                       | 03, 10, 12 | ✅     |                                                |
+| Crear con los valores por defecto                   | `useRecord(entidad, "")`, `newRef()`             | 17, 18     | ✅     | backend #228 (alta → identidad)                |
+| Duplicar                                            | —                                                | —          | ❌     | backend (`copy: false`)                        |
+| Archivar / eliminar                                 | —                                                | —          | ❌     | backend (convención)                           |
+| Anterior / siguiente desde el registro              | `EntityRecord` + el rastro de la lista (`Trail`) | 29         | ✅     |                                                |
+| Líneas editables (one2many)                         | —                                                | —          | ❌     | backend #229; web-ui `LineItems` ya está       |
+| Comandos con prueba en seco                         | `useCommand`, `CommandButton`                    | 10         | ✅     |                                                |
+| Reintentar sin duplicar                             | `Idempotency-Key`, `retryKeys`                   | 17         | ✅     |                                                |
+| Acciones por fila                                   | `commands`, `useRowCommands`                     | 23         | ✅     |                                                |
+| Acción masiva sobre «todos los que cumplen»         | —                                                | —          | ❌     | backend + acá                                  |
+| Exportar lo filtrado                                | —                                                | —          | ❌     | backend (`data_analysis`) + acá                |
+| Página, vistazo, panel, ventana, ⌘K                 | `entityView`, `RecordLink`                       | 08, 13, 18 | ✅     |                                                |
+| Lista y detalle que la sigue                        | `useFollowed`                                    | 22         | ✅     |                                                |
+| La miga con el nombre real                          | `useCrumbs` (composer 1.1)                       | 18         | ✅     |                                                |
+| Abrir en un modal (y «Abrir en…»)                   | `openIn`, `RelatedRecord`                        | 25         | ✅     |                                                |
+| Un registro en cada tamaño (tarjeta, enlace)        | `summaryOf`, `cardOf`, `relationOf`              | 24         | ✅     | web-ui: tarjeta sin cara redonda               |
+| Contexto del llamado (empresa, zona horaria)        | —                                                | —          | ❌     | acá                                            |
+| Filtros guardados por persona                       | —                                                | —          | ❌     | backend                                        |
 
 Encontrado en esta vuelta:
 
@@ -264,6 +266,218 @@ Encontrado en esta vuelta:
   primer pintado. Al publicarse: `EntityList` pasa `readOnly` y deja de dibujar sus aperturas.
 - **composer — modal como superficie** (en curso, avisado): cuando exista, el chooser de
   `EntityPicker` y la confirmación de un comando deberían abrirse con él en vez del `Dialog`.
+
+## Composer 1.4 y web-ui 1.0 (2026-10-31)
+
+Composer pasó a `^1.4.0` y web-ui a `^1.0.0`, las dos publicadas. Mientras web-ui 1.0 no estaba
+en npm se iteró con un `npm pack` de `~/dev/sincpro_web_ui` puesto en `node_modules` (`yarn link`
+traería un segundo React); la CI, con el peer todavía en `^0.2.0`, no compilaba (`OpenTarget`,
+`onOpenIn`). Lección: el peer sube en el mismo commit que usa la API nueva.
+
+Nada de lo que este paquete importa de web-ui desapareció (lo que 1.0 quita — `Drill`,
+`CommandPalette`, `LookupDialog`, `ContactCard` — no se usaba). Con las dos versiones nuevas
+pasan las 128 pruebas; dos `play` cambiaron porque el `Picker` cambió:
+
+- **web-ui `Picker` ofrece siempre «Buscar más…»** cuando recibe `onBrowseAll` (como opción, con
+  cuántos más hay en su nombre). Se cierran los dos huecos de «ver todos…» de arriba. Queda
+  redundante el botón «Buscar en todos» que `EntityPicker` dibuja al lado (`browse`): falta
+  decidir si se va.
+
+Lo que trae y todavía no se usa acá: `OpenTarget` («Abrir en…» en `RelationValue`, `Picker` y
+`TagsField`), `onCreate` / `onCreateAndEdit`, `List onChoose` / `rowClick` / `readOnly`, avatares
+en `Picker`, `TagsField`, filas y tarjetas, `RecordCard`, `RelationCard`, calendario, Gantt,
+línea de tiempo y pivote. De composer: el modal (`Destination.Modal` con `size`), `api.over`,
+`api.pick` que contesta cualquier valor, `createTestApi`, modo teléfono y `RecordLink draggable`.
+
+Encontrado al leerlos, con su dueño:
+
+- **web-ui — `ListView` mira por defecto** (`rowClick = "peek"`), contra su propia guía
+  («tocar una fila → página»). Mientras no cambie, `EntityList` tiene que pasar `rowClick="open"`
+  si pasa `onPeek`.
+- **composer — su README dice que un many2one abre en ventana**; la guía de web-ui («Nuestro
+  estilo») dice modal. Hay que alinear uno de los dos.
+- **web-ui y composer exportan los dos un `RecordLink`**: el de web-ui es el nombre que abre, el
+  de composer el que sabe de destinos (`draggable`). Mismo nombre, dos cosas.
+- **composer sigue sin `api.choosing`**: el parámetro `pick` de `entity.chooserRef()` se queda.
+- **web-ui `Picker` no expone lo tipeado** mientras se escribe (sólo al pedir «Buscar más…»): la
+  búsqueda literal dentro del desplegable sigue esperando.
+
+## Un registro, y abrirlo (2026-10-31)
+
+La base de los componentes de gestión de registros: **qué se sabe de un registro** y **dónde se
+abre**, iguales para toda entidad.
+
+- **El resumen** (`summaryOf`, en `core/`): nombre (el `display` de la meta), descripción,
+  estado, tipo, imagen y quién lo creó y cambió. Cada parte es el campo que la entidad declara
+  (`entity(…, { summary: { image: "logo" } })`) o el nombre de costumbre (`description`,
+  `state`/`status`, `type`, `image`/`avatar`/`photo`/`logo`, `created_at`, `created_by`,
+  `updated_at`, `updated_by`); con meta, sólo campos que la meta tiene. Lo que falta es `null`
+  y no se dibuja. `person: true` le da cara redonda (foto o iniciales). `useSummaryOf(entidad)`
+  lo da con la meta y el idioma de la aplicación; `cardOf` y `relationOf` lo vuelven las props
+  de `RecordCard` y `RelationValue`. Historia `24 · Un registro, en cada tamaño`; tests en
+  `tests/summary.test.ts`.
+- **Abrir** (`openIn`, `targetsFor`, `RECORD_SIZE`, en `web/workspace/`): el `OpenTarget` de
+  web-ui traducido a composer una sola vez. Un relacionado abre en **modal** del tamaño de un
+  registro (760×560) y «Abrir en…» ofrece vista previa, al costado y página; **desde adentro de
+  un modal** (`api.over`), al costado o en vista previa — pedir un modal ahí abre al costado.
+  `RelatedRecord` es el many2one leído: resumen + `openIn`. Historia
+  `25 · Abrir un registro relacionado`; tests en `tests/open.test.ts` (`createTestApi`).
+
+Encontrado:
+
+- **web-ui `RecordCard` no tiene cara de persona**: `media` es siempre un cuadrado (`Thumb`),
+  así que la tarjeta de un contacto muestra la foto cuadrada y, sin foto, nada — el enlace
+  (`RelationValue media.person`) sí dibuja la cara redonda o las iniciales. Pedido: `media.person`
+  en `RecordCard`, como en `RelationCard`.
+- **El backend no publica las partes del resumen**: qué campo es el estado, la imagen o el
+  autor sale de la convención o de `entity()`. Va con
+  [#230](https://github.com/Sincpro-SRL/sincpro_framework/issues/230) (formato en la meta).
+- **El estado no tiene tono**: se dibuja neutro. Que «Bloqueado» sea rojo es una regla del
+  dominio: la meta tendría que decirlo (un tono por valor), no un diccionario de acá.
+
+- **Una lista que se vuelve a preguntar** (arreglado acá): `EntityList` le pasaba a web-ui
+  `loading` en cada pregunta, y web-ui cambia las filas por un esqueleto: al tipear, la tabla
+  parpadeaba y un clic en una fila podía caer sobre una que ya no estaba (la CI, más lenta, lo
+  mostró en `09 · BuscarEnTodosConUnaTabla`). Ahora el esqueleto es sólo de la primera lectura.
+  **web-ui**: le falta un estado «refrescando» — las filas quedan y algo discreto dice que se
+  está preguntando.
+
+Lo que sigue, sobre esta base: `EntityPicker` completo (avatar, «Abrir en…», «Buscar más…» como
+modal de composer, crear), `EntityTags` (many2many que agrega), y `RecordField` que elige el
+control de una relación solo — para eso falta saber a qué entidad apunta una relación
+(`SincproApp entities` hasta que el backend lo publique).
+
+## Buscar como se espera (2026-10-31)
+
+Había tres búsquedas y cada una hacía otra cosa: el selector cargaba 50 y **filtraba en el
+navegador** (un cliente fuera de esos 50 «no existía» aunque se escribiera su nombre exacto), la
+caja de una tabla preguntaba **a cada tecla**, y la barra ofrecía primero **un solo campo**
+(«número contiene Globex») en vez de la búsqueda literal de la entidad. Ahora es una regla:
+el texto es la búsqueda literal, la contesta el servidor; en el selector mientras se escribe, en
+la tabla con Enter. Historia `26 · Buscar como se espera` (las tres fallaban antes).
+
+Lo que hizo falta en **web-ui** (rama `literal_search` en `~/dev/sincpro_web_ui`, con sus
+pruebas): `Picker onSearch` (no filtra ni corta: las opciones son la respuesta), `Picker
+valueLabel` (el nombre del elegido fuera de la página), `SearchBar literal` (la ficha «Buscar
+«X»» con el filtro que da quien la usa, primero salvo que el modelo lea la pregunta), y un
+arreglo: `decimal`/`monetary` se leían como texto y «total <= 1000» no se podía preguntar.
+
+Acá: `useLookup` abre con 10 y sabe el nombre del elegido (lo recuerda, o lo pide una vez por su
+clave), `EntityPicker` le pasa lo tipeado al servidor, `EntitySearchBar` da la literal con
+`matching(meta, texto)` y la caja busca con Enter (`listing.search(texto, { now: true })`).
+
+**Orden para publicar**: primero web-ui (su CI y su release), después subir el peer de este
+paquete a la versión nueva de web-ui en el mismo commit que estos cambios — si no, la CI de acá
+no compila (`onSearch`, `literal`), como pasó con la 1.0.
+
+**Varios registros (many2many)** — `EntityTags`, historia `27`: la misma búsqueda para N, sobre
+`TagsField onSearch` (web-ui, misma rama). Abre con 10, busca en el servidor (un correo que
+ninguna ficha muestra), los elegidos no vuelven como opción y se nombran estén donde estén: los
+que nunca se vieron se piden en **una** pregunta por su clave (`in`). Una persona
+(`summary: { person: true }`) se elige por su cara, en `EntityPicker` y en `EntityTags`
+(`lookupOf` lleva la imagen del resumen).
+
+Pendiente: el botón «Buscar en todos» al lado del selector (`browse`) ya repite el «Buscar más…»
+del desplegable; queda prendido por defecto hasta decidir si se va.
+
+## Las relaciones se arman solas (2026-10-31)
+
+`<RecordField name="customer_id" />` ya es el many2one, sin `as`: `relationFieldOf` lee de la
+meta qué relación hay detrás de un campo (la relación misma o su clave escalar,
+`identified_by`) y a qué agregado apunta (`relation: "Cliente"`); `entityFor` lo resuelve a la
+entidad que la aplicación declaró (`SincproApp entities` / `FrameworkProvider entities`), por
+el `aggregate` que declara (`entity(…, { aggregate })`), el de su meta o su clave. El campo es
+un `EntityPicker` de esa entidad (búsqueda literal en el servidor, los diez, «Buscar más…»),
+y en sólo lectura el nombre como `RelationValue`. Historia `28`; tests en
+`tests/relation.test.ts`.
+
+Dónde abre lo dice la vista: `RecordOpening` (en `web/record/`, sin composer) lo llena
+`entityView` con `openIn` y `targetsFor` — un modal por defecto, al costado desde adentro de un
+modal — y «Buscar más…» como `api.pick` de la lista de la entidad (modal; al costado desde un
+modal). Fuera de un espacio de trabajo el formulario no abre nada.
+
+Encontrado / pendiente:
+
+- **one2many por nombre** (hecho, historia `28 · UnOne2manyQueAbreSusFilas`):
+  `<RecordField name="invoices" />` es la lista de la entidad del otro lado, filtrada a este
+  registro por el servidor (`RelatedList`: busca, ordena y pagina — nunca la página que trajo el
+  registro), y una fila abre su registro donde dice la vista: un modal sobre el cliente; desde
+  ese modal, su cliente abre al costado. Es el one2many de Odoo sin su techo de filas en memoria.
+- **many2many por nombre**: todavía no. Se lee como una página (`{items, count}`) y escribirlo
+  necesita el contrato del backend (#229); `EntityTags` sirve cuando el valor es una lista de
+  claves. **Líneas editables** (`LineItems`): mismo contrato.
+- **«Buscar más…» lleva lo tipeado** (hecho, historia `28 · BuscarMasConLoEscrito`):
+  `chooserRef(query)` lo pone en la referencia (`q`), y la lista que elige arranca buscada — la
+  barra con la ficha «Buscar «Glo»», la caja con el texto. Viaja en la referencia, así sobrevive
+  a una recarga como cualquier parámetro. `chooserIn` ignora lo que no es texto (un `onClick`
+  le pasa el evento).
+- **Local**: la primera corrida de `make test` después de sumar imports nuevos a veces falla
+  al importar el setup de Storybook («Unexpected token»): es el optimizador de Vite rehaciendo
+  su caché; la siguiente pasa. No apareció en la CI. Si aparece, `optimizeDeps.include`.
+
+## Una aplicación sin escribir pantallas (2026-10-31)
+
+`entityView(entidad, { transport, name })` ya no pide pantallas: sin `list`, es `EntityList`;
+sin `record`, es **`EntityRecord`** — el registro dibujado desde la meta (`formOf`): su
+nombre, tipo y estado arriba (el resumen), los campos en el orden del modelo (un many2one por su
+clave, como selector), cada one2many en su pestaña (la lista de la entidad del otro lado, o las
+líneas que trajo), la autoría al pie (`Record.Audit`), «Guardar / Descartar», el conflicto, el
+borrador recuperado, los consejos del servidor y la historia si la entidad la declara. `fields`,
+`pages` y `actions` eligen y suman. Historia `29` (de la lista al registro, editar, guardar,
+el cliente en un modal, una factura suya al costado); tests en `tests/form.test.ts`.
+
+Encontrado al mirarlo (capturas) y al correrlo:
+
+- **useRecord parpadeaba al guardar** (arreglado): releer el registro ponía `record: null` y
+  la pantalla entera pasaba por el esqueleto — perdía el foco, el scroll y el clic que caía en
+  ese momento (la suite completa lo mostró: «Abrir en un modal» se perdía). Ahora releer el
+  MISMO registro lo deja en pantalla hasta la respuesta; un id nuevo sí empieza «cargando».
+- **Una lista de palabras (`text[]`) era un área de texto** de una por renglón: ahora son
+  fichas (`TagsField`), y escribir una nueva la agrega.
+- **Una lista relacionada repetía la columna que apunta al registro** que la contiene («Cliente»
+  en las facturas de un cliente, igual en todas las filas): `RelatedList` la deja fuera.
+- **El backend publica campos de búsqueda como editables** (`customer_name`, la copia del nombre
+  del cliente para buscar): el formulario los muestra como texto. Debería marcarlos `readonly`
+  (o no publicarlos como campos del formulario); no se tapa acá.
+
+## Anterior y siguiente (2026-10-31)
+
+Un registro abierto desde una lista sabe dónde está: «50 / 64» y dos flechas
+(`Record.Pager`), que lo reemplazan en el lugar (`api.replace`, sin miga), como el pager de
+Odoo. Odoo guarda en el navegador los ids de toda la búsqueda y se corta en lo cargado; acá la
+lista deja un **rastro** (`Trail`, `core/trail.ts`): la página en pantalla, los cursores del
+servidor alrededor y la pregunta. Al borde de la página, `stepIn` pide la vecina con la misma
+pregunta y el mismo tamaño — el siguiente del último de la página 4 000 es una consulta, igual
+de barata que la primera. El rastro viaja como el parámetro `from` de la referencia; la fila y su
+nombre (`RecordLink`) abren la misma, así que la vista previa, el panel y la ventana también lo
+tienen. Mientras hay algo sin guardar no hay flechas: primero «guardar / descartar». Historia
+`29 · AnteriorYSiguiente` (cruza el borde de la página); tests en `tests/trail.test.ts`.
+
+Límites: el rastro vive en memoria (una recarga lo pierde: el registro se abre sin flechas), y
+se guardan los de las últimas 50 listas.
+
+## Cuánto suma cada grupo (2026-10-31)
+
+Agrupada, una lista dice cuánto **suma** cada grupo, no sólo cuántos hay: «Pagada · 22 · Total
+53.976», sumado por el servidor sobre todas las facturas del estado (`grouping.measures`, que
+el backend y el servidor en memoria ya contestaban). Por defecto se suma lo que el registro
+CALCULA — un número exacto de sólo lectura (un total, un saldo); lo que la persona escribe (un
+descuento, un porcentaje, un límite) no, porque sumar porcentajes no dice nada (`sumsOf`).
+`EntityList sums` elige, `sums={false}` apaga. web-ui: `Pile.detail`, que `GroupHeader` ya sabía
+dibujar y la lista no le pasaba. Historia `19 · CadaGrupoConSuTotal`; tests en
+`tests/measure.test.ts`.
+
+Encontrado:
+
+- **Los grupos se pedían dos veces** (arreglado): sin la meta todavía no se sabe qué sumar, así
+  que se preguntaba sin sumas y otra vez al llegar la meta, y los encabezados se reemplazaban
+  bajo el puntero (`21 · AgrupadaDesdeElPrincipio` lo atrapó en la suite completa). Ahora, sin
+  `sums` explícitas, los grupos esperan a la meta y preguntan una vez.
+- **backend**: la meta no dice cómo se agrega un campo (sumar, promediar, nada — el
+  `group_operator` de Odoo). Cuando lo publique, `sumsOf` lo lee y la regla de «exacto y de
+  sólo lectura» se retira.
+- **Una suma que llega como número** se escribe sin decimales fijos («53.976»): la meta no dice
+  la escala de un monto. El backend real la manda como decimal en texto y conserva sus dígitos.
 
 ## Decisiones abiertas
 

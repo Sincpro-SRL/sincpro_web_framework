@@ -1,10 +1,10 @@
 import type { Criteria } from "@sincpro/criteria";
-import { EntityList, useListing } from "@sincpro/web-framework";
+import { defineList, EntityList, textOf, useListing } from "@sincpro/web-framework";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { Escenario } from "./support/escenario";
-import { facturas, VENTAS } from "./support/ventas";
+import { facturaMeta, FACTURAS, facturas, VENTAS } from "./support/ventas";
 
 const meta: Meta = {
   title: "Casos de uso/19 · Agrupar",
@@ -102,5 +102,43 @@ export const PorEstadoYMes: Story = {
     await userEvent.click(await canvas.findByRole("button", { name: /Pagada.*22/ }));
     const meses = await canvas.findAllByRole("button", { name: /2026/ });
     await expect(meses.length).toBeGreaterThan(0);
+  },
+};
+
+const pagadas = FACTURAS.filter((one) => one.state === "paid");
+const totalPagadas = pagadas.reduce((sum, one) => sum + Number(one.amount_total), 0);
+
+function FacturasPorEstado() {
+  return (
+    <EntityList
+      listing={useListing(porEstado, { pageSize: 20 })}
+      columns={["number", "customer", "state", "amount_total"]}
+    />
+  );
+}
+
+const porEstado = defineList(facturas, {
+  id: "por-estado",
+  title: "Facturas por estado",
+  groupBy: [{ field: "state" }],
+});
+
+/** A group says how MUCH, not only how many: «Pagada · 22 · Total …», summed by the server over
+ *  every invoice of the state — the figure the model computes (`amount_total`, read-only). */
+export const CadaGrupoConSuTotal: Story = {
+  render: () => <FacturasPorEstado />,
+  decorators: [
+    (Story) => (
+      <Escenario tables={VENTAS}>
+        <Story />
+      </Escenario>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const total = `Total ${textOf(facturaMeta, "amount_total", totalPagadas, "es")}`;
+    await expect(await canvas.findByText(total)).toBeVisible();
+    // The count beside it is every paid invoice too, not the page.
+    await expect(canvas.getByText(String(pagadas.length))).toBeVisible();
   },
 };
