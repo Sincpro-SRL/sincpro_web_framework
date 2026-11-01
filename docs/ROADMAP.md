@@ -232,8 +232,8 @@ El mapa contra el que se mide lo que falta. «Dueño» es quien tiene que movers
 | …buscando en todos, como tabla                      | botón «Buscar en todos», `columns`               | 09         | ✅     |                                                |
 | …con el selector de composer                        | `chooserIn`, `api.pick`                          | 18         | ✅     |                                                |
 | …con un selector propio                             | `useLookup` (literal en el servidor)             | 09         | ✅     |                                                |
-| Búsqueda literal DENTRO del desplegable             | `EntityPicker` (`Picker onSearch`)               | 26         | ✅     | publicar web-ui (`onSearch`, `valueLabel`)     |
-| Buscar en una tabla: literal primero, con Enter     | `EntitySearchBar` (`SearchBar literal`), box     | 26         | ✅     | publicar web-ui (`literal`)                    |
+| Búsqueda literal DENTRO del desplegable             | `EntityPicker` (`Picker onSearch`)               | 26         | ✅     | web-ui 1.1.0                                   |
+| Buscar en una tabla: literal primero, con Enter     | `EntitySearchBar` (`SearchBar literal`), box     | 26         | ✅     | web-ui 1.1.0                                   |
 | Crear desde el selector («Crear "Globex"…»)         | —                                                | —          | ❌     | backend + acá (web-ui 1.0 ya tiene `onCreate`) |
 | Leer, editar, preview, hints, 409, drafts           | `useRecord`, `RecordField`                       | 03, 10, 12 | ✅     |                                                |
 | Crear con los valores por defecto                   | `useRecord(entidad, "")`, `newRef()`             | 17, 18     | ✅     | backend #228 (alta → identidad)                |
@@ -366,9 +366,7 @@ Acá: `useLookup` abre con 10 y sabe el nombre del elegido (lo recuerda, o lo pi
 clave), `EntityPicker` le pasa lo tipeado al servidor, `EntitySearchBar` da la literal con
 `matching(meta, texto)` y la caja busca con Enter (`listing.search(texto, { now: true })`).
 
-**Orden para publicar**: primero web-ui (su CI y su release), después subir el peer de este
-paquete a la versión nueva de web-ui en el mismo commit que estos cambios — si no, la CI de acá
-no compila (`onSearch`, `literal`), como pasó con la 1.0.
+**Publicado**: web-ui 1.1.0 trae todo lo de arriba, y el peer de este paquete pasó a `^1.1.0` en el mismo cambio que lo usa (la lección de la 1.0).
 
 **Varios registros (many2many)** — `EntityTags`, historia `27`: la misma búsqueda para N, sobre
 `TagsField onSearch` (web-ui, misma rama). Abre con 10, busca en el servidor (un correo que
