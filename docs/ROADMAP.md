@@ -477,6 +477,17 @@ Encontrado:
 - **Una suma que llega como número** se escribe sin decimales fijos («53.976»): la meta no dice
   la escala de un monto. El backend real la manda como decimal en texto y conserva sus dígitos.
 
+## Escribir antes de que llegue el modelo (2026-11-01)
+
+**useListing ignoraba lo tipeado en una red lenta** (arreglado). La pausa de tipeo (200 ms)
+llamaba al `refine` del render en que se armó: si se escribía antes de que llegara la meta y la
+meta llegaba DENTRO de la pausa, el framework preguntaba bien («Globex», con la plantilla) y
+enseguida el temporizador viejo preguntaba sin filtro y la cancelaba — la lista quedaba entera.
+La CI lo mostró como una historia intermitente (`09 · UnSelectorPropio`: con 250 ms de latencia
+dependía del orden de dos temporizadores). Ahora el temporizador llama al `refine` vigente; la
+historia `09 · EscribirAntesDeQueLlegueElModelo` lo fija con la meta llegando a los 120 ms, y
+fallaba siempre antes del arreglo.
+
 ## Decisiones abiertas
 
 - **Transportes**: REST hoy; JSON-RPC sale casi gratis (`rpcSource` de criteria). gRPC desde

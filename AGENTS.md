@@ -130,6 +130,10 @@ Rules for any agent (or person) changing this package. Read the README for the i
 - **Reading the same record again keeps it on screen** (`useRecord`): after a save or a
   `reload()` the record stays until the answer; only another id starts as «loading». A record
   that blinked through a skeleton lost its focus and the click that landed then.
+- **A timer calls the LATEST function, never the one of its render** (`useListing`'s typing
+  pause reads a ref). The pause armed before the model arrived used to ask with a refine that
+  had no model — unfiltered — after the right question had gone out: on a slow network the list
+  ignored what was typed. Story `09 · EscribirAntesDeQueLlegueElModelo` pins the timing.
 - **`useHistory`, not `useActivity`**: web-ui already exports `useActivity` (the panel's open
   state). Do not shadow a name of the stack.
 
