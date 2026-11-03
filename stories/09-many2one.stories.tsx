@@ -303,3 +303,34 @@ export const UnSelectorPropio: Story = {
     await expect(await canvas.findByText(`Elegido: ${GLOBEX.id}`)).toBeVisible();
   },
 };
+
+/** Typed before the model arrived, with the model landing INSIDE the typing pause: the search
+ *  that goes out is the one typed, never an unfiltered one from before the model was known. */
+export const EscribirAntesDeQueLlegueElModelo: Story = {
+  render: function Render() {
+    const [cliente, setCliente] = useState("");
+    return (
+      <div className="max-w-md p-6">
+        <SelectorPropio onChoose={setCliente} />
+        <p aria-live="polite">{cliente === "" ? "Nada elegido" : `Elegido: ${cliente}`}</p>
+      </div>
+    );
+  },
+  decorators: [
+    (Story) => (
+      // The first answer (with the model) lands at 120 ms: after the typing, before its pause.
+      <Escenario tables={VENTAS} latency={120}>
+        <Story />
+      </Escenario>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(canvas.getByLabelText("Buscar un cliente"), "Globex");
+    await waitFor(() => expect(canvas.queryByText("Clínica San Gabriel")).toBeNull());
+    // And it stays filtered: no late question from before the model undoes it.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await expect(canvas.queryByText("Clínica San Gabriel")).toBeNull();
+    await expect(canvas.getByText(/Globex Bolivia/)).toBeVisible();
+  },
+};

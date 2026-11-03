@@ -198,6 +198,9 @@ export function useListing<T extends AnyRecord>(
     [reading.refine, meta],
   );
 
+  const latest = useRef(refine);
+  latest.current = refine;
+
   // Typed before the definition arrived: the text had no template to fill, so it asked nothing.
   // The moment the definition is known, the question on screen is asked again — what a person
   // typed is never lost to a slow first answer.
@@ -222,7 +225,9 @@ export function useListing<T extends AnyRecord>(
     const next = { ...narrowing, ...change };
     setNarrowing(next);
     if (typing.current) clearTimeout(typing.current);
-    if (debounce) typing.current = setTimeout(() => refine(next), TYPING_PAUSE);
+    // The pause ends with the refine of THAT moment, not of the keystroke: a model that arrived
+    // meanwhile fills the search, instead of a stale refine asking unfiltered (CI found it).
+    if (debounce) typing.current = setTimeout(() => latest.current(next), TYPING_PAUSE);
     else refine(next);
   };
 
