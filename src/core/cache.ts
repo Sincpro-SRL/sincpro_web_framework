@@ -85,13 +85,20 @@ export function cachedTransport(
 
   const entities = options.entities ?? [];
 
-  const invalidate = (path?: string) => {
-    if (path === undefined) return entries.clear();
+  /** Forget every answer under any of `paths` — one walk over the entries, whatever their
+   *  number. A path with a query (`/projects?tenant_id=acme`) forgets its whole collection. */
+  const forget = (paths: readonly string[]) => {
+    const targets = paths.map(pathOf);
     for (const key of [...entries.keys()]) {
       // `list <route> <criteria>` / `one <route>`: the route is the second word.
       const route = key.split(" ", 2)[1] ?? "";
-      if (under(route, path)) entries.delete(key);
+      if (targets.some((path) => under(route, path))) entries.delete(key);
     }
+  };
+
+  const invalidate = (path?: string) => {
+    if (path === undefined) return entries.clear();
+    forget([path]);
   };
 
   return {
@@ -116,7 +123,7 @@ export function cachedTransport(
         return await transport.send<T>(method, route, body, signal, sending);
       } finally {
         // Even a refused write may have changed something (a 409 says someone else did).
-        if (!preview) for (const path of touchedBy(route, entities)) invalidate(path);
+        if (!preview) forget(touchedBy(route, entities));
       }
     },
     invalidate,

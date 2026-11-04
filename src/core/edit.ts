@@ -169,28 +169,19 @@ export function defaultsOf(meta: Meta | null | undefined): AnyRecord {
 }
 
 /**
- * What a create sends: every value on screen the caller may write. A field read-only for THIS
- * new record is the server's to fill (the number, the totals), and an empty one is left for
+ * What a create sends: every value on screen the caller may write. A field the model marks
+ * `readonly` is the server's to fill (the number, the totals), and an empty one is left for
  * the server's own default — never sent as `""`.
  *
- * Context: read-only is decided as the form decides it (`fieldStateOf`): the model's `readonly`,
- * its `readonly_when` over the new record, and the server's own word for it (a preview's
- * `states`). A key a person writes when creating and never after — a tenant's slug — is a
- * `readonly_when` the new record does not meet: the form let it be typed, so it travels. Only
- * the static `readonly` dropped it before, whatever the form had shown.
+ * Context: only the model's fixed `readonly` counts, never a `readonly_when`: a currency chosen
+ * and then locked by the lines added after it is still the record's currency, and a key written
+ * when creating and never after (a tenant's slug) is a `readonly_when` the backend publishes for
+ * the stored record. Both travel.
  */
-export function creationOf(
-  meta: Meta | null | undefined,
-  values: AnyRecord,
-  fromServer?: FieldStates,
-): AnyRecord {
+export function creationOf(meta: Meta | null | undefined, values: AnyRecord): AnyRecord {
   const sent: AnyRecord = {};
   for (const [name, value] of Object.entries(values)) {
-    if (
-      meta?.fields[name] !== undefined &&
-      fieldStateOf(meta, name, values, fromServer).readonly
-    )
-      continue;
+    if (meta?.fields[name]?.readonly === true) continue;
     if (value === undefined || value === null || value === "") continue;
     sent[name] = value;
   }

@@ -255,7 +255,8 @@ El mapa contra el que se mide lo que falta. «Dueño» es quien tiene que movers
 | La miga con el nombre real                          | `useCrumbs` (composer 1.1)                       | 18         | ✅     |                                                |
 | Abrir en un modal (y «Abrir en…»)                   | `openIn`, `RelatedRecord`                        | 25         | ✅     |                                                |
 | Un registro en cada tamaño (tarjeta, enlace)        | `summaryOf`, `cardOf`, `relationOf`              | 24         | ✅     | web-ui: tarjeta sin cara redonda               |
-| Contexto del llamado (empresa, zona horaria)        | —                                                | —          | ❌     | acá                                            |
+| Zona horaria del negocio                            | `SincproApp` / `FrameworkProvider timeZone`      | 37         | ✅     |                                                |
+| Contexto del llamado (empresa)                      | `restTransport headers` (`sincpro-context`)      | —          | 🟡     | acá: falta una historia                        |
 | Filtros guardados por persona                       | —                                                | —          | ❌     | backend                                        |
 
 Encontrado en esta vuelta:
@@ -811,6 +812,27 @@ Orden de trabajo: 1 → 2 → 4 → 5 → 3 (planilla; calendario y pivote del s
   «Efectivo»). Historia `35 · Cruzar un conjunto por dos campos` (falla si no pregunta). El total
   general no se dibuja: nadie lo contestó y no se suman celdas.
 
+## La hora de la empresa (2026-11-04)
+
+Un `datetime` es un **instante**: el servidor lo manda y lo recibe en UTC
+(`2026-03-12T14:30:00Z`). Una persona lo lee y lo escribe en la hora del **lugar del negocio**, y
+ese lugar lo define quien está arriba de las pantallas —la aplicación o la empresa con la que se
+trabaja—: `SincproApp timeZone` / `FrameworkProvider timeZone` (`"America/La_Paz"`). Sin eso, la
+del navegador. Se instala una vez, como las palabras del framework (`installTimeZone`), y se
+vuelve a instalar antes de dibujar si cambia (otra empresa).
+
+- **Leer**: `textOf` formatea un `datetime` con esa zona (el formateador se guarda por zona).
+- **Escribir**: `controlFor` dibuja el `DateTimePicker` de web-ui —que pide la hora de pared,
+  `"YYYY-MM-DDTHH:MM"`— y lo que viaja vuelve a ser el instante. Las conversiones son puras y se
+  prueban en Node (`wallTimeOf`, `instantOf`, `tests/zone.test.ts`): el desfase es el de ESE día
+  (horario de verano a cada lado del cambio).
+- **Un `date`** es un día del calendario, no un instante: nunca se mueve.
+- Una fecha con hora ahora **cabe en una celda** de una línea.
+
+Historia `37 · La hora de la empresa`: la misma cita se lee 10:30 a. m. en La Paz y 3:30 p. m. en
+Madrid; escrita una hora después en La Paz, viaja `15:30Z` (las dos fallan si el control ignora la
+zona).
+
 ## A tu manera: cada nivel se reemplaza (2026-11-04)
 
 Lo que el modelo dibuja es un default. Hasta acá, un registro y una lista se podían rehacer pieza
@@ -873,9 +895,9 @@ su última fila, una fila se escribe en el lugar, el lápiz abre la línea enter
 siempre que cada campo que se escribe quepa en una celda; en el **diálogo** si alguno no cabe o si
 la pantalla lo pide (`RecordField adding="editor"`). Una fila que no se puede terminar donde se
 abrió es una trampa, así que «inline» nunca se fuerza. Cabe en una celda: texto, número, fecha,
-sí/no, opciones, lista de palabras y un **many2one de una entidad declarada** (el picker en la
-celda). No cabe: una fecha con hora, un valor `embedded`, un many2one de una entidad que la
-aplicación no declaró (sería un id que nadie tipea). Lo que es de sólo lectura no cuenta. En una
+fecha con hora (desde «La hora de la empresa»), sí/no, opciones, lista de palabras y un
+**many2one de una entidad declarada** (el picker en la celda). No cabe: un valor `embedded`, un
+many2one de una entidad que la aplicación no declaró (sería un id que nadie tipea). Lo que es de sólo lectura no cuenta. En una
 caja angosta web-ui dibuja tarjetas que abren el diálogo.
 
 - Las columnas son los **escalares** de la línea, como un formulario (`lineFields`): un many2one
@@ -926,9 +948,7 @@ Encontrado:
 - **«Agrupar por» en el selector «Buscar más…»** estaba (la barra entera) pero nada lo probaba:
   `09 · AgruparEnElSelector` agrupa por ciudad, abre un grupo y elige desde ahí (falla si la barra
   no recibe los grupos).
-- **Una fecha con hora se edita como texto** (`controlFor`): web-ui ya tiene `DateTimePicker`, pero
-  pide la hora LOCAL (`"YYYY-MM-DDTHH:MM"`) y el servidor manda UTC. Usarlo es decidir la zona
-  horaria del que llama («Contexto del llamado», abierto): no se adivina acá.
+- ~~**Una fecha con hora se edita como texto**~~ (resuelto, ver «La hora de la empresa»).
 
 ### Pedidos a web-ui que salen de esto
 
@@ -965,7 +985,7 @@ Encontrado:
 ## Los huecos de la consola de forge, cerrados (2026-11-04)
 
 Los de la tabla de «La consola de forge migrada» que eran de este paquete, con su historia:
-`37 · Lo que forge todavía hacía a mano` (elegir «ninguno», no ofrecer los ya compartidos, un
+`38 · Lo que forge todavía hacía a mano` (elegir «ninguno», no ofrecer los ya compartidos, un
 Command con dos claves y un botón apagado), `11 · ConLaBarraDeLaAplicacion` y los tests de
 `cache`, `entity`, `view` y `edit`.
 
@@ -993,11 +1013,12 @@ Command con dos claves y un botón apagado), `11 · ConLaBarraDeLaAplicacion` y 
   sólo se olvidaba acá y volvía con la siguiente lectura). Sin `edit`, guardar sigue mandando
   los campos cambiados con la versión a `save`. El servidor de las historias habla las tres
   acciones (`12 · GuardarHablandoEdit`, `DescartarBorraElBorradorDelServidor`).
-- **Una clave que se escribe al crear** (el slug de un tenant) — `creationOf` decide qué es de
-  sólo lectura igual que el formulario (`fieldStateOf`: `readonly`, `readonly_when` sobre el
-  registro nuevo y los `states` del preview). Antes miraba sólo el `readonly` fijo y descartaba
-  lo que el formulario había dejado escribir. Del lado del backend, una clave así se publica con
-  `readonly_when` (sólo lectura cuando el registro ya existe), no con `readonly` fijo.
+- **Una clave que se escribe al crear** (el slug de un tenant) — ya viajaba: `creationOf` sólo
+  descarta el `readonly` FIJO de la meta, así que el backend la publica con `readonly_when`
+  (sólo lectura cuando el registro ya existe), no con `readonly`. Se probó decidirlo con el
+  estado del formulario (`readonly_when` sobre el registro nuevo) y se volvió atrás: una moneda
+  elegida y bloqueada después por las líneas dejaba de viajar en el alta. El test lo fija con los
+  dos casos.
 
 ### Sigue abierto, con dueño
 

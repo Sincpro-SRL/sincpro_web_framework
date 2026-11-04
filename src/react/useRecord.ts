@@ -265,12 +265,20 @@ export function useRecord<T extends AnyRecord>(
     if (preview === undefined) return;
     cancelPreview();
     pause.current = setTimeout(() => {
+      // A key of the route (`{tenant_id}`) is a field of the record on screen. One it lacks is
+      // a preview not asked — never an error thrown out of a timer.
+      let path: string;
+      try {
+        path = pathFor(preview, isNew ? undefined : id, { ...record, ...next });
+      } catch {
+        return;
+      }
       const aborter = new AbortController();
       asking.current = aborter;
       transport
         .send<Preview>(
           preview.method,
-          pathFor(preview, isNew ? undefined : id),
+          path,
           {
             id: isNew ? null : id,
             values: isNew ? { ...record, ...next } : changesOf(record, next),
@@ -372,7 +380,7 @@ export function useRecord<T extends AnyRecord>(
       try {
         await transport.send(
           route.method,
-          pathFor(route, id),
+          pathFor(route, id, values),
           entity.edit === undefined
             ? { ...changed, ...(version === undefined ? {} : { version }) }
             : editOf("save"),
@@ -395,8 +403,11 @@ export function useRecord<T extends AnyRecord>(
       const route = entity.edit;
       if (route === undefined || isNew || draft === null) return;
       setDraft(null);
-      transport
-        .send(route.method, pathFor(route, id), editOf("discard"))
+      // Through the promise: a route key the record lacks is refused like any failure.
+      Promise.resolve()
+        .then(() =>
+          transport.send(route.method, pathFor(route, id, values), editOf("discard")),
+        )
         .then(() => mounted.current && reload())
         .catch((error: unknown) => mounted.current && refused(error));
     },
@@ -409,7 +420,7 @@ export function useRecord<T extends AnyRecord>(
             try {
               const kept = await transport.send<Edited>(
                 route.method,
-                pathFor(route, id),
+                pathFor(route, id, values),
                 entity.edit === undefined ? editOf() : editOf("save_draft"),
               );
               const now = kept.draft;
@@ -435,7 +446,7 @@ export function useRecord<T extends AnyRecord>(
     setSaving(true);
     setFailure(null);
     setCreated(null);
-    const body = creationOf(state.meta, values, fromServer);
+    const body = creationOf(state.meta, values);
     const idempotencyKey = creating.current.keyFor(body);
     try {
       const answer = await transport.send<unknown>(

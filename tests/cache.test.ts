@@ -117,3 +117,11 @@ test("forgetting a collection keeps its namesakes: /facturas is not /facturas-ev
   await transport.list("/facturas-events", {});
   assert.equal(asked.length, 1);
 });
+
+test("forgetting a list route with its params forgets that collection", async () => {
+  const { transport, asked } = anyServer({});
+  await transport.list("/projects?tenant_id=acme", {});
+  transport.invalidate("/projects?tenant_id=acme");
+  await transport.list("/projects?tenant_id=acme", {});
+  assert.equal(asked.length, 2, "the list was asked again");
+});

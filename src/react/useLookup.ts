@@ -85,8 +85,12 @@ export function useLookup<T extends AnyRecord>(
   const base = isList(entity) ? entity.entity : entity;
   // The key field to exclude by comes with the definition: known already, or with the first
   // answer — then this renders again and the reading starts over without the excluded.
-  const [definition, setDefinition] = useState(() => metas.get(base.key));
-  const scope = excluding(options.criteria, options.exclude, definition);
+  const [definition, setDefinition] = useState(() => ({
+    key: base.key,
+    meta: metas.get(base.key),
+  }));
+  const keyed = definition.key === base.key ? definition.meta : metas.get(base.key);
+  const scope = excluding(options.criteria, options.exclude, keyed);
   // «More», not pages: a choice list grows downwards, and its ceiling keeps it light.
   const listing = useListing(entity, {
     paging: "more",
@@ -94,8 +98,9 @@ export function useLookup<T extends AnyRecord>(
     ...(scope === undefined ? {} : { criteria: scope }),
   });
   useEffect(() => {
-    if (definition === undefined && listing.meta !== null) setDefinition(listing.meta);
-  }, [definition, listing.meta]);
+    if (keyed === undefined && listing.meta !== null)
+      setDefinition({ key: base.key, meta: listing.meta });
+  }, [keyed, listing.meta, base.key]);
   const choices = lookupOf(listing.meta, listing.rows, base.summary);
 
   // Every choice seen is remembered: the chosen are named even after the page moved on.

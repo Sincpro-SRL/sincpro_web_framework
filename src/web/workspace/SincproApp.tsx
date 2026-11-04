@@ -50,6 +50,7 @@ export function SincproApp({
   empty,
   skin = webUiSkin,
   cache = {},
+  timeZone,
   workspace: given,
   bar,
 }: {
@@ -74,6 +75,9 @@ export function SincproApp({
    * `false` asks the server every time.
    */
   cache?: CacheOptions | false;
+  /** Where the business is (`"America/La_Paz"`): every date and time on its wall clock.
+   *  Without it, the browser's. */
+  timeZone?: string;
   /** The workspace, when the app needs to reach it (a menu of its bar): composer's
    *  `useWorkspace()`. Without it, the app keeps one of its own. */
   workspace?: WorkspaceStore;
@@ -117,6 +121,7 @@ export function SincproApp({
       locale={language}
       {...(metas === undefined ? {} : { metas })}
       {...(entities === undefined ? {} : { entities })}
+      {...(timeZone === undefined ? {} : { timeZone })}
     >
       <ToastProvider>
         <div className="flex h-dvh min-h-0 flex-col bg-ground">

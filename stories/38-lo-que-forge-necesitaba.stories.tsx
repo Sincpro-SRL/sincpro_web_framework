@@ -9,7 +9,7 @@ import { Escenario } from "./support/escenario";
 import { clienteMeta, CLIENTES, clientes, VENTAS } from "./support/ventas";
 
 const meta: Meta = {
-  title: "Casos de uso/37 · Lo que forge todavía hacía a mano",
+  title: "Casos de uso/38 · Lo que forge todavía hacía a mano",
   parameters: {
     docs: {
       description: {

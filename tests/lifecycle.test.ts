@@ -45,37 +45,36 @@ test("a create sends what the caller may write: no read-only field, no empty one
   });
 });
 
-test("a key written only when creating travels: read-only is decided as the form decides it", () => {
-  const tenantMeta = defineMeta({
+test("a create sends what was written, even what a condition locks afterwards", () => {
+  const meta = defineMeta({
     aggregate: "Tenant",
     identity: "slug",
     display: "name",
     fields: {
-      // Written once, when the tenant is created; read-only once it exists.
+      // Written once, when the tenant is created; read-only once it is stored.
       slug: field.text({
         label: "Slug",
         readonlyWhen: { field: "version", operator: ">", value: 0 },
       }),
+      // Chosen first, locked once there are lines: still the record's currency.
+      currency: field.text({
+        label: "Moneda",
+        readonlyWhen: { field: "has_lines", operator: "=", value: true },
+      }),
+      has_lines: field.boolean({ label: "Con líneas" }),
       name: field.text({ label: "Nombre" }),
-      version: field.number({ label: "Versión", readonly: true }),
+      number: field.text({ label: "Número", readonly: true }),
     },
   });
-  assert.deepEqual(creationOf(tenantMeta, { slug: "acme", name: "Acme", version: 0 }), {
-    slug: "acme",
-    name: "Acme",
-  });
-  // Once the record exists the same condition holds: the key no longer travels.
-  assert.deepEqual(creationOf(tenantMeta, { slug: "acme", name: "Acme", version: 1 }), {
-    name: "Acme",
-  });
-  // The server's word for this new record wins, as on the form.
   assert.deepEqual(
-    creationOf(
-      tenantMeta,
-      { slug: "acme", name: "Acme" },
-      { slug: { readonly: true, required: false, visible: true } },
-    ),
-    { name: "Acme" },
+    creationOf(meta, {
+      slug: "acme",
+      currency: "BOB",
+      has_lines: true,
+      name: "Acme",
+      number: "T-1",
+    }),
+    { slug: "acme", currency: "BOB", has_lines: true, name: "Acme" },
   );
 });
 
