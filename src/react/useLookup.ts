@@ -1,6 +1,6 @@
 "use client";
 
-import type { AnyRecord, Criteria } from "@sincpro/criteria";
+import { type AnyRecord, type Criteria, merge, type Meta } from "@sincpro/criteria";
 import type { Entity } from "@sincpro/web-framework/core/entity";
 import { isList, type ListDefinition } from "@sincpro/web-framework/core/list";
 import { lookupOf, type LookupOption } from "@sincpro/web-framework/core/lookup";
@@ -20,6 +20,11 @@ import { useEffect, useRef, useState } from "react";
  * The chosen record usually is NOT on the page on screen — a search narrowed it, or it lies
  * past the first ten — so its name is kept: from the options it was seen among, or asked of
  * the server once by its key (`chosen`).
+ *
+ * `exclude` leaves keys out of the choices — the tenants a project is already shared with — and
+ * the SERVER leaves them out (`not in` under `criteria`), so the ten are ten that may be chosen.
+ * It needs the entity's key field: until its definition is known the first ten come
+ * unexcluded, and the reading starts over when it arrives.
  */
 export type Lookup = {
   options: LookupOption[];
@@ -41,6 +46,23 @@ export type Lookup = {
 /** Ten: what a dropdown shows without scrolling, and what Odoo's many2one asks for. */
 const FIRST = 10;
 
+/** What may be chosen: the screen's own cut, without the keys it excludes. */
+export function excluding<T extends AnyRecord>(
+  criteria: Criteria<T> | undefined,
+  exclude: readonly string[] | undefined,
+  meta: Meta | null | undefined,
+): Criteria<T> | undefined {
+  if (exclude === undefined || exclude.length === 0 || meta == null) return criteria;
+  const out = {
+    where: {
+      field: meta.get_id || meta.identity || "id",
+      operator: "not in",
+      value: [...exclude],
+    },
+  } as Criteria<T>;
+  return criteria === undefined ? out : merge<T>(criteria, out);
+}
+
 export function useLookup<T extends AnyRecord>(
   /** The entity, or a named list of it: «active customers» chooses only those. */
   entity: Entity<T> | ListDefinition<T>,
@@ -55,16 +77,30 @@ export function useLookup<T extends AnyRecord>(
     value?: string;
     /** The keys chosen in a many2many, to keep their names (`chosenAll`). */
     values?: readonly string[];
+    /** Keys never offered — those already chosen elsewhere. Left out by the server. */
+    exclude?: readonly string[];
   } = {},
 ): Lookup {
-  const { transport } = useFramework();
+  const { transport, metas } = useFramework();
+  const base = isList(entity) ? entity.entity : entity;
+  // The key field to exclude by comes with the definition: known already, or with the first
+  // answer — then this renders again and the reading starts over without the excluded.
+  const [definition, setDefinition] = useState(() => ({
+    key: base.key,
+    meta: metas.get(base.key),
+  }));
+  const keyed = definition.key === base.key ? definition.meta : metas.get(base.key);
+  const scope = excluding(options.criteria, options.exclude, keyed);
   // «More», not pages: a choice list grows downwards, and its ceiling keeps it light.
   const listing = useListing(entity, {
     paging: "more",
     pageSize: options.pageSize ?? FIRST,
-    ...(options.criteria === undefined ? {} : { criteria: options.criteria }),
+    ...(scope === undefined ? {} : { criteria: scope }),
   });
-  const base = isList(entity) ? entity.entity : entity;
+  useEffect(() => {
+    if (keyed === undefined && listing.meta !== null)
+      setDefinition({ key: base.key, meta: listing.meta });
+  }, [keyed, listing.meta, base.key]);
   const choices = lookupOf(listing.meta, listing.rows, base.summary);
 
   // Every choice seen is remembered: the chosen are named even after the page moved on.

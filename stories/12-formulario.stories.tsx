@@ -1,5 +1,6 @@
 import {
   dirtyOf,
+  entity,
   EntityPicker,
   frameworkCopy,
   RecordField,
@@ -21,7 +22,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          "Todo pasa por `restTransport` contra el protocolo REST de sincpro_framework (el servidor del otro lado es falso; el cable no). Cada campo es un **nombre**: su control sale del tipo — una opción, un número, una fecha, sí/no, una lista, un texto —, y `as` pone otro (acá el cliente, un many2one, con `EntityPicker`). Los **hints** se evalúan sobre lo que está en pantalla: con tarjeta aparece la referencia y guardar se bloquea hasta escribirla. El **preview** del servidor aconseja; un **422** se lee debajo del campo; un **borrador** se guarda en el servidor con su versión. Abajo, lo que viajó por el cable.",
+          "Todo pasa por `restTransport` contra el protocolo REST de sincpro_framework (el servidor del otro lado es falso; el cable no). Cada campo es un **nombre**: su control sale del tipo — una opción, un número, una fecha, sí/no, una lista, un texto —, y `as` pone otro (acá el cliente, un many2one, con `EntityPicker`). Los **hints** se evalúan sobre lo que está en pantalla: con tarjeta aparece la referencia y guardar se bloquea hasta escribirla. El **preview** del servidor aconseja; un **422** se lee debajo del campo; un **borrador** se guarda en el servidor con su versión. Una entidad que declara **`edit`** habla el `Edit` de sincpro_framework para todo: guardar el borrador (`save_draft`), guardar (`save`: el registro entero, los campos cambiados y las dos versiones) y descartar (`discard`, que borra también el borrador del servidor). Abajo, lo que viajó por el cable.",
       },
     },
   },
@@ -249,5 +250,85 @@ export const ElClienteEsUnMany2one: Story = {
     await userEvent.click(await page.findByRole("option", { name: /Globex Bolivia/ }));
     await expect(await canvas.findByDisplayValue("Globex Bolivia")).toBeVisible();
     await expect(canvas.getByRole("button", { name: "Guardar" })).toBeVisible();
+  },
+};
+
+/** The same invoices, served by sincpro_framework's `Edit` (`EntityEdits`): one route, by action. */
+const facturasPorEdit = entity<Factura>("ventas:factura", {
+  list: "/facturas",
+  preview: "POST /facturas/preview",
+  edit: "PUT /facturas/{id}/draft",
+});
+
+/** The `action` of each `Edit` that travelled, in order. */
+function Acciones({ calls }: { calls: readonly Call[] }) {
+  const said = calls
+    .map((call) => (call.body as { action?: string } | null)?.action)
+    .filter((one) => one !== undefined);
+  return <p aria-label="Acciones del Edit">{said.join(" ")}</p>;
+}
+
+function PorEdit() {
+  const factura = useRecord(facturasPorEdit, NUMERO);
+  return <Formulario factura={factura} />;
+}
+
+function EscenaEdit() {
+  return (
+    <EscenarioRest>
+      {({ calls }) => (
+        <>
+          <PorEdit />
+          <Acciones calls={calls} />
+          <Cable calls={calls} />
+        </>
+      )}
+    </EscenarioRest>
+  );
+}
+
+export const GuardarHablandoEdit: Story = {
+  render: () => <EscenaEdit />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(
+      await canvas.findByRole("textbox", { name: "Nota" }),
+      "Llamar antes",
+    );
+    await userEvent.click(canvas.getByRole("button", { name: "Guardar" }));
+    await waitFor(() =>
+      expect(canvas.getByLabelText("Acciones del Edit")).toHaveTextContent("save"),
+    );
+    // Stored: read again, nothing left to save, the note is the record's now.
+    await waitFor(() => expect(canvas.queryByRole("button", { name: "Guardar" })).toBeNull());
+    await expect(canvas.getByRole("textbox", { name: "Nota" })).toHaveValue("Llamar antes");
+    await expect(canvas.getByLabelText("Lo que viajó")).toHaveTextContent(
+      `PUT /v1/facturas/${NUMERO}/draft`,
+    );
+  },
+};
+
+export const DescartarBorraElBorradorDelServidor: Story = {
+  render: () => <EscenaEdit />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const nota = await canvas.findByRole("textbox", { name: "Nota" });
+    const antes = (nota as HTMLInputElement).value;
+    await userEvent.type(nota, "Llamar antes");
+    await userEvent.click(canvas.getByRole("button", { name: "Guardar borrador" }));
+    await expect(
+      await canvas.findByText("Borrador en el servidor · versión 1"),
+    ).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Descartar" }));
+    await waitFor(() =>
+      expect(canvas.getByLabelText("Acciones del Edit")).toHaveTextContent(
+        "save_draft discard",
+      ),
+    );
+    // Gone on the server too: read again, the record is as it was stored.
+    await waitFor(() => expect(canvas.queryByText(/Borrador en el servidor/)).toBeNull());
+    await waitFor(() =>
+      expect(canvas.getByRole("textbox", { name: "Nota" })).toHaveValue(antes),
+    );
   },
 };

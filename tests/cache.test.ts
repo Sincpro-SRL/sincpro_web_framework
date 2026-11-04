@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 
-import { cachedTransport, memoryTransport, pathFor } from "@sincpro/web-framework";
+import {
+  cachedTransport,
+  type CacheOptions,
+  memoryTransport,
+  pathFor,
+  type Transport,
+} from "@sincpro/web-framework";
 import { test } from "vitest";
 
 import { servidorVentas } from "../stories/support/servidor";
@@ -66,4 +72,56 @@ test("a preview writes nothing and forgets nothing", async () => {
   await transport.send(preview.method, preview.path, { values: {} });
   await transport.list("/facturas", {});
   assert.equal(reads(), 1);
+});
+
+/** Any route answers: what is counted is which questions reached the server. */
+function anyServer(options: CacheOptions) {
+  const asked: string[] = [];
+  const inner: Transport = {
+    list: async (route) => {
+      asked.push(route);
+      return { rows: [], meta: null } as never;
+    },
+    one: async (route) => {
+      asked.push(route);
+      return { record: {} } as never;
+    },
+    send: async () => ({}) as never,
+  };
+  return { transport: cachedTransport(inner, options), asked };
+}
+
+test("a write forgets every collection its route names, not only the first", async () => {
+  const { transport, asked } = anyServer({});
+  await transport.list("/tenants/acme/members", {});
+  await transport.list("/projects", {});
+  await transport.send("POST", "/users/ana@x.bo/tenants/acme/leave", {});
+  await transport.list("/tenants/acme/members", {});
+  await transport.list("/projects", {});
+  assert.deepEqual(asked, ["/tenants/acme/members", "/projects", "/tenants/acme/members"]);
+});
+
+test("a write under an entity forgets its history too", async () => {
+  const { transport, asked } = anyServer({ entities: [facturas] });
+  await transport.list("/ventas-events", {});
+  const confirm = facturas.commands["confirmar"]!;
+  await transport.send(confirm.method, pathFor(confirm, "F-2026-0007"), {});
+  await transport.list("/ventas-events", {});
+  assert.equal(asked.length, 2, "the events were asked again");
+});
+
+test("forgetting a collection keeps its namesakes: /facturas is not /facturas-events", async () => {
+  const { transport, asked } = anyServer({});
+  await transport.list("/facturas-events", {});
+  transport.invalidate("/facturas");
+  await transport.list("/facturas-events", {});
+  assert.equal(asked.length, 1);
+});
+
+test("forgetting a list route with its params forgets that collection", async () => {
+  const { transport, asked } = anyServer({});
+  await transport.list("/projects?tenant_id=acme", {});
+  transport.invalidate("/projects?tenant_id=acme");
+  await transport.list("/projects?tenant_id=acme", {});
+  assert.equal(asked.length, 2, "the list was asked again");
 });

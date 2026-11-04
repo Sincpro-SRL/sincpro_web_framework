@@ -93,6 +93,38 @@ export const EnLaPaginaDosColumnasAlCostadoUna: Story = {
   },
 };
 
+/**
+ * A modal is already a card: the record inside is one surface, never a sheet on the ground —
+ * though opened from the list its rail carries «1 / 64». With web-ui guessing the paper from the
+ * rail, the pager put a sheet inside the modal, and a rail that came or went while it was on
+ * screen swapped the whole form under the field being typed in (`Record placement`, web-ui 1.8).
+ */
+export const EnUnModalEsUnaTarjeta: Story = {
+  render: () => <App />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    const numero = await primera(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: `Abrir en… ${numero}` }));
+    await userEvent.click(await page.findByRole("menuitem", { name: "Abrir en un modal" }));
+    const modal = await page.findByRole("dialog");
+    // The modal titles itself too (web-ui repeats it): the record's title is the one in an article.
+    let titulo: HTMLElement | undefined;
+    await waitFor(() => {
+      titulo = within(modal)
+        .getAllByRole("heading", { name: numero })
+        .find((one) => one.closest("article") !== null);
+      expect(titulo).toBeDefined();
+    });
+    const registro = titulo!.closest("article")!;
+    await within(registro).findByText(/^1 \/ 64$/);
+    // web-ui draws a sheet on its ground (`bg-ground`) INSIDE the record, the title on the
+    // sheet; a card has no ground of its own (the app's, around the modal, is not the record's).
+    const suelo = titulo!.closest(".bg-ground");
+    await expect(suelo !== null && registro.contains(suelo)).toBe(false);
+  },
+};
+
 export const UnaListaDentroDeUnModalEmpiezaEnFilas: Story = {
   render: () => <App />,
   play: async ({ canvasElement }) => {

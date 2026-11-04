@@ -15,7 +15,7 @@ import {
   type Sort,
 } from "@sincpro/criteria";
 import { useReading } from "@sincpro/criteria-react";
-import type { Entity } from "@sincpro/web-framework/core/entity";
+import { type Entity, listRoute } from "@sincpro/web-framework/core/entity";
 import { isList, type ListDefinition, scopeOf } from "@sincpro/web-framework/core/list";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -123,14 +123,6 @@ type Narrowing<T> = {
   order: readonly Sort[];
 };
 
-function routeOf(list: string, params: Readonly<Record<string, string>> | undefined): string {
-  const query = new URLSearchParams(
-    Object.entries(params ?? {}).filter(([, value]) => value !== ""),
-  ).toString();
-  if (query === "") return list;
-  return `${list}${list.includes("?") ? "&" : "?"}${query}`;
-}
-
 export function useListing<T extends AnyRecord>(
   given: Entity<T> | ListDefinition<T>,
   own: ListingOptions<T> = {},
@@ -149,7 +141,7 @@ export function useListing<T extends AnyRecord>(
               ? scopeOf(definition)
               : merge<T>(scopeOf(definition), own.criteria),
         };
-  const route = routeOf(entity.list, options.params);
+  const route = listRoute(entity.list, options.params);
   const source = useMemo(
     () => resource<T>((criteria, signal) => transport.list<T>(route, criteria, signal)),
     [transport, route],

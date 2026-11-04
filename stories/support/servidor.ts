@@ -184,6 +184,44 @@ export function servidorVentas() {
     return { items, count: { value: items.length, exact: true }, cursor: null };
   }
 
+  function stale(route: string, f: Factura) {
+    return refuse(route, 409, {
+      kind: "conflict",
+      reason: "STALE_AGGREGATE",
+      title: "Alguien lo guardó antes",
+      detail: `${f.number} cambió después de que lo abriste.`,
+    });
+  }
+
+  /** A save, by whichever door it came: the domain's rules, then the record stored. */
+  function guardar(route: string, f: Factura, values: AnyRecord) {
+    if (Number(values["discount"] ?? 0) > 50)
+      throw refuse(route, 422, {
+        kind: "invalid",
+        reason: "VALIDATION",
+        title: "La factura no se guardó",
+        errors: [{ pointer: "/discount", detail: "El descuento no puede pasar del 50 %." }],
+      });
+    if (
+      f.payment === "card" &&
+      values["payment"] === undefined &&
+      values["card_reference"] === ""
+    )
+      throw refuse(route, 422, {
+        kind: "invalid",
+        reason: "VALIDATION",
+        errors: [
+          { pointer: "/card_reference", detail: "Falta la referencia de la tarjeta." },
+        ],
+      });
+    if (Array.isArray(values["lines"]))
+      values["lines"] = linesWritten(route, f, values["lines"] as AnyRecord[]);
+    Object.assign(f, values, { version: f.version + 1 });
+    drafts.delete(f.number);
+    event(f, "Factura editada");
+    return { number: f.number, version: f.version };
+  }
+
   function handle(method: Method, route: string, body: unknown): unknown {
     const sent = (body ?? {}) as AnyRecord;
     const [, , number, action] = route.split("/");
@@ -220,6 +258,27 @@ export function servidorVentas() {
 
     const f = find(route, decodeURIComponent(number ?? ""));
 
+    // sincpro_framework's `Edit`, `save`: the fields it changed, out of the record whole, stored
+    // if nobody moved the record (or its draft) since it was read; the draft is dropped.
+    if (method === "PUT" && action === "draft" && sent["action"] === "save") {
+      const kept = drafts.get(f.number);
+      if ((kept?.version ?? 0) !== sent["version"] || sent["origin_version"] !== f.version)
+        throw stale(route, f);
+      const values = sent["values"] as AnyRecord;
+      const changed = sent["changed"] as string[];
+      return guardar(
+        route,
+        f,
+        Object.fromEntries(changed.filter((k) => k in values).map((k) => [k, values[k]])),
+      );
+    }
+
+    // `discard`: the draft dropped; the stored record stays as it was.
+    if (method === "PUT" && action === "draft" && sent["action"] === "discard") {
+      drafts.delete(f.number);
+      return { factura: { ...f }, draft: null };
+    }
+
     // sincpro_framework's `Edit` (save_draft): the record as the form holds it, the fields it
     // changed, the draft version it read; answers the record and the draft it is now.
     if (method === "PUT" && action === "draft") {
@@ -245,39 +304,9 @@ export function servidorVentas() {
     }
 
     if (method === "PUT" && action === undefined) {
-      if (sent["version"] !== f.version)
-        throw refuse(route, 409, {
-          kind: "conflict",
-          reason: "STALE_AGGREGATE",
-          title: "Alguien lo guardó antes",
-          detail: `${f.number} cambió después de que lo abriste.`,
-        });
+      if (sent["version"] !== f.version) throw stale(route, f);
       const { version: _, ...values } = sent;
-      if (Number(values["discount"] ?? 0) > 50)
-        throw refuse(route, 422, {
-          kind: "invalid",
-          reason: "VALIDATION",
-          title: "La factura no se guardó",
-          errors: [{ pointer: "/discount", detail: "El descuento no puede pasar del 50 %." }],
-        });
-      if (
-        f.payment === "card" &&
-        values["payment"] === undefined &&
-        values["card_reference"] === ""
-      )
-        throw refuse(route, 422, {
-          kind: "invalid",
-          reason: "VALIDATION",
-          errors: [
-            { pointer: "/card_reference", detail: "Falta la referencia de la tarjeta." },
-          ],
-        });
-      if (Array.isArray(values["lines"]))
-        values["lines"] = linesWritten(route, f, values["lines"] as AnyRecord[]);
-      Object.assign(f, values, { version: f.version + 1 });
-      drafts.delete(f.number);
-      event(f, "Factura editada");
-      return { number: f.number, version: f.version };
+      return guardar(route, f, values);
     }
 
     if (method === "POST" && action === "confirm") {

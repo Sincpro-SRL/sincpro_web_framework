@@ -1,5 +1,5 @@
 import type { ViewProps } from "@sincpro/web-composer";
-import { useCrumbs } from "@sincpro/web-composer";
+import { useCrumbs, useWorkspace } from "@sincpro/web-composer";
 import {
   EntityList,
   entityView,
@@ -11,7 +11,7 @@ import {
   useRecord,
   useRecordInWorkspace,
 } from "@sincpro/web-framework";
-import { Record, Skeleton } from "@sincpro/web-ui";
+import { Button, Record, Skeleton } from "@sincpro/web-ui";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
@@ -24,7 +24,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          "`SincproApp` es el contexto de la aplicación en un solo lugar: el transporte, el idioma de las tres tablas de textos (web-ui, composer y framework), las metas ya conocidas, los avisos y el workspace con sus vistas, ⌘K y atajos. La aplicación sólo declara sus entidades (`entityView`) y escribe sus pantallas. Es una comodidad, no la única puerta: todo lo que monta se exporta.",
+          "`SincproApp` es el contexto de la aplicación en un solo lugar: el transporte, el idioma de las tres tablas de textos (web-ui, composer y framework), las metas ya conocidas, los avisos y el workspace con sus vistas, ⌘K y atajos. La aplicación sólo declara sus entidades (`entityView`) y escribe sus pantallas. Es una comodidad, no la única puerta: todo lo que monta se exporta.\n\n**La barra es de la aplicación** (`bar`): se dibuja arriba del workspace, dentro de los proveedores, y sus menús abren vistas por el workspace que la aplicación tiene en la mano (`workspace`, el `useWorkspace()` de composer).",
       },
     },
   },
@@ -138,5 +138,35 @@ export const FacturasYClientes: Story = {
     await userEvent.click(first!);
     const heading = await canvas.findByRole("heading", { name: number });
     await waitFor(() => expect(heading).toBeVisible());
+  },
+};
+
+export const ConLaBarraDeLaAplicacion: Story = {
+  render: function Render() {
+    const workspace = useWorkspace();
+    return (
+      <SincproApp
+        transport={transport}
+        views={VIEWS}
+        start={facturas.ref()}
+        metas={{ [facturas.key]: facturaMeta, [clientes.key]: clienteMeta }}
+        workspace={workspace}
+        bar={
+          <nav aria-label="Aplicación" className="flex gap-2 p-2">
+            <Button size="sm" role="ghost" onClick={() => workspace.push(clientes.ref())}>
+              Ver clientes
+            </Button>
+          </nav>
+        }
+      />
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("20 de 64");
+    await expect(canvas.queryByRole("columnheader", { name: /NIT/ })).toBeNull();
+    // A menu of the app's own bar opens a view of the workspace.
+    await userEvent.click(canvas.getByRole("button", { name: "Ver clientes" }));
+    await expect(await canvas.findByRole("columnheader", { name: /NIT/ })).toBeVisible();
   },
 };

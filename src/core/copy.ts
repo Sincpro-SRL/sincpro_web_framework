@@ -60,6 +60,8 @@ export type FrameworkCopy = {
   picker: {
     /** The button beside a many2one that opens the chooser over the whole set. */
     browse: string;
+    /** The choice of nothing, when a field may be left empty (`EntityPicker none`). */
+    none: string;
   };
   summary: {
     /** The facts of a record's summary: when it was made and last changed. */
@@ -70,6 +72,8 @@ export type FrameworkCopy = {
     /** A card's last line: «Updated 12 Mar 2026 by Ana», or «Created …» if never changed. */
     updatedLine: (at: string, by: string | null) => string;
     createdLine: (at: string, by: string | null) => string;
+    /** A fact of a record's history that carries no label of its own. */
+    recorded: string;
   };
   command: {
     /** The confirmation of an action that cannot be undone, after its dry run. */
@@ -127,6 +131,7 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
   },
   picker: {
     browse: "Search all",
+    none: "None",
   },
   summary: {
     created: "Created",
@@ -134,6 +139,7 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
     when: (at, by) => (by === null ? at : `${at} · ${by}`),
     updatedLine: (at, by) => (by === null ? `Updated ${at}` : `Updated ${at} by ${by}`),
     createdLine: (at, by) => (by === null ? `Created ${at}` : `Created ${at} by ${by}`),
+    recorded: "Change recorded",
   },
   command: {
     confirm: "Do it",
@@ -202,6 +208,7 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
   },
   picker: {
     browse: "Buscar en todos",
+    none: "Ninguno",
   },
   summary: {
     created: "Creado",
@@ -210,6 +217,7 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
     updatedLine: (at, by) =>
       by === null ? `Actualizado el ${at}` : `Actualizado el ${at} por ${by}`,
     createdLine: (at, by) => (by === null ? `Creado el ${at}` : `Creado el ${at} por ${by}`),
+    recorded: "Cambio registrado",
   },
   command: {
     confirm: "Hacerlo",

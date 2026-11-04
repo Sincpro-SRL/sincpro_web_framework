@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import {
   creationOf,
   defaultsOf,
+  defineMeta,
   entity,
+  field,
   memoryTransport,
   NEW_PARAM,
   PICK_PARAM,
@@ -41,6 +43,39 @@ test("a create sends what the caller may write: no read-only field, no empty one
     urgent: false,
     customer_id: "C-004",
   });
+});
+
+test("a create sends what was written, even what a condition locks afterwards", () => {
+  const meta = defineMeta({
+    aggregate: "Tenant",
+    identity: "slug",
+    display: "name",
+    fields: {
+      // Written once, when the tenant is created; read-only once it is stored.
+      slug: field.text({
+        label: "Slug",
+        readonlyWhen: { field: "version", operator: ">", value: 0 },
+      }),
+      // Chosen first, locked once there are lines: still the record's currency.
+      currency: field.text({
+        label: "Moneda",
+        readonlyWhen: { field: "has_lines", operator: "=", value: true },
+      }),
+      has_lines: field.boolean({ label: "Con líneas" }),
+      name: field.text({ label: "Nombre" }),
+      number: field.text({ label: "Número", readonly: true }),
+    },
+  });
+  assert.deepEqual(
+    creationOf(meta, {
+      slug: "acme",
+      currency: "BOB",
+      has_lines: true,
+      name: "Acme",
+      number: "T-1",
+    }),
+    { slug: "acme", currency: "BOB", has_lines: true, name: "Acme" },
+  );
 });
 
 test("an entity declares where a new record goes, and the references of «new» and «pick»", () => {

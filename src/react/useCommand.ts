@@ -66,7 +66,7 @@ export function useCommand<T extends AnyRecord, R = unknown>(
       try {
         const answer = await transport.send<A>(
           route.method,
-          pathFor(route, id),
+          pathFor(route, id, body),
           body,
           undefined,
           { idempotencyKey },

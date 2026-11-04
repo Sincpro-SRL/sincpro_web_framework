@@ -199,6 +199,12 @@ Rules for any agent (or person) changing this package. Read the README for the i
   opened with `newRef(values)` («Agregar» on a one2many) starts with those values only that way.
 - **`useHistory`, not `useActivity`**: web-ui already exports `useActivity` (the panel's open
   state). Do not shadow a name of the stack.
+- **A route's keys other than `{id}` come from the BODY** (`pathFor(route, id, body)`):
+  sincpro_framework reads a path parameter as a field of the DTO. Never a second argument for
+  them, never a hand-built path through `transport.send`.
+- **The meta store is filled DURING useListing's render**: a value read from it earlier in the
+  same component's render is from before the answer, and nothing renders again. A criteria that
+  depends on the definition keeps it in state and sets it in an effect (`useLookup exclude`).
 
 ## Before you hand it back
 

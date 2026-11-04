@@ -172,12 +172,16 @@ export function defaultsOf(meta: Meta | null | undefined): AnyRecord {
  * What a create sends: every value on screen the caller may write. A field the model marks
  * `readonly` is the server's to fill (the number, the totals), and an empty one is left for
  * the server's own default — never sent as `""`.
+ *
+ * Context: only the model's fixed `readonly` counts, never a `readonly_when`: a currency chosen
+ * and then locked by the lines added after it is still the record's currency, and a key written
+ * when creating and never after (a tenant's slug) is a `readonly_when` the backend publishes for
+ * the stored record. Both travel.
  */
 export function creationOf(meta: Meta | null | undefined, values: AnyRecord): AnyRecord {
   const sent: AnyRecord = {};
   for (const [name, value] of Object.entries(values)) {
-    const field = meta?.fields[name];
-    if (field?.readonly === true) continue;
+    if (meta?.fields[name]?.readonly === true) continue;
     if (value === undefined || value === null || value === "") continue;
     sent[name] = value;
   }

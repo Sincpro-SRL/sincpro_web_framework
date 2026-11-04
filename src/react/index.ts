@@ -21,7 +21,7 @@ export {
   type Paging,
   useListing,
 } from "@sincpro/web-framework/react/useListing";
-export { type Lookup, useLookup } from "@sincpro/web-framework/react/useLookup";
+export { excluding, type Lookup, useLookup } from "@sincpro/web-framework/react/useLookup";
 export {
   type PivotAxes,
   type PivotReading,

@@ -25,6 +25,7 @@ export function CommandButton<T extends AnyRecord, R = unknown>({
   label,
   destructive = false,
   role = "secondary",
+  disabled = false,
   onDone,
 }: {
   entity: Entity<T>;
@@ -35,6 +36,8 @@ export function CommandButton<T extends AnyRecord, R = unknown>({
   /** Asks the server what it would do before doing it. */
   destructive?: boolean;
   role?: "primary" | "secondary" | "ghost";
+  /** Not offered right now — «Mover» with no other tenant chosen. The server still decides. */
+  disabled?: boolean;
   onDone?: (answer: R) => void;
 }) {
   const copy = frameworkCopy().command;
@@ -65,7 +68,7 @@ export function CommandButton<T extends AnyRecord, R = unknown>({
       <Button
         size="sm"
         role={destructive ? "secondary" : role}
-        disabled={action.busy}
+        disabled={disabled || action.busy}
         onClick={() => void (destructive ? ask() : run())}
       >
         {label}

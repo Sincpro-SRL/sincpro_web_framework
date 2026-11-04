@@ -72,9 +72,16 @@ export function useRowCommands<T extends AnyRecord>(
       setRunning((now) => new Set(now).add(gesture));
       setError(null);
       try {
-        await transport.send(route.method, pathFor(route, id), body, undefined, {
-          idempotencyKey: retry.keyFor(body),
-        });
+        // A key of the route beyond `{id}` (`{tenant_id}`) is the row's, unless the body says it.
+        await transport.send(
+          route.method,
+          pathFor(route, id, { ...row, ...body }),
+          body,
+          undefined,
+          {
+            idempotencyKey: retry.keyFor(body),
+          },
+        );
         retry.settle(null);
         listing.reload();
       } catch (failure) {

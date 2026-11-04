@@ -84,8 +84,10 @@ export function EntityRecord<T extends AnyRecord>({
   const dirty = dirtyOf(reading);
   const created = summary?.created;
   const updated = summary?.updated;
+  // Who, only when the record says it (web-ui 1.9: an author is optional, the line then says
+  // only when). The moment goes as the framework writes every fact of the record.
   const stamp = (one: { at: string | null; by: string | null } | undefined) =>
-    one?.at == null ? undefined : { at: one.at, by: one.by ?? "—" };
+    one?.at == null ? undefined : { at: one.at, ...(one.by == null ? {} : { by: one.by }) };
   const createdStamp = stamp(created);
   const updatedStamp = stamp(updated);
   // Moving away with something typed would lose it: «save / discard» comes first.
@@ -94,6 +96,10 @@ export function EntityRecord<T extends AnyRecord>({
 
   return (
     <Record
+      // Where it is mounted decides the paper, not what the rail carries: crumbs, pager and
+      // actions come and go while it is on screen (loading, a draft), and the paper flipping
+      // with them remounted the form under the field being typed in. A modal is already a card.
+      placement={api.surface === "modal" ? "card" : "page"}
       identity={{
         title: summary?.name ?? copy.creating(nameOf(meta, locale) || ""),
         ...(summary?.type == null ? {} : { subtitle: summary.type }),
