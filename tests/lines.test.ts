@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 
 import {
+  addingOf,
   blankLine,
+  defineMeta,
   editableLines,
+  field,
+  lineFields,
   lineKey,
   linesAnswered,
   moved,
@@ -55,4 +59,50 @@ test("a line moves before another, or to the end, by key", () => {
   assert.equal(keys(moved(lines, "id", "c", "a")), "cab");
   assert.equal(keys(moved(lines, "id", "a", null)), "bca");
   assert.equal(keys(moved(lines, "id", "zz", "a")), "abc");
+});
+
+const productoLine = defineMeta({
+  aggregate: "LineaPedido",
+  identity: "id",
+  display: "product_code",
+  fields: {
+    id: field.text({ label: "Línea", readonly: true }),
+    product_code: field.text({ label: "Producto" }),
+    product: field.many2one(
+      "Producto",
+      { identifiedBy: "product_code" },
+      { label: "Producto" },
+    ),
+    quantity: field.integer({ label: "Cantidad" }),
+    delivered_at: field.datetime({ label: "Entregada", readonly: true }),
+    version: field.integer({ label: "Versión", readonly: true }),
+  },
+});
+const declared = (target: string) => target === "Producto";
+const none = () => false;
+
+test("a line is drawn by its scalars — a many2one by its key — never its id nor bookkeeping", () => {
+  assert.deepEqual(lineFields(productoLine), ["product_code", "quantity", "delivered_at"]);
+  assert.deepEqual(lineFields(null), []);
+});
+
+test("a line is added in the table when every field a person writes fits a cell", () => {
+  // The product is a picker of a declared entity; the date and time is only read.
+  assert.equal(addingOf(productoLine, declared), "inline");
+  // Its entity not declared, the product is an id nobody types: the dialog.
+  assert.equal(addingOf(productoLine, none), "editor");
+  // A date and time to WRITE has no control a cell holds.
+  const writable = {
+    ...productoLine,
+    fields: { ...productoLine.fields, delivered_at: field.datetime({ label: "Entregada" }) },
+  };
+  assert.equal(addingOf(writable, declared), "editor");
+  // No model, no columns to write in: the dialog.
+  assert.equal(addingOf(null, declared), "editor");
+});
+
+test("the screen may always ask for the dialog, and for the table only where it works", () => {
+  assert.equal(addingOf(productoLine, declared, "editor"), "editor");
+  assert.equal(addingOf(productoLine, declared, "inline"), "inline");
+  assert.equal(addingOf(productoLine, none, "inline"), "editor");
 });

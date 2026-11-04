@@ -23,6 +23,7 @@ export {
 } from "@sincpro/web-framework/web/list/rowCommands";
 export { facetsOf, modelOf } from "@sincpro/web-framework/web/list/search";
 export { CommandButton } from "@sincpro/web-framework/web/record/CommandButton";
+export { RelationPicker } from "@sincpro/web-framework/web/record/control";
 export {
   dirtyOf,
   type FieldControl,

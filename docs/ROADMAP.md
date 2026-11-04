@@ -241,7 +241,10 @@ El mapa contra el que se mide lo que falta. «Dueño» es quien tiene que movers
 | Duplicar                                            | —                                                | —          | ❌     | backend (`copy: false`)                        |
 | Archivar / eliminar                                 | —                                                | —          | ❌     | backend (convención)                           |
 | Anterior / siguiente desde el registro              | `EntityRecord` + el rastro de la lista (`Trail`) | 29         | ✅     |                                                |
-| Líneas editables (one2many)                         | —                                                | —          | ❌     | backend #229; web-ui `LineItems` ya está       |
+| Líneas editables (one2many)                         | `RecordField name="lines"` (`RecordLinesEditor`) | 31         | ✅     |                                                |
+| …escritas en la tabla o en el diálogo               | `addingOf`, `RecordField adding`                 | 31         | ✅     |                                                |
+| …con un many2one en la línea (un producto)          | `RelationPicker` en la celda                     | 31         | ✅     |                                                |
+| Agregar a un one2many de entidad propia             | «Agregar» de `RelatedList`, `newRef(values)`     | 28         | ✅     |                                                |
 | Comandos con prueba en seco                         | `useCommand`, `CommandButton`                    | 10         | ✅     |                                                |
 | Reintentar sin duplicar                             | `Idempotency-Key`, `retryKeys`                   | 17         | ✅     |                                                |
 | Acciones por fila                                   | `commands`, `useRowCommands`                     | 23         | ✅     |                                                |
@@ -703,8 +706,8 @@ líneas: 273 → 36 ms por tecla, medido por web-ui). `RecordLinesEditor` lo usa
   (un `id` que el servidor no conoce).
 - Cada celda respeta `states.lines.items[i]` (el precio fijado por volumen, de lectura).
 
-Sigue: editar en la celda (las columnas `edit` de `LineItems`) en vez de sólo en el diálogo —
-falta ver cómo se nombra un control dentro de una celda para un lector de pantalla.
+~~Sigue: editar en la celda~~ (hecho, ver «Dónde se escribe una línea»): un control de celda se
+nombra con `aria-label` (`FieldControl.standalone`), y sólo ahí.
 
 ## Revisión de la UI: la cola (2026-11-04)
 
@@ -791,8 +794,8 @@ Orden de trabajo: 1 → 2 → 4 → 5 → 3 (planilla; calendario y pivote del s
   aplastan los controles. Hoy el framework elige 1 o 2 por superficie; mejor una container query.
 - **web-ui `DataColumn`** — una opción `nowrap` (o que `mono` no parta): hoy el framework envuelve la
   celda en un `span`.
-- **web-ui orden** — `SortState` es UNO: la tabla no puede mostrar «Estado ↑, Total ↓» ni ⇧-clic
-  para sumar un campo; el constructor sí arma varios.
+- ~~**web-ui orden**~~ (resuelto con web-ui 1.7, ver «web-ui 1.7») — `SortState` era UNO: la
+  tabla no podía mostrar «Estado ↑, Total ↓» ni ⇧-clic para sumar un campo.
 - **web-ui `CriteriaBuilder`** — las fichas de orden y la lista de «ordenar por…» muestran el
   nombre técnico (`amount_total`), no la etiqueta del modelo.
 - **web-ui `SearchBar`** — con Enter toma la primera sugerencia, que puede ser «Estado es 0060» (un
@@ -807,6 +810,87 @@ Orden de trabajo: 1 → 2 → 4 → 5 → 3 (planilla; calendario y pivote del s
   `pivotOf` lo pliega en el `Pivot` de web-ui (`folded`) con las palabras del modelo («Pagada»,
   «Efectivo»). Historia `35 · Cruzar un conjunto por dos campos` (falla si no pregunta). El total
   general no se dibuja: nadie lo contestó y no se suman celdas.
+
+## web-ui 1.7 (2026-11-04)
+
+**Ordenar por varios campos, también en la tabla.** `sort` es `SortState[]` y `onSortChange`
+recibe la lista (rotura de 1.7). `EntityList` le pasa `listing.order` entero y escribe lo que
+vuelve, entero: ⇧-clic en un encabezado suma un campo, el menú de orden los reordena, y es la
+misma lista que arma el constructor. Historia `20 · VariosDesdeLosEncabezados` (falla si se queda
+con un solo campo). criteria sigue en 0.3.1 (ya era la versión).
+
+**Controles con formato** (contraseña, tarjeta, correo, teléfono, web, duración, máscara, código,
+color; `NumberInput format/units/rounding`; `Numeric format/signed`). El framework no los elige
+solo: la meta de sincpro_framework publica `text`, `number`, `date`… y ninguno dice «esto es un
+correo» o «esto es plata en Bs». Hasta que el backend lo diga (un `format` del campo: `email`,
+`phone`, `url`, `duration`, `monetary` con su moneda), una pantalla los pone con `RecordField as`.
+Pedido al backend; nada se adivina acá por el nombre del campo.
+
+## Dónde se escribe una línea, y agregar a un one2many (2026-11-04)
+
+**Una línea se escribe donde está.** Era un botón arriba que abría un diálogo. Ahora es una sola
+decisión (`addingOf`, en `core/lines`, probada en Node): en la **tabla** —«Agregar una línea» es
+su última fila, una fila se escribe en el lugar, el lápiz abre la línea entera en su diálogo—
+siempre que cada campo que se escribe quepa en una celda; en el **diálogo** si alguno no cabe o si
+la pantalla lo pide (`RecordField adding="editor"`). Una fila que no se puede terminar donde se
+abrió es una trampa, así que «inline» nunca se fuerza. Cabe en una celda: texto, número, fecha,
+sí/no, opciones, lista de palabras y un **many2one de una entidad declarada** (el picker en la
+celda). No cabe: una fecha con hora, un valor `embedded`, un many2one de una entidad que la
+aplicación no declaró (sería un id que nadie tipea). Lo que es de sólo lectura no cuenta. En una
+caja angosta web-ui dibuja tarjetas que abren el diálogo.
+
+- Las columnas son los **escalares** de la línea, como un formulario (`lineFields`): un many2one
+  es su clave (`product_code`), **nombrada por su relación** («Cemento 50 kg», no «CEM-50»). Elegir
+  un producto deja el registro elegido junto a la clave (`EntityPicker onChange(id, chosen)`):
+  la celda lo nombra sin preguntar otra vez.
+- Una celda dibuja el texto del modelo (`cell`): antes `LineItems` dibujaba el valor crudo
+  («1552.00», «CEM-50») — sólo la búsqueda leía `text`.
+- **Arreglado de paso**: el editor de la línea dibujaba un many2one con `controlFor` (un
+  `TextInput` con la clave a mano). Ahora es el mismo `RelationPicker` del formulario.
+- Dentro de una línea —celda o diálogo— «Buscar más…» es el selector propio del picker, nunca el
+  del workspace: se abre fuera de la fila (la fila se confirma al perder el foco) o sería un modal
+  sobre el diálogo.
+
+**Agregar a un one2many de entidad propia.** `RelatedList` no tenía cómo: `embedded` apaga el
+«Nuevo». Ahora ofrece «Agregar», que abre el formulario de un registro nuevo **que ya apunta a
+éste** (`entity.newRef({ customer_id })`) donde dice la vista (`RecordOpening.create`: en un
+workspace, `api.pick` como modal —al costado desde un modal—); creado, **contesta** (`api.answer`
+en `useRecordInWorkspace`, en vez de `api.replace`) y la lista se vuelve a leer. Nunca una fila de
+la tabla: cada hijo es un agregado con su alta, sus reglas y su preview. Sin registro todavía no
+hay a qué apuntar: no hay botón. Fuera de un workspace, tampoco (`web/record/` no importa
+composer).
+
+- Lo que arranca un registro nuevo viaja en la referencia como JSON en un param (`with`): un
+  número sigue siendo número, y sobrevive a un reload y a un link. Lo lee `startingValuesOf`; un
+  `with` escrito a mano que no es un objeto se ignora, no rompe. `useRecord(entidad, resource)`
+  acepta la referencia y arranca con esos valores sobre los defaults. **Una vista de registro
+  propia tiene que pasar `resource`** (no `resource.id`) para recibirlos.
+
+Historias: `31 · AgregarEnLaTabla`, `UnProductoEnLaCelda`, `SinSuEntidadSeAgregaEnElDialogo`,
+`AgregarEnElDialogoCambiarYGuardar`; `28 · AgregarUnaFacturaAlCliente`, `SinRegistroNoSeAgrega`.
+Probado que fallan: con `addingOf` siempre en «inline» falla `SinSuEntidad…`; con el alta que nunca
+contesta, `AgregarUnaFacturaAlCliente`.
+
+Encontrado:
+
+- **Un bloque dentro de un `Field` de web-ui le presta su id a cada control.** `RecordField`
+  envolvía las líneas y la lista relacionada en `<Field>`: cada control de celda (y la barra de la
+  lista) tomaba el mismo `id` y el nombre de la relación (`useFieldIds`). Un one2many va en
+  `FormSection title`. web-ui podría aislarlo en `EditableTable` (ver pedidos).
+- **`aria-label` dentro de un `Field` duplica el nombre**: React Aria suma las dos fuentes
+  («Precio Precio»). El control sólo se nombra solo donde nada lo nombra
+  (`FieldControl.standalone`, `RelationPicker standalone`).
+- **Una relación se resuelve a su entidad por `aggregate`** (declarado en `entity()`) o por la meta
+  ya leída. Sin ninguno de los dos, un producto de una línea no es «declarado» y la línea va al
+  diálogo hasta que la meta llegue. `productos` declara `aggregate: "Producto"`.
+
+### Pedidos a web-ui que salen de esto
+
+- **`EditableTable` / `LineItems`** — aislar el contexto de `Field` para las celdas: una tabla
+  dentro de un `Field` le pasa el mismo `id` y `aria-labelledby` a todos sus controles.
+- **`LineItems`** — una columna con `text` y sin `cell` dibuja el `value` crudo: que dibuje `text`.
+- **Controles dentro de un `Field` con `aria-label`** — el nombre sale doble; que el `Field` gane
+  (o que se documente).
 
 ## Decisiones abiertas
 

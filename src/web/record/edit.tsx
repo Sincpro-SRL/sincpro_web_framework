@@ -3,13 +3,16 @@
 import { type AnyRecord, choicesOf } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { errorAt } from "@sincpro/web-framework/core/edit";
-import { editableLines } from "@sincpro/web-framework/core/lines";
+import { editableLines, type LineAdding } from "@sincpro/web-framework/core/lines";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
 import { relationFieldOf } from "@sincpro/web-framework/core/relation";
 import { useEntityFor, useFramework } from "@sincpro/web-framework/react/context";
 import type { RecordReading } from "@sincpro/web-framework/react/useRecord";
-import { controlFor, type FieldControl } from "@sincpro/web-framework/web/record/control";
-import { EntityPicker } from "@sincpro/web-framework/web/record/EntityPicker";
+import {
+  controlFor,
+  type FieldControl,
+  RelationPicker,
+} from "@sincpro/web-framework/web/record/control";
 import { RecordLinesEditor } from "@sincpro/web-framework/web/record/lines";
 import { useRecordOpening } from "@sincpro/web-framework/web/record/opening";
 import { RecordLines } from "@sincpro/web-framework/web/record/record";
@@ -19,6 +22,7 @@ import {
   Checkbox,
   type DirtyState,
   Field,
+  FormSection,
   type OpenTarget,
   ReadValue,
   RelationValue,
@@ -51,12 +55,16 @@ export function RecordField<T extends Record<string, unknown>>({
   name,
   as,
   bare = false,
+  adding,
 }: {
   record: RecordReading<T>;
   name: string;
   as?: (control: FieldControl) => ReactNode;
   /** The control without its label — inside a page or a section that already names it. */
   bare?: boolean;
+  /** Lines (a one2many of no entity of its own): how «Agregar una línea» adds — in the table
+   *  by default, wherever every field fits a cell (`addingOf`). */
+  adding?: LineAdding;
 }) {
   const { meta, locale, edit } = record;
   const view = viewOf(meta, name, locale);
@@ -66,6 +74,9 @@ export function RecordField<T extends Record<string, unknown>>({
   const opening = useRecordOpening();
   const { metas } = useFramework();
   if (!state.visible) return null;
+  // A one2many is a BLOCK, named by a section — never a `Field`: web-ui's controls read the
+  // id and the label of the `Field` around them, and every cell and the list's search bar
+  // took the same id and the relation's name.
   // A one2many of a declared entity is that entity's own list, filtered to this record by
   // the server — never the page the record happened to bring — and a row opens its record.
   // A one2many of no declared entity (the lines of an invoice): edited inside the record as a
@@ -78,9 +89,14 @@ export function RecordField<T extends Record<string, unknown>>({
       whole === null ? (
         <RecordLines record={record.record ?? {}} meta={meta} name={name} locale={locale} />
       ) : (
-        <RecordLinesEditor record={record} name={name} lines={whole} />
+        <RecordLinesEditor
+          record={record}
+          name={name}
+          lines={whole}
+          {...(adding === undefined ? {} : { adding })}
+        />
       );
-    return bare ? lines : <Field label={view.label}>{lines}</Field>;
+    return bare ? lines : <FormSection title={view.label}>{lines}</FormSection>;
   }
   if (as === undefined && relation?.field.type === "one2many" && target !== undefined) {
     const list = (
@@ -109,7 +125,7 @@ export function RecordField<T extends Record<string, unknown>>({
             })())}
       />
     );
-    return bare ? list : <Field label={view.label}>{list}</Field>;
+    return bare ? list : <FormSection title={view.label}>{list}</FormSection>;
   }
   const value = edit.values[name];
   const error = errorAt(edit.errors, name);
@@ -140,27 +156,12 @@ export function RecordField<T extends Record<string, unknown>>({
               })}
         />
       );
-    const answer = (next: string) => edit.set(relation.key, next);
     return (
-      <EntityPicker
-        entity={target}
+      <RelationPicker
+        target={target}
         value={id}
-        onChange={answer}
-        // «Buscar más…» is an option of the picker already: no second button beside it.
-        browse={false}
-        aria-label={view.label}
-        {...(opening === null
-          ? {}
-          : {
-              onOpen: (chosen: string, to: OpenTarget) =>
-                opening.open(target.ref(chosen), to),
-              openTargets: opening.targets,
-              ...(opening.choose === undefined
-                ? {}
-                : {
-                    onBrowseAll: (query: string) => opening.choose?.(target, answer, query),
-                  }),
-            })}
+        onChange={(next) => edit.set(relation.key, next)}
+        label={view.label}
       />
     );
   }

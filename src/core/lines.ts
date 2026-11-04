@@ -1,5 +1,7 @@
-import type { AnyRecord } from "@sincpro/criteria";
+import type { AnyRecord, Meta } from "@sincpro/criteria";
+import { BOOKKEEPING, defaultFields } from "@sincpro/web-framework/core/present";
 import { relatedOf } from "@sincpro/web-framework/core/related";
+import { relationFieldOf } from "@sincpro/web-framework/core/relation";
 
 /**
  * The lines of an aggregate as a form edits them: the whole list, in order.
@@ -79,4 +81,65 @@ export function moved<T extends AnyRecord>(
     line,
     ...rest.slice(at < 0 ? rest.length : at),
   ];
+}
+
+/** Where «Agregar una línea» writes the new line: a row of the table, or the line's dialog. */
+export type LineAdding = "inline" | "editor";
+
+/** Whether an aggregate of the application answers for `target` («Producto»). */
+export type Declared = (target: string) => boolean;
+
+/** The value types a cell has a control for: each one fits the width of a column. */
+const CELL_TYPES: ReadonlySet<string> = new Set([
+  "text",
+  "integer",
+  "number",
+  "date",
+  "boolean",
+  "text[]",
+]);
+
+/**
+ * The fields a line is drawn and written by: its scalars, as a form's — never its identity
+ * (the server mints it) nor the bookkeeping. A many2one is its key (`product_code`), which the
+ * screen names by its relation (`product`).
+ */
+export function lineFields(definition: Meta | null): string[] {
+  if (definition === null) return [];
+  return defaultFields(definition).filter(
+    (field) => field !== definition.identity && !BOOKKEEPING.has(field),
+  );
+}
+
+/**
+ * Whether a field of a line can be written inside its cell.
+ *
+ * Context: a cell holds a control as wide as its column. A many2one is a picker only when the
+ * application declared the entity it points at — otherwise its key is an id nobody types.
+ * A date and time, an embedded value or anything the table has no control for needs the
+ * dialog's room.
+ */
+export function writtenInCell(definition: Meta, field: string, declared: Declared): boolean {
+  const relation = relationFieldOf(definition, field);
+  if (relation !== undefined) return !relation.many && declared(relation.target);
+  return CELL_TYPES.has(definition.fields[field]?.type ?? "");
+}
+
+/**
+ * How «Agregar una línea» adds: in the table when every field a person may write fits a cell,
+ * in the dialog otherwise — a row that cannot be finished where it was opened is a trap.
+ * `asked` is the screen's: «editor» always holds, «inline» only where it works.
+ */
+export function addingOf(
+  definition: Meta | null,
+  declared: Declared,
+  asked?: LineAdding,
+): LineAdding {
+  if (asked === "editor" || definition === null) return "editor";
+  const fits = lineFields(definition).every(
+    (field) =>
+      definition.fields[field]?.readonly === true ||
+      writtenInCell(definition, field, declared),
+  );
+  return fits ? "inline" : "editor";
 }

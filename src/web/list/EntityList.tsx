@@ -407,7 +407,14 @@ export function EntityList<T extends AnyRecord>({
         })),
     [shown],
   );
-  const first = listing.order[0];
+  const sortStates = useMemo(
+    () =>
+      listing.order.map((one) => ({
+        key: one.field,
+        direction: one.descending ? ("desc" as const) : ("asc" as const),
+      })),
+    [listing.order],
+  );
   const sortable = useMemo(
     () =>
       shown
@@ -514,19 +521,15 @@ export function EntityList<T extends AnyRecord>({
       present={present}
       onPresentChange={(next) => setPresent(next as View)}
       {...grouping}
-      // web-ui's table and sort menu say ONE order (the first); several are written in the
-      // criteria builder of the bar, and a header click asks for that one alone.
-      sort={
-        first === undefined
-          ? null
-          : { key: first.field, direction: first.descending ? "desc" : "asc" }
-      }
+      // The whole order, as web-ui 1.7 shows and sets it: ⇧-click on a header adds a field,
+      // the sort menu reorders them — the same list the criteria builder writes.
+      sort={sortStates}
       // The faces with no headers (rows, board) sort too, by the fields the model marks
       // sortable — on the server, so no `value` is given.
       sortable={sortable}
       onSortChange={(next) =>
         listing.orderBy(
-          next === null ? null : { field: next.key, descending: next.direction === "desc" },
+          next.map((one) => ({ field: one.key, descending: one.direction === "desc" })),
         )
       }
       state={{

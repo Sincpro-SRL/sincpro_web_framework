@@ -123,6 +123,9 @@ export const productoMeta = defineMeta({
 /** Its picture, state and description go by names of its own: declared once, here. */
 export const productos = entity<Producto>("inventario:producto", {
   list: "/productos",
+  // What a relation of another model calls it («Producto»): a line's product resolves to it
+  // before its own model was ever read.
+  aggregate: "Producto",
   summary: { image: "picture", state: "availability", description: "notes" },
 });
 

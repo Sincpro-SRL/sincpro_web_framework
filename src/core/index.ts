@@ -40,19 +40,26 @@ export {
   pathFor,
   PICK_PARAM,
   QUERY_PARAM,
+  startingValuesOf,
   TRAIL_PARAM,
+  WITH_PARAM,
   type WriteRoute,
   writeRoute,
 } from "@sincpro/web-framework/core/entity";
 export { type FormLayout, formOf } from "@sincpro/web-framework/core/form";
 export { type HistoryEntry, historyOf } from "@sincpro/web-framework/core/history";
 export {
+  addingOf,
   blankLine,
+  type Declared,
   editableLines,
+  type LineAdding,
+  lineFields,
   lineKey,
   linesAnswered,
   moved,
   sameLine,
+  writtenInCell,
 } from "@sincpro/web-framework/core/lines";
 export {
   defineList,

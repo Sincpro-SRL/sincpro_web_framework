@@ -1,5 +1,6 @@
 "use client";
 
+import type { AnyRecord } from "@sincpro/criteria";
 import type { Entity, EntityRef } from "@sincpro/web-framework/core/entity";
 import type { OpenTarget } from "@sincpro/web-ui";
 import { createContext, type ReactNode, useContext } from "react";
@@ -24,6 +25,10 @@ export type RecordOpening = {
   /** «Buscar más…»: the entity's own list opened to choose (in composer, a modal that answers),
    *  on what was typed. Without it the picker brings its own chooser. */
   choose?: (entity: Entity, answer: (id: string) => void, query: string) => void;
+  /** «Agregar» on a one2many: the form of a new record of `entity`, starting with `values`
+   *  (the key that points back here), opened where it answers; `created` once it exists.
+   *  Without it a record's one2many only reads. */
+  create?: (entity: Entity, values: AnyRecord, created: () => void) => void;
 };
 
 const Opening = createContext<RecordOpening | null>(null);

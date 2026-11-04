@@ -13,7 +13,13 @@ import {
   lineStatesOf,
   missingOf,
 } from "@sincpro/web-framework/core/edit";
-import { type Entity, pathFor } from "@sincpro/web-framework/core/entity";
+import {
+  type Entity,
+  type EntityRef,
+  pathFor,
+  startingValuesOf,
+  WITH_PARAM,
+} from "@sincpro/web-framework/core/entity";
 import { linesAnswered } from "@sincpro/web-framework/core/lines";
 import { retryKeys } from "@sincpro/web-framework/core/retry";
 import { type Draft, TransportError } from "@sincpro/web-framework/core/transport";
@@ -40,10 +46,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
  *     defaults the model publishes, previews like any other, and `save()` sends it to the
  *     entity's `create` route with an `Idempotency-Key` (a retry never creates two). When the
  *     answer carries the new identity, the hook becomes that record; otherwise `edit.created`
- *     holds the answer and the screen decides where to go.
+ *     holds the answer and the screen decides where to go. Given the REFERENCE it was opened
+ *     with, a new record starts with what the reference carries over the defaults
+ *     (`newRef(values)`): an invoice created from its customer starts with that customer.
  *
  *     const invoice = useRecord(invoices, "");          // a new one
  *     const invoice = useRecord(invoices, "F-2026-7");  // an existing one
+ *     const invoice = useRecord(invoices, resource);    // what the workspace opened
  */
 export type RecordState<T> =
   | { status: "loading"; record: null; meta: Meta | null; error: null }
@@ -108,9 +117,13 @@ const PREVIEW_PAUSE = 300;
 
 export function useRecord<T extends AnyRecord>(
   entity: Entity<T>,
-  given: string,
+  opened: string | EntityRef,
 ): RecordReading<T> {
   const { transport, locale, metas } = useFramework();
+  const given = typeof opened === "string" ? opened : (opened.id ?? "");
+  // As written in the reference: a text compares by value, so a new render with the same
+  // reference is not a new start.
+  const start = typeof opened === "string" ? undefined : opened.params?.[WITH_PARAM];
   // A create that answered its identity turns this into that record — until the screen asks
   // for another one.
   const [born, setBorn] = useState<{ from: string; id: string } | null>(null);
@@ -180,9 +193,11 @@ export function useRecord<T extends AnyRecord>(
           forget();
           setDraft(null);
           setReadFor(id);
+          const starting =
+            start === undefined ? {} : startingValuesOf({ params: { [WITH_PARAM]: start } });
           setState({
             status: "ready",
-            record: defaultsOf(meta) as T,
+            record: { ...defaultsOf(meta), ...starting } as T,
             meta: meta ?? null,
             error: null,
           });
@@ -222,7 +237,7 @@ export function useRecord<T extends AnyRecord>(
     // `forget` only resets this hook's own state; listing it would reload the record on every
     // render. What reloads it is the transport, the entity, the id or an explicit `reload()`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transport, metas, entity, id, isNew, round]);
+  }, [transport, metas, entity, id, isNew, start, round]);
   useEffect(() => {
     mounted.current = true;
     return () => {

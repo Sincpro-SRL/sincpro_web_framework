@@ -1,6 +1,7 @@
 import type { AnyRecord, Criteria, Meta, Problem } from "@sincpro/criteria";
 import {
   type Draft,
+  type Entity,
   FrameworkProvider,
   memoryTransport,
   type Method,
@@ -25,6 +26,7 @@ export function Escenario({
   draft,
   observe,
   metas,
+  entities,
   children,
 }: {
   tables: Readonly<Record<string, { meta: Meta; rows: readonly AnyRecord[] }>>;
@@ -35,6 +37,8 @@ export function Escenario({
   observe?: (route: string, criteria: Criteria) => void;
   /** Definitions known before any request: the preload. */
   metas?: Readonly<Record<string, Meta>>;
+  /** The application's entities: what a relation of a model resolves to. */
+  entities?: readonly Entity[];
   children: ReactNode;
 }) {
   const transport = useMemo(
@@ -49,7 +53,12 @@ export function Escenario({
     [tables, latency, refuse, handle, draft, observe],
   );
   return (
-    <FrameworkProvider transport={transport} locale="es" {...(metas ? { metas } : {})}>
+    <FrameworkProvider
+      transport={transport}
+      locale="es"
+      {...(metas ? { metas } : {})}
+      {...(entities ? { entities } : {})}
+    >
       <div className="min-h-dvh bg-ground p-6">
         <div className="@container overflow-clip rounded-box border border-line-strong bg-surface">
           {children}

@@ -9,6 +9,7 @@ import {
   PICK_PARAM,
   restTransport,
   retryKeys,
+  startingValuesOf,
   TransportError,
   unanswered,
 } from "@sincpro/web-framework";
@@ -52,6 +53,25 @@ test("an entity declares where a new record goes, and the references of «new» 
   });
   assert.deepEqual(invoices.chooserRef().params, { [PICK_PARAM]: "1" });
   assert.equal(entity("a:b", { list: "/b" }).create, undefined);
+});
+
+test("a new record's reference carries what it starts with, each value keeping its type", () => {
+  const invoices = entity("billing:invoice", { list: "/invoices" });
+  const ref = invoices.newRef({ customer_id: "C-004", discount: 5, urgent: true });
+  assert.equal(ref.params?.[NEW_PARAM], "1");
+  assert.deepEqual(startingValuesOf(ref), {
+    customer_id: "C-004",
+    discount: 5,
+    urgent: true,
+  });
+  // Nothing to start with is the plain «new»: the same reference as before.
+  assert.deepEqual(invoices.newRef({}), invoices.newRef());
+  assert.deepEqual(startingValuesOf(invoices.newRef()), {});
+});
+
+test("a starting value written by hand in a link is read or ignored, never thrown", () => {
+  for (const written of ["{", "[1,2]", "null", '"text"', "3"])
+    assert.deepEqual(startingValuesOf({ params: { with: written } }), {});
 });
 
 test("a gesture keeps its key while nobody knows what happened, and drops it once answered", () => {

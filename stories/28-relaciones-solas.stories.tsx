@@ -24,7 +24,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          'Un many2one no se escribe a mano: `<RecordField name="customer_id" />` y nada más. La metadata dice a qué apunta (`relation: "Cliente"`, escrito por `customer_id`), la aplicación declaró esa entidad una vez (`SincproApp entities`), y el campo es un `EntityPicker` de clientes — búsqueda literal en el servidor, los diez primeros, «Buscar más…» como la lista que contesta — que abre el cliente en un **modal** con «Abrir en…» para el resto. Dónde abre lo dice la vista que contiene el formulario (`entityView`): el mismo formulario fuera de un espacio de trabajo no abre nada.',
+          'Un many2one no se escribe a mano: `<RecordField name="customer_id" />` y nada más. La metadata dice a qué apunta (`relation: "Cliente"`, escrito por `customer_id`), la aplicación declaró esa entidad una vez (`SincproApp entities`), y el campo es un `EntityPicker` de clientes — búsqueda literal en el servidor, los diez primeros, «Buscar más…» como la lista que contesta — que abre el cliente en un **modal** con «Abrir en…» para el resto. Dónde abre lo dice la vista que contiene el formulario (`entityView`): el mismo formulario fuera de un espacio de trabajo no abre nada. Un one2many de una entidad propia **agrega** con «Agregar»: el formulario de un registro nuevo que ya apunta a éste (`newRef({ customer_id })`), en un modal que contesta cuando existe — y la lista se vuelve a leer. Nunca una fila de la tabla: cada factura es un agregado con su alta, sus reglas y su preview.',
       },
     },
   },
@@ -35,7 +35,8 @@ type Story = StoryObj;
 const GLOBEX_INVOICE = "F-2026-0004";
 
 function Factura({ api, resource }: ViewProps) {
-  const factura = useRecord(facturas, resource.id ?? "");
+  // The reference, not only its id: a new invoice opened from a customer starts with it.
+  const factura = useRecord(facturas, resource);
   const crumbs = useCrumbs(api);
   useRecordInWorkspace(api, factura);
   const dirty = dirtyOf(factura);
@@ -173,5 +174,35 @@ export const UnOne2manyQueAbreSusFilas: Story = {
     await expect(
       within(modal).queryByRole("button", { name: "Abrir en un modal" }),
     ).toBeNull();
+  },
+};
+
+export const AgregarUnaFacturaAlCliente: Story = {
+  render: () => <App start={clientes.ref("C-004")} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("heading", { name: "Globex Bolivia" });
+    await userEvent.click(await canvas.findByRole("button", { name: "Agregar" }));
+    // The new invoice's form, in a modal over the customer — already pointing back to it.
+    const modal = within(await canvas.findByRole("dialog", { name: /nuevo/ }));
+    const cliente = await modal.findByRole("combobox", { name: /Cliente \(código\)/ });
+    await waitFor(() => expect(cliente).toHaveValue("Globex Bolivia"));
+    await userEvent.type(modal.getByLabelText("Nota"), "Pedido por teléfono");
+    await userEvent.click(modal.getByRole("button", { name: "Guardar" }));
+    // Created, it answers: the modal closes and the customer's invoices are read again.
+    await waitFor(() => expect(canvas.queryByRole("dialog")).toBeNull());
+    await expect(await canvas.findByText("Pedido por teléfono")).toBeVisible();
+    await expect(canvas.getByRole("heading", { name: "Globex Bolivia" })).toBeVisible();
+  },
+};
+
+export const SinRegistroNoSeAgrega: Story = {
+  render: () => <App start={clientes.newRef()} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // A customer that does not exist yet has nothing for an invoice to point back to: its
+    // invoices are searched (the bar is there, the model known) but nothing adds to them.
+    await canvas.findByRole("combobox", { name: "Buscar" });
+    await expect(canvas.queryByRole("button", { name: "Agregar" })).toBeNull();
   },
 };

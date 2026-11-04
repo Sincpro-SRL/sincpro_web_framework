@@ -29,7 +29,8 @@ import { type ComponentType, type ReactNode, useMemo } from "react";
  *
  * A reference with no id is the list — opened to choose one when it carries `pick` — and one
  * with `new` is the record's own view with no id: the form of a record that does not exist yet
- * (`entity.newRef()`), which `useRecord(entity, "")` fills with the model's defaults.
+ * (`entity.newRef(values)`), which `useRecord(entity, resource)` fills with the model's defaults
+ * and what the reference carries.
  *
  * ⌘K asks the server with `matching` — 8 records, identity and display — the same question a
  * many2one asks. The model definition is asked for once, on the first search, unless `meta`
@@ -53,25 +54,31 @@ export type EntityViewOptions = {
 
 /**
  * The fields of a view open their records in the workspace: a modal over this surface by
- * default, beside it from inside a modal, and «Buscar más…» as the entity's list that answers.
+ * default, beside it from inside a modal, «Buscar más…» as the entity's list that answers, and
+ * a one2many's «Agregar» as the new record's form that answers once it exists.
  */
 function InWorkspace({ api, children }: { api: WorkspaceApi; children: ReactNode }) {
   const targets = targetsFor(api);
-  const opening = useMemo<RecordOpening>(
-    () => ({
+  const opening = useMemo<RecordOpening>(() => {
+    // Never a modal over a modal: from inside one, what answers docks beside it.
+    const answering =
+      targets[0] === "modal"
+        ? { to: "modal" as const, size: RECORD_SIZE }
+        : { to: "side" as const };
+    return {
       open: (ref, to) => openIn(api, ref, to),
       targets,
       narrow: api.surface !== "page",
       choose: (entity, answer, query) =>
-        api.pick(entity.chooserRef(query), (ref) => ref.id === undefined || answer(ref.id), {
-          // Never a modal over a modal: from inside one, the chooser docks beside it.
-          ...(targets[0] === "modal"
-            ? { to: "modal" as const, size: RECORD_SIZE }
-            : { to: "side" as const }),
-        }),
-    }),
-    [api, targets],
-  );
+        api.pick(
+          entity.chooserRef(query),
+          (ref) => ref.id === undefined || answer(ref.id),
+          answering,
+        ),
+      create: (entity, values, created) =>
+        api.pick(entity.newRef(values), () => created(), answering),
+    };
+  }, [api, targets]);
   return <RecordOpeningProvider value={opening}>{children}</RecordOpeningProvider>;
 }
 

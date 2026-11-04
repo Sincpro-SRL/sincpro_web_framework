@@ -30,8 +30,10 @@ export type Entity<T extends AnyRecord = AnyRecord> = {
   /** Where the workspace finds it: the list without an id, one record with it — the shape of a
    *  composer `ResourceRef`, built here so no screen writes `{ domain, kind, id }` by hand. */
   ref: (id?: string) => EntityRef;
-  /** A record that does not exist yet — the form that creates one. Its view is the record's. */
-  newRef: () => EntityRef;
+  /** A record that does not exist yet — the form that creates one. Its view is the record's.
+   *  With `values`, the form starts with them over the model's defaults: an invoice created
+   *  from its customer starts with that customer (`startingValuesOf`). */
+  newRef: (values?: AnyRecord) => EntityRef;
   /** Its list opened to CHOOSE one: a row answers whoever asked (composer's `api.pick`). With
    *  `query`, the list opens on that literal search — what was typed in the picker. */
   chooserRef: (query?: string) => EntityRef;
@@ -80,6 +82,28 @@ export const PICK_PARAM = "pick";
 export const QUERY_PARAM = "q";
 /** The list a record was opened from (its `Trail`): «3 / 64» and the arrows to its neighbours. */
 export const TRAIL_PARAM = "from";
+/** What a new record starts with, as JSON: one param keeps each value's type (a number stays
+ *  a number), where a param per field would turn all of them into text. */
+export const WITH_PARAM = "with";
+
+/**
+ * What a new record's reference says it starts with (`newRef(values)`), or nothing.
+ *
+ * Context: a reference survives a reload and a link, so its params can be anything a person
+ * typed in the address bar — a value that is not a JSON object is not a start, never an error.
+ */
+export function startingValuesOf(ref: Pick<EntityRef, "params">): AnyRecord {
+  const written = ref.params?.[WITH_PARAM];
+  if (written === undefined) return {};
+  try {
+    const read: unknown = JSON.parse(written);
+    return read !== null && typeof read === "object" && !Array.isArray(read)
+      ? (read as AnyRecord)
+      : {};
+  } catch {
+    return {};
+  }
+}
 
 /** A write: its method and its path, `{id}` where the record's key goes. */
 export type WriteRoute = { method: Method; path: string };
@@ -132,7 +156,16 @@ export function entity<T extends AnyRecord = AnyRecord>(
     domain,
     kind,
     ref: (id) => ({ domain, kind, ...(id === undefined || id === "" ? {} : { id }) }),
-    newRef: () => ({ domain, kind, params: { [NEW_PARAM]: "1" } }),
+    newRef: (values) => ({
+      domain,
+      kind,
+      params: {
+        [NEW_PARAM]: "1",
+        ...(values === undefined || Object.keys(values).length === 0
+          ? {}
+          : { [WITH_PARAM]: JSON.stringify(values) }),
+      },
+    }),
     chooserRef: (query) => ({
       domain,
       kind,
