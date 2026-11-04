@@ -23,9 +23,11 @@ import { useEffect } from "react";
  *
  * A NEW record (opened with `entity.newRef()`) reads «Facturas · nuevo» until it exists; the
  * moment its create answers, the surface is REPLACED by the record it became (`api.replace`):
- * no crumb leads back to an empty form, and the window, peek or page it was in stays.
+ * no crumb leads back to an empty form, and the window, peek or page it was in stays. Opened
+ * to ANSWER (`api.pick(entity.newRef(…))` — «Agregar» on a record's one2many), it answers the
+ * record it became instead, and the surface closes: whoever asked reads it again.
  *
- *     const invoice = useRecord(invoices, resource.id ?? "");
+ *     const invoice = useRecord(invoices, resource);
  *     useRecordInWorkspace(api, invoice);
  */
 export function useRecordInWorkspace<T extends AnyRecord>(
@@ -42,9 +44,11 @@ export function useRecordInWorkspace<T extends AnyRecord>(
   const opened = api.self.id ?? "";
   const { entity, id } = record;
 
-  // Created here: show what it became, in place of the form.
+  // Created here: show what it became in place of the form — or hand it to whoever asked.
   useEffect(() => {
-    if (opened === "" && id !== "") api.replace(entity.ref(id));
+    if (opened !== "" || id === "") return;
+    if (api.choosing === null) api.replace(entity.ref(id));
+    else api.answer(entity.ref(id));
   }, [api, opened, entity, id]);
 
   useEffect(() => {

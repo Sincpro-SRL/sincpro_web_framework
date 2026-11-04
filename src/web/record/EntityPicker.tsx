@@ -65,7 +65,9 @@ export function EntityPicker<T extends AnyRecord>({
   /** Which records may be chosen at all: applied by the server under what is typed. */
   criteria?: Criteria<T>;
   value?: string;
-  onChange: (id: string) => void;
+  /** The key chosen, and its record when the choice brought it — what a line keeps beside the
+   *  key so its cell names the choice without asking again. */
+  onChange: (id: string, chosen?: T) => void;
   /** Open the chosen record where the person asked — in composer,
    *  `(id, to) => openIn(api, entity.ref(id), to)`. */
   onOpen?: (id: string, to: OpenTarget) => void;
@@ -110,7 +112,9 @@ export function EntityPicker<T extends AnyRecord>({
                 ? undefined
                 : look(lookup.chosen.record as T).name) ?? lookup.chosen.label,
           })}
-      onChange={onChange}
+      onChange={(id) =>
+        onChange(id, lookup.options.find((one) => one.id === id)?.record as T | undefined)
+      }
       // Typed text is the server's literal search; the options are its answer, drawn whole.
       {...(lookup.searchable ? { onSearch: lookup.search } : {})}
       // «Loading» only before there is anything: refining keeps the ten on screen.
@@ -144,8 +148,8 @@ export function EntityPicker<T extends AnyRecord>({
           entity={entity}
           {...(columns === undefined ? {} : { columns })}
           {...(criteria === undefined ? {} : { criteria })}
-          onChoose={(id) => {
-            onChange(id);
+          onChoose={(id, row) => {
+            onChange(id, row);
             setChoosing(false);
           }}
           onClose={() => setChoosing(false)}
@@ -167,7 +171,7 @@ function Chooser<T extends AnyRecord>({
   entity: Entity<T> | ListDefinition<T>;
   columns?: readonly string[];
   criteria?: Criteria<T>;
-  onChoose: (id: string) => void;
+  onChoose: (id: string, row: T) => void;
   onClose: () => void;
 }) {
   const listing = useListing(entity, {
@@ -190,7 +194,7 @@ function Chooser<T extends AnyRecord>({
         embedded
         // The whole set to choose from is searched with the bar and its builder, like any list.
         {...(columns === undefined ? {} : { columns })}
-        onOpen={(row) => onChoose(String(row[key]))}
+        onOpen={(row) => onChoose(String(row[key]), row)}
       />
     </Dialog>
   );

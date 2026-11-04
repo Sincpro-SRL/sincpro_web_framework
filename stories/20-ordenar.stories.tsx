@@ -12,7 +12,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          "Ordenar es una pregunta al **servidor**, nunca a la página: una página ordenada en el navegador miente sobre la página dos. Un clic en el encabezado de una columna que la meta marca `sortable` manda `order` en el criteria y la lista vuelve a la primera página; otro clic invierte el sentido. Sin orden pedido manda el `default_order` de la entidad.",
+          "Ordenar es una pregunta al **servidor**, nunca a la página: una página ordenada en el navegador miente sobre la página dos. Un clic en el encabezado de una columna que la meta marca `sortable` manda `order` en el criteria y la lista vuelve a la primera página; otro clic invierte el sentido. Sin orden pedido manda el `default_order` de la entidad. Con **Mayús + clic** en otro encabezado se suma un campo al orden (web-ui 1.7): la tabla muestra los dos y viajan los dos, en ese orden — la misma lista que arma el constructor.",
       },
     },
   },
@@ -67,6 +67,59 @@ export const PorUnaColumna: Story = {
     await waitFor(() => expect(primera()).toContain(porTotal.at(-1)!.number));
     // A new order starts on the first page: a cursor belongs to one order.
     await expect(canvas.getByText("1–20")).toBeVisible();
+  },
+};
+
+/** All 64 by state, then by total: what the server answers to a two-field order. */
+const porEstadoYTotal = [...FACTURAS].sort(
+  (a, b) => a.state.localeCompare(b.state) || Number(a.amount_total) - Number(b.amount_total),
+);
+
+export const VariosDesdeLosEncabezados: Story = {
+  render: function Render() {
+    const listing = useListing(facturas, { pageSize: 20 });
+    return <EntityList listing={listing} columns={["number", "state", "amount_total"]} />;
+  },
+  decorators: [
+    (Story) => (
+      <Escenario tables={VENTAS} observe={observar}>
+        <Story />
+      </Escenario>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("1–20");
+    const encabezado = (name: RegExp) =>
+      within(canvas.getByRole("columnheader", { name })).getByRole("button");
+    const primera = () =>
+      canvasElement.querySelector("tbody tr:not([aria-hidden]) td")?.textContent ?? "";
+
+    await userEvent.click(encabezado(/Estado/));
+    await waitFor(() =>
+      expect(pedidos.at(-1)?.order).toEqual([{ field: "state", descending: false }]),
+    );
+    // ⇧ + click ADDS a field: the state first, then the total within each state. One session
+    // of user-event, so the key held reaches the click.
+    const user = userEvent.setup();
+    await user.keyboard("{Shift>}");
+    await user.click(encabezado(/Total/));
+    await user.keyboard("{/Shift}");
+    await waitFor(() =>
+      expect(pedidos.at(-1)?.order).toEqual([
+        { field: "state", descending: false },
+        { field: "amount_total", descending: false },
+      ]),
+    );
+    await waitFor(() => expect(primera()).toContain(porEstadoYTotal[0]!.number));
+    // The table says both, not only the first.
+    await expect(canvas.getByRole("columnheader", { name: /Estado/ })).toHaveAttribute(
+      "aria-sort",
+      "ascending",
+    );
+    await expect(
+      canvas.getByRole("columnheader", { name: /Total/ }).textContent ?? "",
+    ).toMatch(/2/);
   },
 };
 

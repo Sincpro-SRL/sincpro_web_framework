@@ -54,6 +54,8 @@ export type FrameworkCopy = {
     creating: (name: string) => string;
     /** The list's button that opens the form of a new record. */
     create: string;
+    /** A record's one2many: the button that opens the form of a new related record. */
+    add: string;
   };
   picker: {
     /** The button beside a many2one that opens the chooser over the whole set. */
@@ -121,6 +123,7 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
     partial: (shown, total) => `Showing ${shown} of ${total}.`,
     creating: (name) => (name ? `${name} · new` : "New"),
     create: "New",
+    add: "Add",
   },
   picker: {
     browse: "Search all",
@@ -195,6 +198,7 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
     partial: (shown, total) => `Se muestran ${shown} de ${total}.`,
     creating: (name) => (name ? `${name} · nuevo` : "Nuevo"),
     create: "Nuevo",
+    add: "Agregar",
   },
   picker: {
     browse: "Buscar en todos",

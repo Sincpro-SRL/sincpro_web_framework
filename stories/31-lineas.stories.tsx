@@ -1,9 +1,25 @@
-import { dirtyOf, RecordField, type RecordReading, useRecord } from "@sincpro/web-framework";
+import type { AnyRecord } from "@sincpro/criteria";
+import {
+  dirtyOf,
+  type LineAdding,
+  type Method,
+  RecordField,
+  type RecordReading,
+  useRecord,
+} from "@sincpro/web-framework";
 import { Button, Record, Skeleton, ToastProvider } from "@sincpro/web-ui";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useMemo, useState } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { EscenarioRest } from "./support/escenario";
+import { Escenario, EscenarioRest } from "./support/escenario";
+import {
+  type LineaPedido,
+  PEDIDO,
+  pedidos,
+  productos,
+  servidorPedidos,
+} from "./support/pedidos";
 import type { Call } from "./support/rest";
 import { type Factura, FACTURA_GRANDE, FACTURAS, facturas } from "./support/ventas";
 
@@ -13,7 +29,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          'Las líneas de un agregado se editan **dentro** del registro (`RecordField name="lines"` dibuja el `LineItems` de web-ui) y viajan como sincpro_framework las escribe: la **lista completa y en orden**, en el mismo comando que la factura y con su versión. Una línea leída lleva su id; una **nueva va sin id** —el servidor rechaza uno que no conoce y pone el suyo—, así que su clave en pantalla se guarda aparte y se reconcilia por posición. Agregar, quitar, deshacer y reordenar son de la pantalla: por el cable viaja sólo la lista que resulta. El **preview** recalcula los subtotales y dice el estado de cada celda (`states.lines.items[i]`) y sus advertencias (`warnings`, con `path`); un **422** que apunta a `#/values/lines/1/quantity` se dice en esa celda, debajo de su valor. Una factura que trajo **sólo una página** de sus líneas no se edita: escribirla entera borraría las que no trajo.',
+          'Las líneas de un agregado se editan **dentro** del registro (`RecordField name="lines"` dibuja el `LineItems` de web-ui) y viajan como sincpro_framework las escribe: la **lista completa y en orden**, en el mismo comando que la factura y con su versión. Una línea leída lleva su id; una **nueva va sin id** —el servidor rechaza uno que no conoce y pone el suyo—, así que su clave en pantalla se guarda aparte y se reconcilia por posición. Agregar, quitar, deshacer y reordenar son de la pantalla: por el cable viaja sólo la lista que resulta. **Dónde se escribe una línea** es una sola decisión: en la **tabla** —«Agregar una línea» es su última fila y una fila se escribe donde está; el lápiz abre la línea entera en su diálogo— siempre que cada campo que se escribe quepa en una celda (un producto many2one es el picker de su entidad); en el **diálogo** si alguno no cabe (un many2one de una entidad que la aplicación no declaró, una fecha con hora) o si la pantalla lo pide (`adding="editor"`): una fila que no se puede terminar donde se abrió es una trampa. El **preview** recalcula los subtotales y dice el estado de cada celda (`states.lines.items[i]`) y sus advertencias (`warnings`, con `path`); un **422** que apunta a `#/values/lines/1/quantity` se dice en esa celda, debajo de su valor. Una factura que trajo **sólo una página** de sus líneas no se edita: escribirla entera borraría las que no trajo.',
       },
     },
   },
@@ -46,7 +62,13 @@ function Guardado({ calls, numero }: { calls: readonly Call[]; numero: string })
   );
 }
 
-function Formulario({ factura }: { factura: RecordReading<Factura> }) {
+function Formulario({
+  factura,
+  adding,
+}: {
+  factura: RecordReading<Factura>;
+  adding?: LineAdding;
+}) {
   const dirty = dirtyOf(factura);
   if (factura.status !== "ready") return <Skeleton rows={6} label="Cargando la factura" />;
   return (
@@ -63,7 +85,11 @@ function Formulario({ factura }: { factura: RecordReading<Factura> }) {
       </Record.Rail>
       <Record.Paper>
         <div className="grid gap-3 p-4">
-          <RecordField record={factura} name="lines" />
+          <RecordField
+            record={factura}
+            name="lines"
+            {...(adding === undefined ? {} : { adding })}
+          />
           <RecordField record={factura} name="amount_total" />
         </div>
       </Record.Paper>
@@ -71,14 +97,14 @@ function Formulario({ factura }: { factura: RecordReading<Factura> }) {
   );
 }
 
-function Escena({ numero }: { numero: string }) {
+function Escena({ numero, adding }: { numero: string; adding?: LineAdding }) {
   // The toasts («Se quitó… Deshacer») are the application's, as in `SincproApp`.
   return (
     <ToastProvider>
       <EscenarioRest>
         {({ calls }) => (
           <>
-            <Conectado numero={numero} />
+            <Conectado numero={numero} {...(adding === undefined ? {} : { adding })} />
             <Guardado calls={calls} numero={numero} />
           </>
         )}
@@ -87,9 +113,71 @@ function Escena({ numero }: { numero: string }) {
   );
 }
 
-function Conectado({ numero }: { numero: string }) {
+function Conectado({ numero, adding }: { numero: string; adding?: LineAdding }) {
   const factura = useRecord(facturas, numero);
-  return <Formulario factura={factura} />;
+  return <Formulario factura={factura} {...(adding === undefined ? {} : { adding })} />;
+}
+
+function Pedido() {
+  const pedido = useRecord(pedidos, PEDIDO);
+  const dirty = dirtyOf(pedido);
+  if (pedido.status !== "ready") return <Skeleton rows={3} label="Cargando el pedido" />;
+  return (
+    <Record
+      identity={{ title: pedido.record.number }}
+      {...(dirty === undefined ? {} : { dirty })}
+    >
+      <Record.Rail>
+        <Record.Actions>
+          <Button size="sm" role="ghost" onClick={pedido.reload}>
+            Volver a leer
+          </Button>
+        </Record.Actions>
+      </Record.Rail>
+      <Record.Paper>
+        <div className="grid gap-3 p-4">
+          <RecordField record={pedido} name="lines" />
+        </div>
+      </Record.Paper>
+    </Record>
+  );
+}
+
+/** An order whose lines name a product; `declarado` says whether the app declared products. */
+function EscenaPedido({ declarado = true }: { declarado?: boolean }) {
+  const [guardado, setGuardado] = useState("—");
+  const servidor = useMemo(() => {
+    const own = servidorPedidos();
+    // What each save sent, as the server read it: «product_code×quantity» per line.
+    const handle = (method: Method, route: string, body: unknown) => {
+      const lines = (body as { lines?: LineaPedido[] }).lines ?? [];
+      queueMicrotask(() =>
+        setGuardado(lines.map((one) => `${one.product_code}×${one.quantity}`).join(", ")),
+      );
+      return own.handle(method, route, body);
+    };
+    return { tables: own.tables, handle };
+  }, []);
+  return (
+    <ToastProvider>
+      <Escenario
+        tables={
+          servidor.tables as Readonly<Record<string, { meta: never; rows: AnyRecord[] }>>
+        }
+        handle={servidor.handle}
+        latency={40}
+        entities={declarado ? [pedidos, productos] : [pedidos]}
+      >
+        <Pedido />
+        <p
+          aria-label="Lo que se guardó"
+          className="px-4 pb-4 font-mono text-micro text-muted"
+        >
+          {guardado}
+        </p>
+      </Escenario>
+    </ToastProvider>
+  );
 }
 
 /** Open a line's dialog — the `index`-th «Editar la línea» — and hand back the dialog. */
@@ -101,14 +189,94 @@ async function abrir(canvasElement: HTMLElement, index: number) {
   return within(await page.findByRole("dialog"));
 }
 
-async function escribir(dialogo: ReturnType<typeof within>, label: string, text: string) {
-  const field = dialogo.getByLabelText(label);
+async function escribir(where: ReturnType<typeof within>, label: string, text: string) {
+  const field = where.getByLabelText(label);
   await userEvent.clear(field);
   await userEvent.type(field, text);
 }
 
-export const AgregarCambiarYGuardar: Story = {
+export const AgregarEnLaTabla: Story = {
   render: () => <Escena numero={EDITABLE.number} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await expect(await canvas.findByText(`${LINEAS} líneas`)).toBeVisible();
+    // Every field of a line fits a cell: «Agregar una línea» writes it IN the table.
+    await userEvent.click(canvas.getByRole("button", { name: "Agregar una línea" }));
+    const producto = await canvas.findByRole("textbox", { name: "Producto" });
+    await waitFor(() => expect(producto).toHaveFocus());
+    await expect(page.queryByRole("dialog")).toBeNull();
+    await userEvent.type(producto, "Tóner");
+    await escribir(canvas, "Cantidad", "2");
+    await escribir(canvas, "Precio", "10");
+    await userEvent.keyboard("{Enter}");
+    await expect((await canvas.findAllByRole("cell", { name: "Tóner" }))[0]).toBeVisible();
+    await expect(canvas.getByText(`${LINEAS + 1} líneas`)).toBeVisible();
+    // Saved like any other: the whole list, in order, the new line WITHOUT an id.
+    await userEvent.click(canvas.getByRole("button", { name: "Guardar" }));
+    const ids = EDITABLE.lines.items.map((line) => line.id).join(", ");
+    await waitFor(() =>
+      expect(canvas.getByLabelText("Lo que se guardó")).toHaveTextContent(
+        `versión ${EDITABLE.version} · ${ids}, nueva`,
+      ),
+    );
+  },
+};
+
+export const UnProductoEnLaCelda: Story = {
+  render: () => <EscenaPedido />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    // A line reads its product by name, not by the key it is written with.
+    await expect(
+      (await canvas.findAllByRole("cell", { name: "Cemento 50 kg" }))[0],
+    ).toBeVisible();
+    await expect(canvas.queryByText("CEM-50")).toBeNull();
+    // A product is a picker of its entity, inside the cell: the server's literal search.
+    await userEvent.click(canvas.getByRole("button", { name: "Agregar una línea" }));
+    await expect(page.queryByRole("dialog")).toBeNull();
+    const producto = await canvas.findByRole("combobox", { name: "Producto" });
+    await userEvent.type(producto, "Fierro");
+    await userEvent.click(await page.findByRole("option", { name: /Fierro 12 mm/ }));
+    await escribir(canvas, "Cantidad", "3");
+    await userEvent.keyboard("{Enter}");
+    // Closed, the cell names what was chosen — with no second question to the server.
+    await expect(
+      (await canvas.findAllByRole("cell", { name: "Fierro 12 mm" }))[0],
+    ).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Guardar" }));
+    // The key travelled, not the name.
+    await waitFor(() =>
+      expect(canvas.getByLabelText("Lo que se guardó")).toHaveTextContent(
+        "CEM-50×4, FIE-12×3",
+      ),
+    );
+  },
+};
+
+export const SinSuEntidadSeAgregaEnElDialogo: Story = {
+  render: () => <EscenaPedido declarado={false} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await expect(
+      (await canvas.findAllByRole("cell", { name: "Cemento 50 kg" }))[0],
+    ).toBeVisible();
+    // Products are not an entity of this app: in a cell the product would be a key nobody
+    // types, so the line is written in its dialog, where every field has room.
+    await userEvent.click(canvas.getByRole("button", { name: "Agregar una línea" }));
+    const dialogo = within(await page.findByRole("dialog"));
+    await waitFor(() =>
+      expect(dialogo.getByRole("textbox", { name: /^Producto/ })).toBeVisible(),
+    );
+    await expect(canvas.queryByRole("combobox", { name: "Producto" })).toBeNull();
+  },
+};
+
+export const AgregarEnElDialogoCambiarYGuardar: Story = {
+  // The screen asks for the dialog: the table only reads, a line is written in its dialog.
+  render: () => <Escena numero={EDITABLE.number} adding="editor" />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);

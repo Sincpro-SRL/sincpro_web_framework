@@ -147,8 +147,10 @@ Rules for any agent (or person) changing this package. Read the README for the i
   option by name.
 - **A pivot is folded by the SERVER** (`usePivot`: grouped by both axes, and by the columns
   alone), handed to web-ui as `folded`. Never web-ui's `spec`: it folds the rows IN HAND.
-- **Order is a list** (`listing.order: Sort[]`, `orderBy(one | many | null)`): the builder writes
-  several; web-ui's table and sort menu show and set ONE (the first).
+- **Order is a list** (`listing.order: Sort[]`, `orderBy(one | many | null)`), and so is web-ui's
+  (1.7: `sort: SortState[]`): the builder, ⇧-click on a header and the sort menu all write the
+  same list, whole. A play holds ⇧ with ONE `userEvent.setup()` session — separate calls do not
+  share the keyboard.
 - **A form's fields go in web-ui's `FormSection`**, never a hand-made column: two columns on a
   page and in a modal, one in a panel or a peek (`api.surface`) — the grid does not narrow by
   itself. A list inside a record not on a page starts as rows (`RecordOpening.narrow`).
@@ -175,6 +177,19 @@ Rules for any agent (or person) changing this package. Read the README for the i
   pause reads a ref). The pause armed before the model arrived used to ask with a refine that
   had no model — unfiltered — after the right question had gone out: on a slow network the list
   ignored what was typed. Story `09 · EscribirAntesDeQueLlegueElModelo` pins the timing.
+- **A one2many is a block: `FormSection title`, never a web-ui `Field`.** Every control inside a
+  `Field` reads its id and label (`useFieldIds`): the cells of the lines and the related list's
+  search bar all took the same id and the relation's name.
+- **`aria-label` only where nothing names the control** (`FieldControl.standalone`, a cell): inside
+  a `Field` React Aria reads both and the name doubles («Precio Precio»).
+- **Where a line is written is ONE decision, `addingOf`**: the table when every field a person
+  writes fits a cell, the dialog otherwise — never force «inline». A many2one fits only when its
+  entity is declared, and it resolves by the entity's `aggregate` or its meta already read:
+  declare `aggregate` in `entity()` or preload the meta, or the line falls to the dialog.
+- **web-ui's `LineItems` draws `value` unless the column has `cell`** — `text` is only what its
+  search reads. Give `cell` the model's text.
+- **A custom record view passes `resource` to `useRecord`, not `resource.id`**: a new record
+  opened with `newRef(values)` («Agregar» on a one2many) starts with those values only that way.
 - **`useHistory`, not `useActivity`**: web-ui already exports `useActivity` (the panel's open
   state). Do not shadow a name of the stack.
 

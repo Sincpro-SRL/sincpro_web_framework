@@ -49,7 +49,7 @@ export function EntityRecord<T extends AnyRecord>({
   /** The record's own commands, beside «save / discard». */
   actions?: (record: RecordReading<T>) => ReactNode;
 }) {
-  const reading = useRecord(entity, resource.id ?? "");
+  const reading = useRecord(entity, resource);
   const crumbs = useCrumbs(api);
   useRecordInWorkspace(api, reading);
   const history = useHistory(entity, reading.isNew ? "" : reading.id, [reading.record]);

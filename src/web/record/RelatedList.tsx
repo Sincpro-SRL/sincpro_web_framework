@@ -1,11 +1,14 @@
 "use client";
 
 import type { AnyRecord } from "@sincpro/criteria";
+import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import type { Entity } from "@sincpro/web-framework/core/entity";
 import { defaultFields } from "@sincpro/web-framework/core/present";
 import type { RecordReading } from "@sincpro/web-framework/react/useRecord";
 import { useRelated } from "@sincpro/web-framework/react/useRelated";
 import { EntityList, type EntityListProps } from "@sincpro/web-framework/web/list/EntityList";
+import { useRecordOpening } from "@sincpro/web-framework/web/record/opening";
+import { Button } from "@sincpro/web-ui";
 import { useMemo } from "react";
 
 /**
@@ -16,6 +19,12 @@ import { useMemo } from "react";
  * entity's own search template: the lines of an order are searched by product, the invoices of
  * a customer by number. The column that points back to this record is left out — it is the
  * same on every row. Use `RecordLines` when the page the record brought is all there is.
+ *
+ * «Agregar» opens the form of a new related record already pointing back here, where the view
+ * says (`RecordOpening.create`: a modal that answers, in a workspace), and the list is read
+ * again once it exists. Never a row of the table: each one is an aggregate with its own create,
+ * rules and preview. There is none while this record does not exist yet — there is nothing to
+ * point back to — nor when the relation is read only or the entity cannot be created.
  */
 export function RelatedList<P extends AnyRecord, T extends AnyRecord>({
   record,
@@ -35,6 +44,7 @@ export function RelatedList<P extends AnyRecord, T extends AnyRecord>({
     entity,
     pageSize === undefined ? {} : { pageSize },
   );
+  const opening = useRecordOpening();
   // Every row points back to THIS record: the column that says so is the same on all of them.
   const back = record.meta?.fields[name]?.identified_by;
   const own = list.columns;
@@ -46,6 +56,25 @@ export function RelatedList<P extends AnyRecord, T extends AnyRecord>({
         : defaultFields(listing.meta).filter((field) => field !== back)),
     [own, listing.meta, back],
   );
+  const create = opening?.create;
+  // The value the rows point back with — the same key `useRelated` scopes the list by.
+  const identity = record.meta?.get_id || record.meta?.identity || "id";
+  const here = record.record === null ? undefined : (record.record as AnyRecord)[identity];
+  const adding =
+    create === undefined ||
+    entity.create === undefined ||
+    !back ||
+    record.isNew ||
+    here === undefined ||
+    record.edit.state(name).readonly ? null : (
+      <Button
+        size="sm"
+        role="secondary"
+        onClick={() => create(entity, { [back]: here }, listing.reload)}
+      >
+        {frameworkCopy().record.add}
+      </Button>
+    );
   return (
     <EntityList
       listing={listing}
@@ -54,6 +83,16 @@ export function RelatedList<P extends AnyRecord, T extends AnyRecord>({
       // named filters, the criteria builder, grouping. A screen that wants a box passes one.
       {...list}
       {...(columns === undefined ? {} : { columns })}
+      {...(adding === null && list.actions === undefined
+        ? {}
+        : {
+            actions: (
+              <>
+                {list.actions}
+                {adding}
+              </>
+            ),
+          })}
     />
   );
 }
