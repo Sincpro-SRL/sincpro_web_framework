@@ -54,16 +54,29 @@ export const LasFacturasDeUnCliente: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText("1–5")).toBeVisible();
     await expect(canvas.getByText(String(DE_GLOBEX.length))).toBeInTheDocument();
-    const box = canvas.getByRole("searchbox", { name: "Buscar" });
+    // Searched with the bar of any list of records — filters and the builder too.
+    const bar = canvas.getByRole("combobox", { name: "Buscar" });
+    await expect(canvas.getByRole("button", { name: /Filtrar/ })).toBeVisible();
 
     // One of its own invoices is found…
     const suya = DE_GLOBEX.at(-1)!.number;
-    await userEvent.type(box, `${suya.slice(-4)}{Enter}`);
+    // The literal search is chosen among the bar's suggestions (with Enter, web-ui picks its
+    // first one — today «Estado es 0060», a value the enum does not have: ROADMAP).
+    const page = within(canvasElement.ownerDocument.body);
+    const literal = async (text: string) => {
+      await userEvent.type(bar, text);
+      await userEvent.click(
+        await page.findByRole("option", { name: new RegExp(`Buscar.*${text}`) }),
+      );
+    };
+    await literal(suya.slice(-4));
     await expect(await canvas.findByText(suya)).toBeVisible();
 
     // …and another customer's never is: the relation's scope is AND-ed with every search.
-    await userEvent.clear(box);
-    await userEvent.type(box, "0007{Enter}");
+    await userEvent.click(
+      canvas.getByRole("button", { name: new RegExp(`^Quitar .*${suya.slice(-4)}`) }),
+    );
+    await literal("0007");
     await expect(await canvas.findByText("Nada coincide.")).toBeVisible();
   },
 };

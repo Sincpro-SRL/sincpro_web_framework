@@ -5,6 +5,8 @@ export { type ColumnOptions, columnsOf } from "@sincpro/web-framework/web/list/c
 export { EntityList, type EntityListProps } from "@sincpro/web-framework/web/list/EntityList";
 export { EntitySearchBar } from "@sincpro/web-framework/web/list/EntitySearchBar";
 export { groupableOf, pilesOf } from "@sincpro/web-framework/web/list/groups";
+export { OpenInMenu } from "@sincpro/web-framework/web/list/openIn";
+export { pivotOf } from "@sincpro/web-framework/web/list/pivot";
 export {
   type CardLook,
   type OptionLook,

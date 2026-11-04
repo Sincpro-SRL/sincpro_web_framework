@@ -325,27 +325,30 @@ const tickets = defineMeta({
 Each answers one question, and each comes in the three levels — use the component, drop to the
 hook and draw your own, or go straight to the loose piece.
 
-| Question                         | Declarative                                   | Hook                                  | Loose piece                          |
-| -------------------------------- | --------------------------------------------- | ------------------------------------- | ------------------------------------ |
-| Where is the data?               | `entity()`                                    | —                                     | `restTransport`, `memoryTransport`   |
-| What is each field?              | `Meta` from the server, or `defineMeta`       | —                                     | `textOf`, `viewOf`, `metaFromSchema` |
-| What is a record, at any size?   | `cardOf`, `relationOf`                        | `useSummaryOf`                        | `summaryOf`                          |
-| How does a record look?          | `presented(entity, { option, row, card })`    | —                                     | `presentationOf`                     |
-| N records: search, filter, page  | `EntityList`, `EntitySearchBar`               | `useListing`, `useGroups`             | `transport.list(route, criteria)`    |
-| A named slice (to collect, …)    | `defineList` + `listView`                     | `useListing(list)`                    | `scopeOf`                            |
-| A record's whole screen          | `EntityRecord`, `entityView` without `record` | —                                     | `formOf`                             |
-| Previous / next from a record    | `EntityRecord` (from a list)                  | —                                     | `placeOf`, `stepIn` (`Trail`)        |
-| How much each group adds up      | `EntityList sums`                             | `useGroups` (`sums`)                  | `sumsOf`, `detailOf`                 |
-| One record: read, edit, save     | `RecordField`, `factsOf`, `RecordLines`       | `useRecord`                           | `transport.one`, `transport.send`    |
-| Its lines: add, edit, remove     | `RecordField name="lines"` (`LineItems`)      | `useRecord` (`edit.cell`, `errorAt`)  | `lineKey`, `editableLines`, `pathOf` |
-| Its relations, inside it         | `RelatedList`                                 | `useRelated`                          | `relatedOf`                          |
-| Choose one (literal search)      | `EntityPicker`, `chooserIn`                   | `useLookup`                           | `lookupOf` + criteria's `matching`   |
-| Choose several (many2many)       | `EntityTags`                                  | `useLookup` (`values`)                | `lookupOf`                           |
-| A relation, from the model alone | `RecordField name="customer_id"`              | `useEntityFor`                        | `relationFieldOf`, `entityFor`       |
-| Open it where it belongs         | `RelatedRecord`, `entityView`                 | —                                     | `openIn`, `targetsFor`               |
-| Act on it (with a dry run)       | `CommandButton`, `commands` on rows           | `useCommand`                          | `transport.send`                     |
-| What happened to it              | `Record.Activity` fed by `useHistory`         | `useHistory`                          | `historyOf`                          |
-| The application context          | `SincproApp`                                  | `useRecordInWorkspace`, `useFollowed` | `FrameworkProvider`, `webUiSkin`     |
+| Question                         | Declarative                                             | Hook                                  | Loose piece                          |
+| -------------------------------- | ------------------------------------------------------- | ------------------------------------- | ------------------------------------ |
+| Where is the data?               | `entity()`                                              | —                                     | `restTransport`, `memoryTransport`   |
+| What is each field?              | `Meta` from the server, or `defineMeta`                 | —                                     | `textOf`, `viewOf`, `metaFromSchema` |
+| What is a record, at any size?   | `cardOf`, `relationOf`                                  | `useSummaryOf`                        | `summaryOf`                          |
+| How does a record look?          | `presented(entity, { option, row, card })`              | —                                     | `presentationOf`                     |
+| N records: search, filter, page  | `EntityList`, `EntitySearchBar`                         | `useListing`, `useGroups`             | `transport.list(route, criteria)`    |
+| A named slice (to collect, …)    | `defineList` + `listView`                               | `useListing(list)`                    | `scopeOf`                            |
+| A record's whole screen          | `EntityRecord`, `entityView` without `record`           | —                                     | `formOf`                             |
+| Previous / next from a record    | `EntityRecord` (from a list)                            | —                                     | `placeOf`, `stepIn` (`Trail`)        |
+| How much each group adds up      | `EntityList sums`                                       | `useGroups` (`sums`)                  | `sumsOf`, `detailOf`                 |
+| One record: read, edit, save     | `RecordField`, `factsOf`, `RecordLines`                 | `useRecord`                           | `transport.one`, `transport.send`    |
+| Its lines: add, edit, remove     | `RecordField name="lines"` (`LineItems`)                | `useRecord` (`edit.cell`, `errorAt`)  | `lineKey`, `editableLines`, `pathOf` |
+| Its relations, inside it         | `RelatedList`                                           | `useRelated`                          | `relatedOf`                          |
+| Choose one (literal search)      | `EntityPicker`, `chooserIn`                             | `useLookup`                           | `lookupOf` + criteria's `matching`   |
+| Choose several (many2many)       | `EntityTags`                                            | `useLookup` (`values`)                | `lookupOf`                           |
+| A relation, from the model alone | `RecordField name="customer_id"`                        | `useEntityFor`                        | `relationFieldOf`, `entityFor`       |
+| Open it where it belongs         | `RelatedRecord`, `entityView`, `EntityList openTargets` | —                                     | `openIn`, `targetsFor`, `OpenInMenu` |
+| Look at the set several ways     | `EntityList views` (table, rows, board, sheet)          | —                                     | web-ui's `List.*`                    |
+| Cross it by two fields           | `EntityList pivot`                                      | `usePivot`                            | `pivotOf`                            |
+| Order by several fields          | the bar's criteria builder                              | `listing.orderBy([...])`              | criteria's `order`                   |
+| Act on it (with a dry run)       | `CommandButton`, `commands` on rows                     | `useCommand`                          | `transport.send`                     |
+| What happened to it              | `Record.Activity` fed by `useHistory`                   | `useHistory`                          | `historyOf`                          |
+| The application context          | `SincproApp`                                            | `useRecordInWorkspace`, `useFollowed` | `FrameworkProvider`, `webUiSkin`     |
 
 The rules behind them, in short:
 

@@ -42,7 +42,7 @@ export type ListDefinition<T extends AnyRecord = AnyRecord> = {
   /** The cuts it offers by name in the search bar. */
   filters?: readonly NamedFilter<T>[];
   /** The faces it offers, the first one shown. */
-  views?: readonly ("table" | "rows" | "board")[];
+  views?: readonly ("table" | "rows" | "board" | "sheet" | "pivot")[];
   /** Grouped from the start — the server counts the groups. */
   groupBy?: readonly GroupLevel[];
 };

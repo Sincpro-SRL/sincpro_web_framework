@@ -94,7 +94,9 @@ export const DeLaListaAlRegistroYSusRelaciones: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Abrir en un modal" }));
     const modal = await canvas.findByRole("dialog", { name: "Globex Bolivia" });
     await userEvent.click(await within(modal).findByRole("tab", { name: /Facturas/ }));
-    // Its invoices, without the column that points back to it: every row is this customer's.
+    // Its invoices — as rows in a modal; as a table a click away — without the column that
+    // points back to it: every row is this customer's.
+    await userEvent.click(await within(modal).findByLabelText("Tabla"));
     await within(modal).findByRole("columnheader", { name: /Número/ });
     await expect(
       within(modal).queryByRole("columnheader", { name: /Cliente \(código\)/ }),

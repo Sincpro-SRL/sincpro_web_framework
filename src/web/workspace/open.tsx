@@ -1,9 +1,10 @@
 "use client";
 
 import type { AnyRecord, Meta } from "@sincpro/criteria";
-import type { OpenOptions, ResourceRef, WorkspaceApi } from "@sincpro/web-composer";
+import type { ResourceRef, WorkspaceApi } from "@sincpro/web-composer";
 import type { Entity } from "@sincpro/web-framework/core/entity";
 import { useSummaryOf } from "@sincpro/web-framework/react/useSummary";
+import { openOptions, targetsFor } from "@sincpro/web-framework/web/list/openIn";
 import { relationOf } from "@sincpro/web-framework/web/record/summary";
 import { type OpenTarget, RelationValue } from "@sincpro/web-ui";
 import type { ReactNode } from "react";
@@ -25,25 +26,7 @@ import type { ReactNode } from "react";
  * The phone is composer's: a modal becomes a sheet, a side panel the page. No view asks.
  */
 
-/** A record's form fits; a short task (register a payment) passes its own size. */
-export const RECORD_SIZE = { w: 760, h: 560 } as const;
-
-const IN_PLACE: readonly OpenTarget[] = ["modal", "peek", "side", "page"];
-const FROM_A_MODAL: readonly OpenTarget[] = ["side", "peek", "page"];
-
-/** Where a related record may open from this view, the default first. */
-export function targetsFor(api: Pick<WorkspaceApi, "over">): readonly OpenTarget[] {
-  return api.over === null ? IN_PLACE : FROM_A_MODAL;
-}
-
-/** web-ui's target as composer's options. Destinations share their names, so only the size is
- *  added — to the two that have one. */
-export function openOptions(
-  to: OpenTarget,
-  size: { w: number; h: number } = RECORD_SIZE,
-): OpenOptions {
-  return to === "modal" || to === "window" ? { to, size } : { to };
-}
+export { openOptions, RECORD_SIZE, targetsFor } from "@sincpro/web-framework/web/list/openIn";
 
 /**
  * Open a record where it was asked, or where it belongs from here.
