@@ -188,6 +188,9 @@ Rules for any agent (or person) changing this package. Read the README for the i
   declare `aggregate` in `entity()` or preload the meta, or the line falls to the dialog.
 - **web-ui's `LineItems` draws `value` unless the column has `cell`** — `text` is only what its
   search reads. Give `cell` the model's text.
+- **Every level has its way in** (`RecordField as` / `lines` / `list`, `EntityList cells` /
+  `faces`, `RecordLinesEditor look`): a new default piece ships with the prop that replaces it.
+  A screen's face goes in as web-ui's `List.Present` written straight into `List` — a slot.
 - **A custom record view passes `resource` to `useRecord`, not `resource.id`**: a new record
   opened with `newRef(values)` («Agregar» on a one2many) starts with those values only that way.
 - **`useHistory`, not `useActivity`**: web-ui already exports `useActivity` (the panel's open

@@ -88,21 +88,40 @@ test("a line is drawn by its scalars — a many2one by its key — never its id 
 
 test("a line is added in the table when every field a person writes fits a cell", () => {
   // The product is a picker of a declared entity; the date and time is only read.
-  assert.equal(addingOf(productoLine, declared), "inline");
+  assert.equal(addingOf(productoLine, { declared }), "inline");
   // Its entity not declared, the product is an id nobody types: the dialog.
-  assert.equal(addingOf(productoLine, none), "editor");
+  assert.equal(addingOf(productoLine, { declared: none }), "editor");
   // A date and time to WRITE has no control a cell holds.
   const writable = {
     ...productoLine,
     fields: { ...productoLine.fields, delivered_at: field.datetime({ label: "Entregada" }) },
   };
-  assert.equal(addingOf(writable, declared), "editor");
+  assert.equal(addingOf(writable, { declared }), "editor");
   // No model, no columns to write in: the dialog.
-  assert.equal(addingOf(null, declared), "editor");
+  assert.equal(addingOf(null, { declared }), "editor");
 });
 
 test("the screen may always ask for the dialog, and for the table only where it works", () => {
-  assert.equal(addingOf(productoLine, declared, "editor"), "editor");
-  assert.equal(addingOf(productoLine, declared, "inline"), "inline");
-  assert.equal(addingOf(productoLine, none, "inline"), "editor");
+  assert.equal(addingOf(productoLine, { declared, asked: "editor" }), "editor");
+  assert.equal(addingOf(productoLine, { declared, asked: "inline" }), "inline");
+  assert.equal(addingOf(productoLine, { declared: none, asked: "inline" }), "editor");
+});
+
+test("a control of the screen's own fits a cell; a required field left out of the columns does not", () => {
+  // The screen writes the product with its own widget: it fits, declared or not.
+  assert.equal(
+    addingOf(productoLine, { declared: none, own: new Set(["product_code"]) }),
+    "inline",
+  );
+  // Columns without the quantity: optional, the row can still be finished.
+  assert.equal(addingOf(productoLine, { declared, shown: ["product_code"] }), "inline");
+  // Without the product, which is REQUIRED: the row could never be finished there.
+  const required = {
+    ...productoLine,
+    fields: {
+      ...productoLine.fields,
+      product_code: field.text({ label: "Producto", required: true }),
+    },
+  };
+  assert.equal(addingOf(required, { declared, shown: ["quantity"] }), "editor");
 });

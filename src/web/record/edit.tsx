@@ -3,17 +3,18 @@
 import { type AnyRecord, choicesOf } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { errorAt } from "@sincpro/web-framework/core/edit";
-import { editableLines, type LineAdding } from "@sincpro/web-framework/core/lines";
+import { editableLines } from "@sincpro/web-framework/core/lines";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
 import { relationFieldOf } from "@sincpro/web-framework/core/relation";
 import { useEntityFor, useFramework } from "@sincpro/web-framework/react/context";
 import type { RecordReading } from "@sincpro/web-framework/react/useRecord";
+import type { EntityListProps } from "@sincpro/web-framework/web/list/EntityList";
 import {
   controlFor,
   type FieldControl,
   RelationPicker,
 } from "@sincpro/web-framework/web/record/control";
-import { RecordLinesEditor } from "@sincpro/web-framework/web/record/lines";
+import { type LinesLook, RecordLinesEditor } from "@sincpro/web-framework/web/record/lines";
 import { useRecordOpening } from "@sincpro/web-framework/web/record/opening";
 import { RecordLines } from "@sincpro/web-framework/web/record/record";
 import { RelatedList } from "@sincpro/web-framework/web/record/RelatedList";
@@ -46,8 +47,12 @@ import type { ReactNode } from "react";
  * search, the ten first, «Buscar más…» — and, read-only, the record's name as a link. Where it
  * opens is the view's (`RecordOpening`: a modal in a workspace, nothing outside one).
  *
+ * A one2many is a block: its lines (`lines`) or its related list (`list`), each with every piece
+ * replaceable the screen's way.
+ *
  *     <RecordField record={invoice} name="due_date" />
  *     <RecordField record={invoice} name="customer_id" />
+ *     <RecordField record={invoice} name="lines" lines={{ controls: { qty: Stepper } }} />
  */
 
 export function RecordField<T extends Record<string, unknown>>({
@@ -55,16 +60,20 @@ export function RecordField<T extends Record<string, unknown>>({
   name,
   as,
   bare = false,
-  adding,
+  lines: look,
+  list: listed,
 }: {
   record: RecordReading<T>;
   name: string;
   as?: (control: FieldControl) => ReactNode;
   /** The control without its label — inside a page or a section that already names it. */
   bare?: boolean;
-  /** Lines (a one2many of no entity of its own): how «Agregar una línea» adds — in the table
-   *  by default, wherever every field fits a cell (`addingOf`). */
-  adding?: LineAdding;
+  /** Lines (a one2many of no entity of its own), the screen's way: where a line is written,
+   *  which columns, a cell or a control of its own, columns that are not fields, the dialog. */
+  lines?: LinesLook;
+  /** A one2many of a declared entity, the screen's way: anything `EntityList` takes — its
+   *  cells, row actions, commands, faces of its own. What it passes wins over the defaults. */
+  list?: Omit<EntityListProps<AnyRecord>, "listing" | "embedded">;
 }) {
   const { meta, locale, edit } = record;
   const view = viewOf(meta, name, locale);
@@ -93,7 +102,7 @@ export function RecordField<T extends Record<string, unknown>>({
           record={record}
           name={name}
           lines={whole}
-          {...(adding === undefined ? {} : { adding })}
+          {...(look === undefined ? {} : { look })}
         />
       );
     return bare ? lines : <FormSection title={view.label}>{lines}</FormSection>;
@@ -123,6 +132,7 @@ export function RecordField<T extends Record<string, unknown>>({
                 ...(opening.narrow === true ? { views: ["rows", "table"] as const } : {}),
               };
             })())}
+        {...listed}
       />
     );
     return bare ? list : <FormSection title={view.label}>{list}</FormSection>;

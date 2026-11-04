@@ -2,7 +2,12 @@
  * The web bindings: what draws a `Listing` and a record with `@sincpro/web-ui`.
  */
 export { type ColumnOptions, columnsOf } from "@sincpro/web-framework/web/list/columns";
-export { EntityList, type EntityListProps } from "@sincpro/web-framework/web/list/EntityList";
+export {
+  type EntityFace,
+  EntityList,
+  type EntityListProps,
+  type View,
+} from "@sincpro/web-framework/web/list/EntityList";
 export { EntitySearchBar } from "@sincpro/web-framework/web/list/EntitySearchBar";
 export { groupableOf, pilesOf } from "@sincpro/web-framework/web/list/groups";
 export { OpenInMenu } from "@sincpro/web-framework/web/list/openIn";
@@ -31,6 +36,17 @@ export {
 } from "@sincpro/web-framework/web/record/edit";
 export { EntityPicker } from "@sincpro/web-framework/web/record/EntityPicker";
 export { EntityTags } from "@sincpro/web-framework/web/record/EntityTags";
+export {
+  type LineColumn,
+  type LineControl,
+  type LinesLook,
+  RecordLinesEditor,
+} from "@sincpro/web-framework/web/record/lines";
+export {
+  type RecordOpening,
+  RecordOpeningProvider,
+  useRecordOpening,
+} from "@sincpro/web-framework/web/record/opening";
 export { countOf, factsOf, RecordLines } from "@sincpro/web-framework/web/record/record";
 export { RelatedList } from "@sincpro/web-framework/web/record/RelatedList";
 export { cardOf, relationOf } from "@sincpro/web-framework/web/record/summary";

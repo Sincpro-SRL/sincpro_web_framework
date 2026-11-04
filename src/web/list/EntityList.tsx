@@ -24,6 +24,8 @@ import {
   type CardWays,
   List,
   type ListCrumb,
+  type ListPresentProps,
+  type ListSet,
   type OpenTarget,
   Pagination,
   pathKey,
@@ -87,9 +89,9 @@ export type EntityListProps<T extends AnyRecord> = {
    * its facts, what a narrow panel wants), `board` (cards) and `sheet` (a spreadsheet, every
    * cell a value — web-ui's, windowed). The same set, the same search, the same page in each.
    * Without it, a named list's; else all four on a screen, and the table (rows when narrow)
-   * inside a record.
+   * inside a record. The id of one of `faces` opens on that face.
    */
-  views?: readonly View[];
+  views?: readonly (View | (string & {}))[];
   /**
    * The set crossed by two fields — `{ rows: "state", columns: "payment" }` — counted and added
    * up by the server (`usePivot`), offered as the `pivot` face. Only while it is on screen does
@@ -152,6 +154,23 @@ export type EntityListProps<T extends AnyRecord> = {
   commands?: readonly RowCommand<T>[];
   /** Any other action of a row — or the commands built by hand with `useRowCommands`. */
   rowActions?: (row: T) => readonly RowAction[];
+  /**
+   * Ways of looking at the set the SCREEN writes — a gallery, a map, a record with its lines and
+   * its buttons — offered beside the built-in ones (web-ui's `List.Present`). Each is handed the
+   * same set the others draw: the page, the search's grouping, the selection and what a press
+   * does (`ListSet`). Offered after `views`; name one in `views` to open on it.
+   */
+  faces?: readonly EntityFace<T>[];
+};
+
+/** A face of a list written by the screen: its name and icon in the switcher, and how it draws
+ *  the set. `wide` when it needs width (a narrow list does not offer it). */
+export type EntityFace<T> = {
+  id: string;
+  label: string;
+  icon: ListPresentProps<T>["icon"];
+  wide?: boolean;
+  render: (set: ListSet<T>) => ReactNode;
 };
 
 /** No commands: one constant, so the hook is not handed a new array on every render. */
@@ -187,6 +206,7 @@ export function EntityList<T extends AnyRecord>({
   create = true,
   commands = NO_COMMANDS,
   rowActions: askedRowActions,
+  faces,
 }: EntityListProps<T>) {
   // A named list (`defineList`) brings its own columns, filters, faces and words; what the
   // screen passes wins.
@@ -205,7 +225,7 @@ export function EntityList<T extends AnyRecord>({
   const idOf = (row: T) => String(row[identity]);
   const failed = listing.status === "failed" ? explain(listing.error) : null;
   const dropped = listing.dropped.map((d) => viewOf(meta, d.field, locale).label);
-  const [present, setPresent] = useState<View>(views[0] ?? "table");
+  const [present, setPresent] = useState<string>(views[0] ?? "table");
   // Opened to choose on what was typed in a picker (`chooserRef(query)`): it starts searched.
   const asked = api?.self.params?.[QUERY_PARAM] ?? "";
   // The box's text is a draft until Enter: typing asks the server nothing.
@@ -519,7 +539,7 @@ export function EntityList<T extends AnyRecord>({
       keyOf={idOf}
       embedded={embedded}
       present={present}
-      onPresentChange={(next) => setPresent(next as View)}
+      onPresentChange={setPresent}
       {...grouping}
       // The whole order, as web-ui 1.7 shows and sets it: ⇧-click on a header adds a field,
       // the sort menu reorders them — the same list the criteria builder writes.
@@ -689,6 +709,17 @@ export function EntityList<T extends AnyRecord>({
       {views.includes("board") ? (
         <List.Board<T> {...(cardOfRow === undefined ? {} : { card: cardOfRow })} />
       ) : null}
+      {(faces ?? []).map((face) => (
+        <List.Present<T>
+          key={face.id}
+          id={face.id}
+          label={face.label}
+          icon={face.icon}
+          {...(face.wide === undefined ? {} : { wide: face.wide })}
+        >
+          {face.render}
+        </List.Present>
+      ))}
       {refused === null ? null : (
         <Callout tone="bad" title={refused.heading}>
           {refused.sentence}
