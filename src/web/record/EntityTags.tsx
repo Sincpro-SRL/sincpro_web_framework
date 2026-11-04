@@ -5,6 +5,7 @@ import type { Entity } from "@sincpro/web-framework/core/entity";
 import { isList, type ListDefinition } from "@sincpro/web-framework/core/list";
 import type { LookupOption } from "@sincpro/web-framework/core/lookup";
 import { useLookup } from "@sincpro/web-framework/react/useLookup";
+import { presentationOf } from "@sincpro/web-framework/web/list/presentation";
 import { type OpenTarget, type TagOption, TagsField } from "@sincpro/web-ui";
 
 /**
@@ -57,11 +58,21 @@ export function EntityTags<T extends AnyRecord>({
     values: value,
   });
   const person = (isList(entity) ? entity.entity : entity).summary.person === true;
-  const asTag = (one: LookupOption): TagOption => ({
-    value: one.id,
-    label: one.label,
-    ...(person ? { avatar: one.image ?? true } : {}),
-  });
+  const look = presentationOf(entity).option;
+  // A chip says a name and shows a face; the list under it also the datum that tells two apart
+  // (web-ui 1.5 `TagOption.meta`, never on the chip). Of the entity's look of a choice, those
+  // three — as text: a tag option is plain.
+  const asTag = (one: LookupOption): TagOption => {
+    const own = look === undefined || one.record === undefined ? {} : look(one.record as T);
+    const avatar = own.avatar ?? (person ? (one.image ?? true) : undefined);
+    const meta = typeof own.meta === "string" ? own.meta : one.detail;
+    return {
+      value: one.id,
+      label: own.name ?? one.label,
+      ...(avatar === undefined ? {} : { avatar }),
+      ...(meta === undefined || meta === "" ? {} : { meta }),
+    };
+  };
   const offered = new Set(lookup.options.map((one) => one.id));
   // The chosen ride along for their labels; the field never offers them again.
   const options = [

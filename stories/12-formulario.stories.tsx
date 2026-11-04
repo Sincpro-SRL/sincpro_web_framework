@@ -57,9 +57,8 @@ function Formulario({ factura }: { factura: RecordReading<Factura> }) {
       identity={{ title: factura.record.number, subtitle: factura.record.customer.name }}
       {...(dirty === undefined ? {} : { dirty })}
     >
-      {/* `Record.Actions` always there: without them web-ui's `Record` remounts its paper when
-          `dirty` first appears, and the field being typed in loses its focus after one letter
-          (a web-ui bug, see docs/ROADMAP.md). */}
+      {/* The record's own actions. (They used to be required: without them web-ui remounted the
+          paper when `dirty` appeared and the field lost its focus — fixed in web-ui.) */}
       <Record.Rail>
         <Record.Actions>
           <Button size="sm" role="ghost" onClick={factura.reload}>
@@ -100,7 +99,7 @@ function Formulario({ factura }: { factura: RecordReading<Factura> }) {
           </div>
         )}
         {edit.advice.map((one) => (
-          <Callout key={one.text} tone="info" title={one.text}>
+          <Callout key={one.message} tone="info" title={one.message}>
             {null}
           </Callout>
         ))}
@@ -230,6 +229,13 @@ export const UnBorradorEnElServidor: Story = {
     await expect(canvas.getByLabelText("Lo que viajó")).toHaveTextContent(
       `PUT /v1/facturas/${NUMERO}/draft`,
     );
+    // Kept again, it names the draft version it read (sincpro_framework's `Edit.version`): the
+    // server takes it as the next one, never as another tab's.
+    await userEvent.type(canvas.getByRole("textbox", { name: "Nota" }), " y confirmar");
+    await userEvent.click(canvas.getByRole("button", { name: "Guardar borrador" }));
+    await expect(
+      await canvas.findByText("Borrador en el servidor · versión 2"),
+    ).toBeVisible();
   },
 };
 

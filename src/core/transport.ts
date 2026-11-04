@@ -53,10 +53,18 @@ export type One<T> = {
 };
 
 /** A kept edit: the values typed, the version of the draft, the record version it started on. */
+/**
+ * The caller's draft of a record (sincpro_framework's `DraftState`): the version the next edit
+ * names, the stored version it started from, and whether the record moved on since (`stale`).
+ * `values` only when a server answers them apart from the record — sincpro_framework answers the
+ * record FROM the draft instead.
+ */
 export type Draft = {
-  values: Record<string, unknown>;
+  values?: Record<string, unknown>;
   version: number;
   origin_version?: number;
+  kept_at?: string;
+  stale?: boolean;
 };
 
 /**

@@ -65,17 +65,16 @@ export const CadaEntidadDiceLoQueTiene: Story = {
     const canvas = within(canvasElement);
 
     // Everything, under the conventional names.
-    const andina = within(
-      await canvas.findByRole("region", { name: /Distribuidora Andina/ }),
-    );
+    const andinaRegion = await canvas.findByRole("region", { name: /Distribuidora Andina/ });
+    const andina = within(andinaRegion);
     // What it is: under the card's title, and beside the name of the link.
     await expect(andina.getAllByText("Empresa")).toHaveLength(2);
     await expect(andina.getByText("Activo")).toBeVisible();
     await expect(andina.getByText(/Distribuidor mayorista/)).toBeVisible();
     await expect(andina.getByText(/^Actualizado el .+ por Luis Pérez$/)).toBeVisible();
-    await expect(
-      andina.getAllByRole("img", { name: /Distribuidora Andina/ })[0],
-    ).toBeVisible();
+    // A company is a face: its photo, round. Beside its written name the photo is decorative
+    // (web-ui hides it from the reader, or the name is said twice), so it is found as drawn.
+    await expect(andinaRegion.querySelector("img[src]")).not.toBeNull();
 
     // A person without a photo, a description or a change: her initials, «Creado», nothing else.
     const maria = within(await canvas.findByRole("region", { name: "María Quispe" }));
@@ -83,6 +82,8 @@ export const CadaEntidadDiceLoQueTiene: Story = {
     await expect(maria.getByText(/^Creado el .+ por Ana Rojas$/)).toBeVisible();
     await expect(maria.queryByText(/^Actualizado/)).toBeNull();
     await expect(maria.queryByRole("img", { name: "María Quispe" })).toBeNull();
+    // Her face, in both sizes: the card is round with her initials too (web-ui 1.4), not empty.
+    await expect(maria.getAllByText("MQ")).toHaveLength(2);
 
     // Names of its own, declared once in `entity()`: picture, availability, notes.
     const cemento = within(await canvas.findByRole("region", { name: "Cemento 50 kg" }));

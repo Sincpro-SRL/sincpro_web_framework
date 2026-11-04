@@ -2,6 +2,7 @@
 
 import type { AnyRecord, Meta } from "@sincpro/criteria";
 import {
+  type Advice,
   changesOf,
   creationOf,
   defaultsOf,
@@ -9,9 +10,11 @@ import {
   type FieldState,
   fieldStateOf,
   type FieldStates,
+  lineStatesOf,
   missingOf,
 } from "@sincpro/web-framework/core/edit";
 import { type Entity, pathFor } from "@sincpro/web-framework/core/entity";
+import { linesAnswered } from "@sincpro/web-framework/core/lines";
 import { retryKeys } from "@sincpro/web-framework/core/retry";
 import { type Draft, TransportError } from "@sincpro/web-framework/core/transport";
 import { useFramework } from "@sincpro/web-framework/react/context";
@@ -47,8 +50,6 @@ export type RecordState<T> =
   | { status: "ready"; record: T; meta: Meta | null; error: null }
   | { status: "failed"; record: null; meta: Meta | null; error: unknown };
 
-export type Advice = { field?: string; text: string };
-
 export type Editing = {
   /** The record as on screen: what was read, what the server computed, what was typed. */
   values: AnyRecord;
@@ -56,8 +57,13 @@ export type Editing = {
   dirty: boolean;
   set: (name: string, value: unknown) => void;
   state: (name: string) => FieldState;
-  /** The server's word on fields that did not validate, by field. */
+  /** A cell of a list of records — line `index` of `name`, its `field`: the line model's hints
+   *  over that line, refined by what the server's preview said of it (`items[index]`). */
+  cell: (name: string, index: number, field: string) => FieldState;
+  /** The server's word on what did not validate, by where it points (`pathOf`): `discount`,
+   *  `lines/1/qty`. Read a field's — its lines' included — with `errorAt`. */
   errors: Record<string, string>;
+  /** What the server's preview warned about, each with where it points; `adviceAt` places it. */
   advice: Advice[];
   /** Required, visible, editable and empty: what blocks a save. */
   missing: string[];
@@ -90,7 +96,12 @@ export type RecordReading<T> = RecordState<T> & {
   edit: Editing;
 };
 
-type Preview = { values?: AnyRecord; fields?: FieldStates; advice?: Advice[] };
+/** sincpro_framework's `ResponsePreviewEntity` (3.28.2): computed values, each field's state
+ *  (`states`, a list's lines in `items`), and what the domain warned (`warnings`). */
+type Preview = { values?: AnyRecord; states?: FieldStates; warnings?: Advice[] };
+
+/** sincpro_framework's `ResponseEdit`, as far as a kept draft needs it: the version it is now. */
+type Edited = { draft?: { version: number; origin_version?: number } | null };
 
 /** How long typing has to pause before the server is asked what the record becomes. */
 const PREVIEW_PAUSE = 300;
@@ -191,7 +202,9 @@ export function useRecord<T extends AnyRecord>(
         forget();
         setReadFor(id);
         setDraft(answer.draft);
-        if (answer.draft) setTyped(answer.draft.values);
+        // A server that answers the record FROM the draft (sincpro_framework) sends no values
+        // apart: the record is the draft. One that sends them apart, they are what was typed.
+        if (answer.draft?.values) setTyped(answer.draft.values);
         setState({
           status: "ready",
           record: answer.record,
@@ -248,9 +261,31 @@ export function useRecord<T extends AnyRecord>(
         .then(
           (answer) => {
             if (aborter.signal.aborted || !mounted.current) return;
-            setComputed(answer.values ?? {});
-            setFromServer(answer.fields ?? {});
-            setAdvice(answer.advice ?? []);
+            // A list the form sent (the lines) comes back computed — subtotals — as a whole:
+            // it takes the place of what was typed, each line keeping its key by position (a
+            // new line has no id to be found by). Typing again cancels an answer in flight, so
+            // `next` is still what is on screen.
+            const fresh = answer.values ?? {};
+            const lists = Object.keys(fresh).filter(
+              (key) => Array.isArray(fresh[key]) && Array.isArray(next[key]),
+            );
+            if (lists.length > 0)
+              setTyped((now) => {
+                const out = { ...now };
+                for (const key of lists)
+                  out[key] = linesAnswered(
+                    next[key] as AnyRecord[],
+                    fresh[key] as AnyRecord[],
+                  );
+                return out;
+              });
+            setComputed(
+              Object.fromEntries(
+                Object.entries(fresh).filter(([key]) => !lists.includes(key)),
+              ),
+            );
+            setFromServer(answer.states ?? {});
+            setAdvice(answer.warnings ?? []);
           },
           () => undefined, // a preview that fails is a preview not shown; the save still decides
         );
@@ -273,13 +308,27 @@ export function useRecord<T extends AnyRecord>(
       ask(next, name);
     },
     state: (name) => fieldStateOf(state.meta, name, values, fromServer),
+    cell: (name, index, field) => {
+      const line = (Array.isArray(values[name]) ? values[name] : [])[index] as
+        AnyRecord | undefined;
+      const definition = state.meta?.fields[name]?.definition;
+      return fieldStateOf(
+        definition,
+        field,
+        line ?? {},
+        lineStatesOf(fromServer, name)[index],
+      );
+    },
     errors: failure instanceof TransportError ? errorsByField(failure.problem?.errors) : {},
     advice,
     missing: missingOf(state.meta, values, fromServer),
     saving,
     failure,
     conflict,
-    restored: draft !== null && Object.keys(changed).length > 0,
+    // Restored: the draft's values were put back over the record (they came apart), or the
+    // record itself was answered from the draft (sincpro_framework: no values apart).
+    restored:
+      draft !== null && (draft.values === undefined || Object.keys(changed).length > 0),
     draft,
     save: async () => {
       if (isNew) return create();
@@ -312,12 +361,26 @@ export function useRecord<T extends AnyRecord>(
       : {
           keep: async () => {
             const route = entity.draft!;
+            // sincpro_framework's `Edit`: the record as the form holds it, whole; the fields
+            // changed; the draft version read (`0`: none) — another tab that kept first wins —,
+            // and the stored version the edit started from.
             try {
-              const kept = await transport.send<Draft>(route.method, pathFor(route, id), {
-                values: changed,
-                expected: draft?.version ?? 0,
+              const kept = await transport.send<Edited>(route.method, pathFor(route, id), {
+                id,
+                values,
+                changed: Object.keys(changed),
+                version: draft?.version ?? 0,
+                ...(typeof version === "number" ? { origin_version: version } : {}),
               });
-              setDraft(kept);
+              const now = kept.draft;
+              if (now)
+                setDraft({
+                  values: changed,
+                  version: now.version,
+                  ...(now.origin_version === undefined
+                    ? {}
+                    : { origin_version: now.origin_version }),
+                });
             } catch (error) {
               refused(error);
             }

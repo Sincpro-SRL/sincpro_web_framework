@@ -15,6 +15,14 @@ import { createContext, type ReactNode, useContext, useMemo, useState } from "re
  * Context: a view receives its record reference and nothing else — the composer hands it no
  * client on purpose — so the transport reaches it through context, set once where the
  * application starts.
+ *
+ * This is the GLOBAL part, and only that. What an OPENING carries is the composer's, and it
+ * already has it: `params` on the reference (a company, a filter, a default — survives a reload
+ * and a link), `api.over` (in a modal, the record it covers), `pick(…, { question })` +
+ * `api.choosing` (what a chooser was asked, in memory) and `api.context` (what the user is on,
+ * what is selected). Read `~/dev/sincpro_web_composer/README.md` before writing a second one
+ * here. A value the backend must see on every request (the active company) goes in the
+ * transport's `headers` — the backend's `sincpro-context` header is read by every entrance.
  */
 type FrameworkContextValue = {
   transport: Transport;

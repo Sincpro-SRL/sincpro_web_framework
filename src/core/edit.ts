@@ -20,8 +20,23 @@ import {
  */
 export type FieldState = { readonly: boolean; required: boolean; visible: boolean };
 
-/** What a server preview said about a field. */
-export type FieldStates = Readonly<Record<string, Partial<FieldState>>>;
+/**
+ * What a server preview said about a field. A list of records — an invoice's lines — carries
+ * each one's own in `items`, in the order the form sent them (sincpro_framework's
+ * `FieldState.items`).
+ */
+export type ServerFieldState = Partial<FieldState> & {
+  items?: readonly Readonly<Record<string, ServerFieldState>>[];
+};
+export type FieldStates = Readonly<Record<string, ServerFieldState>>;
+
+/** What the server's preview warned about, pointing where it belongs (`path`: the field, or a
+ *  line's cell — `["lines", 1, "price"]`). It refuses nothing. sincpro_framework's warning. */
+export type Advice = {
+  message: string;
+  field?: string | null;
+  path?: readonly (string | number)[];
+};
 
 function holds(values: AnyRecord, condition: unknown, meta: Meta): boolean {
   if (condition === null || condition === undefined) return false;
@@ -46,7 +61,17 @@ export function fieldStateOf(
               ? true
               : holds(values, field.visible_when, meta),
         };
-  return { ...own, ...fromServer?.[name] };
+  // `items` is the lines' own word, read with `lineStatesOf` — never a state of the field.
+  const { items: _lines, ...server } = fromServer?.[name] ?? {};
+  return { ...own, ...server };
+}
+
+/** Each line's states of a list of records, as the server said them — by position. */
+export function lineStatesOf(
+  fromServer: FieldStates | undefined,
+  name: string,
+): readonly FieldStates[] {
+  return fromServer?.[name]?.items ?? [];
 }
 
 /** The fields whose value differs from the record's — what a save or a draft sends. */
@@ -76,16 +101,58 @@ export function missingOf(
   });
 }
 
-/** The server's word on a field that did not validate: `errors[].pointer` is a JSON pointer. */
+/**
+ * Where the server's word points inside the record, as one key: `"discount"`, `"lines/1/qty"`.
+ * A JSON pointer (RFC 6901), bare (`/discount`) or as a fragment (`#/values/lines/1/qty`) — the
+ * command's `values/` envelope dropped, `~1`/`~0` read back — or a path (`["lines", 1, "qty"]`).
+ * Errors and warnings are read with the same rule, so both land on the same cell.
+ */
+export function pathOf(at: string | readonly (string | number)[]): string {
+  if (typeof at !== "string") return at.map(String).join("/");
+  const segments = at
+    .replace(/^#/, "")
+    .replace(/^\//, "")
+    .split("/")
+    .map((one) => one.replace(/~1/g, "/").replace(/~0/g, "~"));
+  if (segments[0] === "values" && segments.length > 1) segments.shift();
+  return segments.join("/");
+}
+
+/**
+ * The server's word on what did not validate, by where it points (`pathOf`): a field's own
+ * error under its name, a line's cell's under its whole path (`lines/1/qty`). The first word for
+ * a place wins. `errorAt` reads a field's, its lines' included.
+ */
 export function errorsByField(
   errors: readonly FieldError[] | undefined,
 ): Record<string, string> {
   const found: Record<string, string> = {};
   for (const error of errors ?? []) {
-    const name = error.pointer.replace(/^\/(values\/)?/, "").split("/")[0] ?? "";
-    if (name !== "" && found[name] === undefined) found[name] = error.detail;
+    const at = pathOf(error.pointer);
+    if (at !== "" && found[at] === undefined) found[at] = error.detail;
   }
   return found;
+}
+
+/** The error at `at` or under it (`lines` finds `lines/1/qty`): what marks a field invalid. */
+export function errorAt(
+  errors: Readonly<Record<string, string>>,
+  at: string,
+): string | undefined {
+  const own = errors[at];
+  if (own !== undefined) return own;
+  const under = Object.keys(errors).find((key) => key.startsWith(`${at}/`));
+  return under === undefined ? undefined : errors[under];
+}
+
+/** The warnings at `at` or under it — a line's (`lines/1`) finds its cells'. One with no path
+ *  is placed by its field. */
+export function adviceAt(advice: readonly Advice[], at: string): Advice[] {
+  return advice.filter((one) => {
+    const key =
+      one.path !== undefined && one.path.length > 0 ? pathOf(one.path) : (one.field ?? "");
+    return key === at || key.startsWith(`${at}/`);
+  });
 }
 
 /**

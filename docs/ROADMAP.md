@@ -40,11 +40,11 @@ criteria, en memoria). Dominio a mano: `defineMeta` + `field.*`.
 
 ### En otros paquetes
 
-- **`@sincpro/criteria` `restSource`**: pega `?criteria=` sobre una ruta con query propia y lo
-  manda en base64url, y el REST del framework 3.27 sólo lee JSON plano. `restTransport` lo
-  esquiva; hay que arreglarlo en criteria y acordar el formato con el framework.
-- **`@sincpro/criteria-react` 0.3.0** declara `@sincpro/criteria@^0.1.0` como peer: yarn
-  avisa «incorrect peer dependency» con criteria 0.3.
+- ~~**`@sincpro/criteria` `restSource`**: pega `?criteria=` sobre una ruta con query propia y lo
+  manda en base64url~~ — resuelto en criteria 0.3.1; `restTransport.list` ahora delega en él
+  (ver «criteria 0.3.1»).
+- ~~**`@sincpro/criteria-react` 0.3.0** declara `@sincpro/criteria@^0.1.0` como peer~~ —
+  resuelto en 0.3.1 (`^0.3.0`).
 - **forge no declara labels**: la historia 05 muestra `display_name` como encabezado.
 - **La meta pesa ~97 KB por respuesta** en forge (aun sin filas): `useListing` ya la pide sólo
   en la primera página; el framework debería serializarla sin sus valores por defecto.
@@ -69,8 +69,8 @@ criteria, en memoria). Dominio a mano: `defineMeta` + `field.*`.
   vistas tabla/filas/tablero; `useRelated`/`RelatedList`; selector de `EntityPicker` que busca
   en el servidor. `web/` dividido en `list/`, `record/`, `workspace/`. Historias 15–16, 200 000
   filas.
-- **Pendiente para escala real**: la tabla de web-ui no virtualiza filas (una página grande se
-  dibuja entera — por eso el techo y las páginas). Agrupar en el servidor ya está (ver «Agrupar»
+- **Escala real**: desde web-ui 1.2 la tabla dibuja sólo las filas que se ven a partir de 200
+  (`rowWindow`); el techo y las páginas siguen, porque traer filas sigue costando. Agrupar en el servidor ya está (ver «Agrupar»
   abajo); medir (sumas, promedios por grupo) todavía no tiene su pieza.
 - **Fase 2 — editar** (hecha): `useRecord` con dirty, preview/onchange (`Preview` del framework),
   hints `*_when` evaluados con `matches`, guardar/descartar, conflicto 409, errores por campo
@@ -82,9 +82,10 @@ criteria, en memoria). Dominio a mano: `defineMeta` + `field.*`.
   `EntityPicker` es el many2one. Falta: publicar la selección (`api.select`), `api.pick` desde
   el picker en una historia, y backlinks entre contextos.
 - **Fase 5 — tableros**: bloques ligados a criteria, filtros globales con `dynamic.param`.
-- **web-ui `Record`** sin `Record.Actions` vuelve a montar su papel cuando aparece `dirty`: el
-  campo que se está escribiendo pierde el foco después de la primera letra. Mientras web-ui no
-  lo arregle, un registro editable lleva `Record.Actions` siempre (está en `AGENTS.md`).
+- ~~**web-ui `Record`** sin `Record.Actions` volvía a montar su papel cuando aparecía `dirty`~~
+  — resuelto en web-ui (`RecordHeader`: `dirty` ya no decide el papel). Comprobado sacando
+  `Record.Actions` de `12 · Un formulario…`: escribir «Llamar antes» no pierde el foco. La trampa
+  salió de `AGENTS.md`.
 - **web-ui `Picker`** (resuelto en web-ui 1.0: ver «Composer 1.4 y web-ui 1.0») ofrecía «ver todos…» sólo cuando tenía filas que no dibuja (y nunca si recibe
   `onLoadMore`): no puede decir «hay más en el servidor». `EntityPicker` no le pasa `onLoadMore`
   para que el selector siempre esté a mano; un `browsable` explícito es de web-ui.
@@ -93,9 +94,9 @@ criteria, en memoria). Dominio a mano: `defineMeta` + `field.*`.
   `Picker` que busque en el servidor es de web-ui.
 - **web-ui `SearchBar`**: su campo tiene `choices` pero no la palabra de cada una, así que la
   barra ofrece «paid» donde la celda dice «Pagada»; y ofrece «Estado es Globex» con un valor
-  que el enum no tiene. Dos huecos de accesibilidad que encontraron los `play`: con una ficha
-  puesta el input pierde el placeholder y queda **sin nombre accesible**, y el botón del panel
-  muestra «1» y ese texto **reemplaza su nombre** «Filtrar, agrupar y favoritos». Son de web-ui.
+  que el enum no tiene. Los dos huecos de accesibilidad que encontraron los `play` (el input
+  sin nombre con una ficha puesta y el botón del panel que decía «1») los cerró web-ui 1.2:
+  `06 · Filtrar` ya los busca por su nombre.
 - **Buscar por un campo de otro agregado** («cliente se llama Globex»): criteria compara sólo
   campos propios. Hace falta que la entidad publique el campo (`customer_name`) o que su
   plantilla de búsqueda lo incluya; no se resuelve en el cliente.
@@ -126,7 +127,7 @@ Lo que no se pudo reemplazar, con su dueño:
 | 10  | `EntityList`/`RecordLines` no exponen acciones por fila (el `List` de web-ui ya tiene `rowActions`): las membresías de un usuario («Quitar») siguen como tabla a mano, con `relatedOf` + `textOf`                                                                                                                                 | web-framework                    |
 | 11  | `CommandButton` no tiene `disabled`: «Mover» (sin cambio de tenant) y «Compartir» (sin tenant elegido) usan `useCommand` + `Button`                                                                                                                                                                                               | web-framework                    |
 | 12  | `entityView` recibe los componentes, no un `load`: las vistas dejaron de ser chunks perezosos y el bundle de forge quedó en uno de 1,5 MB                                                                                                                                                                                         | web-framework                    |
-| 13  | La vista «filas» de `EntityList` arma la fila sólo con display + campos: las etiquetas que forge ponía en `List.Rows` («compartido», «inactivo») sólo caben como celda de la tabla                                                                                                                                                | web-framework                    |
+| 13  | ~~La vista «filas» de `EntityList` arma la fila sólo con display + campos~~: **resuelto** con `presented(entidad, { row })` — las etiquetas («compartido», «inactivo») van en `row.tags` (ver «Cómo se ve un registro»)                                                                                                           | web-framework                    |
 | 14  | `webUiSkin` le daba al composer los íconos de lucide a 24 px (su default) dentro de controles de 22 px: el vistazo/al lado/ventana de un link y el marco del panel se veían más grandes que el nombre. **Arreglado en `skin.tsx`** (16 px, como los glifos del composer), falta release; forge usa `DEFAULT_ICONS` mientras tanto | web-framework                    |
 | 15  | El composer dibuja un ícono de la piel como `<Icon />` sin tamaño ni clase, y su CSS no acota el `svg` de `.sc-control`: cualquier piel con íconos de otro tamaño desborda. Acotarlo en `.sc-control svg` lo hace robusto                                                                                                         | composer                         |
 | 16  | `Record` no tiene densidad: en un panel o el vistazo el título, los hechos y la actividad tienen el mismo tamaño que en una página, y un hecho monoespaciado largo (un email) se pega al siguiente                                                                                                                                | web-ui                           |
@@ -172,9 +173,9 @@ líneas de un agregado) y [#230](https://github.com/Sincpro-SRL/sincpro_framewor
   web-ui acababa de reemplazar.
 - **web-ui — una `List` sin cara de filas** cae igual a filas cuando es angosta y no dibuja nada.
   Debería quedarse en la cara que tiene, o avisar.
-- **composer — una vista no sabe que la abrieron para elegir**: `api.answer` existe siempre y no
-  hace nada si no hay quien espere. Viaja como parámetro `pick` de la referencia
-  (`entity.chooserRef()`); lo correcto es que composer lo diga (`api.choosing`).
+- ~~**composer — una vista no sabe que la abrieron para elegir**~~: composer ya lo tiene en main
+  (#12, después de 1.4.0): `api.choosing` y `pick(…, { question })`. Cuando se publique, `PICK_PARAM`
+  (`entity.chooserRef()`, `EntityList`) se reemplaza por `api.choosing`.
 - **La miga de un registro con su nombre real** (arreglado con composer 1.1.0): `EntityList` y las
   vistas de las historias dibujan la miga con `useCrumbs(api)`, que sigue a `setTitle`; con
   `api.crumbs()` en el render quedaba la referencia («Nuevo», «C-004»). El peer pasó a `^1.1.0`.
@@ -202,10 +203,10 @@ al abrir uno).
 
 Lo que falta, con su dueño:
 
-- **web-ui — la tabla agrupa la página**: `DataTable` arma los grupos con las filas que tiene y
+- ~~**web-ui — la tabla agrupa la página**~~ (resuelto con web-ui 1.4, ver «web-ui 1.4»): `DataTable` arma los grupos con las filas que tiene y
   cuenta `getLeafRows()`; ignora `group.piles`. Por eso, agrupada, la lista se ve en filas, que sí
   dibuja los montones que recibe. Pedido: que la tabla dibuje `piles` contados afuera.
-- **web-ui — un montón no dice «hay más»**: un grupo abierto muestra su primera página (50) y su
+- ~~**web-ui — un montón no dice «hay más»**~~ (resuelto con web-ui 1.4: `group.onMore`): un grupo abierto muestra su primera página (50) y su
   total real en el encabezado, pero no puede ofrecer «cargar más» adentro.
 - **acá — medir**: sumas y promedios por grupo (`measures`) ya los contesta el servidor; falta
   mostrarlos en el encabezado del grupo.
@@ -220,7 +221,7 @@ El mapa contra el que se mide lo que falta. «Dueño» es quien tiene que movers
 | Buscar literal (plantilla de la entidad)            | `search="box"`, `listing.search`                 | 02, 09     | ✅     |                                                |
 | Filtrar con barra, constructor y filtros con nombre | `EntitySearchBar`, `filters`                     | 06         | ✅     |                                                |
 | Ordenar en el servidor                              | encabezado → `order`                             | 20         | ✅     |                                                |
-| Agrupar en el servidor                              | «Agrupar por», `useGroups`                       | 19, 15     | ✅     | web-ui: la tabla agrupa la página              |
+| Agrupar en el servidor                              | «Agrupar por», `useGroups`                       | 19, 15     | ✅     | «Ver N más» en un grupo (web-ui 1.4)           |
 | Medir por grupo (sumas)                             | `EntityList sums`, `useGroups` (`sumsOf`)        | 19         | ✅     | backend: cómo se agrega cada campo             |
 | Listas con dominio (sub-filtro fijo)                | `defineList`, `useListing(lista)`, `listView`    | 21         | ✅     |                                                |
 | Una vista de lista propia con la misma búsqueda     | `List` de web-ui + `EntitySearchBar` (nivel 2)   | 21         | ✅     |                                                |
@@ -259,7 +260,7 @@ Encontrado en esta vuelta:
 - **useListing perdía lo tipeado antes de que llegara la definición** (arreglado): sin plantilla
   no había qué llenar, y nada volvía a preguntar. `EntityList` lo escondía porque no dibuja la caja
   hasta tener la meta; un selector propio lo mostró (09 · UnSelectorPropio).
-- **web-ui — las sugerencias de la barra no tienen rol**: «Nombre del cliente · contiene Globex»
+- ~~**web-ui — las sugerencias de la barra no tienen rol**~~ (resuelto en web-ui 1.4: `option`): «Nombre del cliente · contiene Globex»
   son `span` sin `option`; un lector de pantalla no las anuncia y un `play` las busca por texto.
 - **web-ui — lo que viene** (sin publicar en 0.2.0): `List readOnly`, «vistazo/abrir» como
   acciones de fila, `collapseAfter` y limpiar todo en la barra, y la medición angosta antes del
@@ -487,6 +488,223 @@ La CI lo mostró como una historia intermitente (`09 · UnSelectorPropio`: con 2
 dependía del orden de dos temporizadores). Ahora el temporizador llama al `refine` vigente; la
 historia `09 · EscribirAntesDeQueLlegueElModelo` lo fija con la meta llegando a los 120 ms, y
 fallaba siempre antes del arreglo.
+
+## web-ui 1.3 (2026-11-03)
+
+El peer pasó de `^1.1.0` a `^1.3.0`. Nada de lo que este paquete importa cambió de nombre; con
+la versión nueva pasan todas las pruebas después de dos ajustes de `play`:
+
+- **La tabla dibuja sólo lo que se ve desde 200 filas** (1.2): `15 · CargarMasTieneTecho`
+  contaba `<tr>` y vio 33 de 200. Ahora lee `aria-rowcount` (lo que la tabla tiene) y además
+  comprueba que de 300 no dibuja 300.
+- **La barra conserva sus nombres con fichas puestas** (1.2): `06 · Filtrar` ya no busca el input
+  por estructura, y comprueba «Filtrar, agrupar y favoritos, 1 puesto». Con una ficha el input
+  es `textbox` «Buscar»; sin fichas, `searchbox`: el rol cambia con el estado (web-ui).
+- **`09 · BuscarEnTodosConUnaTabla` falló una vez con toda la suite** (sola, 5 de 5): miraba
+  si el encabezado se veía apenas aparecía, y el diálogo entra con un fundido. Ahora espera.
+
+Lo que trae y todavía no se usa acá: `List.Present` (una presentación propia con el mismo
+conjunto) y la plantilla «Operación · sobre N registros».
+
+En `main` de web-ui, sin publicar: `DataTable onMore` / `ListSet.more` (la tabla dibuja los
+montones contados afuera y ofrece «Mostrar N más»: cierra los dos pedidos de «Agrupar»),
+`createCopy` (un solo mecanismo de textos para web-ui, composer y la app: candidato a
+reemplazar `installFrameworkCopy` y las tres tablas de `SincproApp`) y `Panes`.
+
+El remontado de `Record` sin `Record.Actions` lo resolvió web-ui después (ver arriba).
+El estado «refrescando», `media.person` en `RecordCard` y las sugerencias con rol los trajo la
+1.4 (abajo).
+
+## web-ui 1.4 (2026-11-03)
+
+El peer pasó a `^1.4.0`. Lo que se usa ya:
+
+- **«Actualizando la lista…»** (`state.refreshing`): `EntityList` lo pasa cuando vuelve a
+  preguntar con filas (o grupos) en la mano; el esqueleto sigue siendo sólo de la primera
+  lectura. Historia `02 · SeVeQueEstaPreguntando` (falla sin el cambio).
+- **La barra es un `combobox`** y sus sugerencias son `option` (antes `textbox`/`searchbox` y
+  botones): un lector de pantalla las anuncia. Cuatro `play` (06, 26, 29) buscaban los roles
+  viejos; ahora `combobox` «Buscar» y `option`. La caja suelta (`search="box"`) sigue siendo
+  `searchbox`.
+- **La tarjeta tiene cara** (`RecordCard media.person`): `cardOf` dibuja a una persona o
+  empresa redonda, con iniciales si no hay foto — igual que el enlace (`relationOf`); las dos
+  comparten `mediaOf`. En la tarjeta la cara es `aria-hidden` (el nombre está escrito al lado):
+  `24 · CadaEntidadDiceLoQueTiene` la busca dibujada, no anunciada.
+
+- **Agrupado, la lista conserva su cara**: la tabla dibuja los montones que contó el servidor,
+  así que `EntityList` ya no cae a «filas» al agrupar. Y **«Ver N más» dentro de un grupo**
+  (`group.onMore`): `useGroups.more(bucket)` lee la página siguiente del grupo con el cursor del
+  servidor y la agrega, hasta un techo de 500 filas por grupo (`maxRows`), como la lista.
+  `15 · AgruparDoscientosMil` abre «Banco» (50 de 50 000), pide más (100) y comprueba que es una
+  tabla; falla sin `onMore` y con la cara forzada a filas.
+- ~~**Hueco de web-ui**: el botón dice «Ver 49.950 más» y trae 50; en el techo sigue~~ —
+  resuelto en web-ui 1.5 (`Pile.more`, ver «web-ui 1.5»).
+- ~~El techo de 500 por grupo no tiene prueba propia~~ — la tiene desde 1.5 (historia 15).
+
+`createCopy` para la tabla de textos del framework espera la decisión del contexto.
+
+## criteria 0.3.1 (2026-11-03)
+
+`@sincpro/criteria` y `@sincpro/criteria-react` pasaron a `^0.3.1`. La 0.3.1 arregla en
+`restSource` lo que forge había encontrado (manda el criteria como JSON plano y respeta la query
+propia de la ruta), así que `restTransport.list` ya no arma la URL a mano: delega en
+`restSource` y sólo traduce su `RestError` a `TransportError`. `one()` y `send()` siguen acá —
+criteria no los tiene—. Los tests de `tests/rest.test.ts` (query propia, JSON plano, cabeceras
+que rotan, rechazo con su problema) pasan igual por `list`.
+
+## Cómo se ve un registro, dicho una vez (2026-11-03)
+
+Propuesta de forge: definir por entidad cómo se dibuja un registro y usarlo en todas partes.
+Lo que ya existía y no cambia: el **nombre** es del backend (`meta.display`, el `display_name`
+de Odoo; un nombre compuesto como «[C-004] Globex» va como campo calculado del agregado con
+`DEFAULT_DISPLAY` apuntándole), la **búsqueda** también (`meta.search`), y las **partes** del
+registro son del resumen (`entity(…, { summary })`).
+
+Lo nuevo es **cómo se dibuja**: `presented(entidad, { option, row, card })` en `web/list/presentation.ts`.
+
+- Cada tamaño contesta las **props** de la pieza de web-ui (`PickerItem`, `RowOf`, `RecordCard`)
+  y van **encima** del default (`over`): se da sólo lo que cambia; sin presentación nada cambia.
+- `option` → `EntityPicker` (todo `PickerItem`: `meta`, `aside`, `tags`, `avatar`, `haystack`…),
+  `EntityTags` (nombre y cara: es lo que un chip tiene) y ⌘K de `entityView` (nombre y detalle:
+  ⌘K es texto). `row` → la cara «filas» de `EntityList`, y por eso también la tarjeta del
+  tablero cuando no hay `card`. `card` → el tablero, con `onOpen` de la lista.
+- **Por qué no `entity(…, { present })`** como se propuso: `core/` no importa React ni web-ui
+  (`make doctor`), así que no puede nombrar un `ReactNode` ni las props de web-ui. `presented()`
+  envuelve la entidad en `web/` y devuelve la misma entidad con su presentación: se pasa a todo
+  lo que recibe una entidad.
+- **Por qué props y no componentes**: web-ui mantiene el teclado, el resaltado de lo tipeado, la
+  regla de qué hace un clic y la accesibilidad de cada pieza; un componente de la app en lugar
+  de una opción los perdería. Es el mismo motivo de `factsOf` / `columnsOf`.
+- `LookupOption` lleva ahora la fila (`record`): con ella se dibuja la opción.
+- Historia `30 · Cómo se ve un registro, dicho una vez` (selector, filas, tablero, y sin
+  presentación igual que antes; los dos primeros fallan sin `presentationOf`) y un test de ⌘K en
+  `tests/lookup.test.ts`. Cierra el hueco 13 de forge: las etiquetas de una fila van en `row`.
+
+Lo que tiene que moverse en **web-ui** para ir más allá:
+
+- **`Picker` y `TagsField` no aceptan un dibujo propio** de la opción — web-ui 1.5 trae
+  `renderOption`; `presented` todavía no lo ofrece: con las ranuras alcanza, y una opción propia
+  se sumaría como `option` que devuelve un nodo (pendiente, sin caso que lo pida).
+- ~~**`List.Board card` no recibe la regla de clic**~~ — web-ui 1.5 `card(item, ways)`:
+  `EntityList` usa `ways.press` (abrir, o elegir en un selector).
+- ~~**`TagOption` no tiene `meta`**~~ — web-ui 1.5: `EntityTags` pone el `meta` de la opción (o la
+  clave) debajo del nombre en la lista, nunca en el chip. Historia 30.
+
+## Estado y contexto (2026-11-03)
+
+No hace falta un store nuevo: cada estado ya tiene dueño (README, «Where state lives»). Lo global
+es `FrameworkProvider`; lo que el backend ve en cada pedido va en los `headers` del transporte
+(su `sincpro-context`); lo que lleva una apertura es de composer — `params`, `api.over`,
+`pick(…, { question })` + `api.choosing`, `api.context`. Un análisis anterior le pidió todo esto a
+composer porque sólo había leído `api.context`: está en `AGENTS.md` como trampa.
+
+Lo que sí falta, y es de acá:
+
+- **Un registro nuevo no toma los `params` con que se abrió** como valores iniciales: «nueva
+  factura» desde un cliente debería llegar con el cliente puesto (el `default_*` del `context` de
+  Odoo). `useRecord(entidad, "")` arranca sólo con los `default` de la meta.
+- **El front no manda `sincpro-context`**: se puede hoy con `headers`, falta una historia que lo
+  muestre (la empresa activa).
+- ~~**Líneas editables de un agregado**~~ — hechas (ver «Las líneas de un agregado»).
+- sincpro_framework#228 (la identidad en la respuesta de un alta) se cerró: es el DTO de cada
+  caso de uso; lo de forge (`{project_id}` con identidad `id`) se corrige en forge.
+
+## web-ui 1.5 y composer 1.5 (2026-11-03)
+
+Los peers pasaron a `^1.5.0`. De web-ui 1.5 se usa:
+
+- **«Ver 50 más de 49.950»** (`Pile.more`): `useGroups.brings(bucket)` dice cuántas filas trae el
+  próximo «más» de un grupo, o `false` en el techo (500) o sin página siguiente — entonces el grupo
+  dice «Se muestran 500 de 50.000» y el botón se va. `15 · AgruparDoscientosMil` llega al techo
+  (bajando la tabla: desde 200 filas el pie del grupo sólo se dibuja cuando se ve); falla sin
+  `brings`.
+- **`card(item, ways)`** y **`TagOption.meta`** (arriba, «Cómo se ve un registro»).
+
+composer 1.5 trae `api.choosing` y `pick(…, { question })`. Todavía no se usa: `PICK_PARAM` en la
+referencia sigue marcando el selector (sobrevive a una recarga; `choosing` no, a propósito).
+Pasarse es un cambio de comportamiento que hay que decidir.
+
+## Las líneas de un agregado (2026-11-03)
+
+Contrato de sincpro_framework (3.28 más el `path` de las advertencias, sin publicar): las líneas
+viajan como la **lista completa y en orden**, en el mismo comando que el agregado y con su versión
+(sin ella, la lista completa borraría una línea que otro agregó). Una línea leída lleva su id; una
+**nueva va sin id** —el servidor rechaza uno que no conoce y pone el suyo—. Un error apunta a la
+celda con `#/values/lines/1/qty`; el preview dice el estado de cada celda en
+`states.lines.items[i]` (`fields` hasta 3.28.1) y cada advertencia trae `{message, field, path}` con
+`path = ["lines", 1, "price"]`.
+
+Lo hecho (historia `31 · Las líneas de una factura`, tests `edit` y `lines`):
+
+- **`RecordField name="lines"`** de un one2many sin entidad propia dibuja `LineItems` y escribe la
+  lista entera con `edit.set` (dirty, preview, guardar y descartar como cualquier campo). Agregar,
+  quitar, deshacer y reordenar son de la pantalla: no hay comandos por línea en el cable.
+- **La clave de una línea nueva** se guarda aparte (`core/lines`, un `WeakMap` sobre la línea), pasa
+  a cada copia editada y se reconcilia **por posición** con lo que contesta el preview.
+- **Sólo una lista entera se edita**: un registro que trajo una página de sus líneas (20 de 120) las
+  dibuja de lectura (`RecordLines`), porque escribirla entera borraría las que no trajo.
+- **Errores**: `errorsByField` no reconocía el `#` (todo caía en la clave `"#"`) y cortaba al primer
+  tramo (el error de una celda caía en `lines`). Ahora `pathOf` lee `#/…`, `/…` y caminos, saca
+  `values/` y conserva el camino entero (`lines/1/qty`); `errorAt` encuentra el de un campo o de
+  adentro de él. Un error o una advertencia de una línea se dice EN la línea (`flag`).
+- **Estados por línea**: `states.lines.items[i]` (`fields` hasta 3.28.1) ya no se pierde: `edit.cell(name, i, campo)` es el
+  hint del modelo de la línea refinado por el servidor; el diálogo de la línea lo respeta.
+- **Un callback de `LineItems` corre tarde** («Deshacer» en un aviso, segundos después): parte de
+  la lista de AHORA, no de la del render que lo creó. Un play lo encontró (sumaba una línea de más).
+
+Encontrado contra el backend real (estaba mal y las historias no lo veían, porque el servidor
+falso usaba los mismos nombres):
+
+- **Las advertencias** traen `message`, no `text`: el front dibujaba avisos vacíos. Corregido
+  (`Advice` es `{message, field, path}`, en `core`).
+- **Guardar el borrador** mandaba `{values, expected}`; el `Edit` del framework es
+  `{id, values (el registro entero), changed, version, origin_version, action}` y contesta
+  `ResponseEdit` con `draft: {version, origin_version, kept_at, stale}`. Corregido el cuerpo y la
+  lectura de la respuesta; `12 · UnBorradorEnElServidor` guarda dos veces (la segunda falla si la
+  versión no viaja).
+- **Leer un registro con borrador**: el framework contesta el registro YA con el borrador puesto y
+  `draft` sin `values`; el front hacía `setTyped(draft.values)` (indefinido) y se rompía. Ahora
+  lo tolera y lo marca «restaurado». **Abierto**: guardar ese borrador es `Edit` con
+  `action: "save"`, y `useRecord.save` usa la ruta `save` con lo cambiado (nada, en ese caso).
+  Hay que decidir si una entidad con borradores guarda por `Edit`.
+- ~~**El working tree de sincpro_framework renombra la respuesta del preview**~~ — publicado en
+  3.28.2 (ver abajo); el front ya lee los nombres nuevos.
+
+Medido con 2 000 líneas (Node, test temporal sobre `core`):
+
+| Qué                                               | Costo                                                                    |
+| ------------------------------------------------- | ------------------------------------------------------------------------ |
+| `changesOf` en cada tecla, con las líneas tocadas | 0,34 ms                                                                  |
+| Pedido de preview / respuesta                     | 172 KB / 178 KB por pausa de 300 ms                                      |
+| Reconciliar claves por posición                   | 0,02 ms                                                                  |
+| `flag` de cada línea                              | 50 ms → **0,39 ms** (un `findIndex` por línea; ahora un mapa por render) |
+
+El costo real es el cable: cada preview manda y recibe la lista entera. Es el contrato (lista
+completa); si pesa, lo que cambia es el contrato del backend, no comandos inventados acá.
+
+## sincpro_framework 3.28.2 y web-ui 1.6 (2026-11-03)
+
+**sincpro_framework 3.28.2** publica el vocabulario de formularios: `PreviewEntity`,
+`ResponsePreviewEntity`, `warn_form`, `apply_values`, `read_only`. En el cable cambia lo que
+contesta un preview y un `Edit`: `fields → states` y `advice → warnings` (cada una
+`{message, field, path}`); el pedido (`{values, changed, id}`, y el `Edit`) no cambia, y el error
+sigue en `#/values/lines/3/quantity`. Contra 3.28.2 el front perdía en silencio los estados por
+línea y las advertencias: ahora lee `states` / `warnings` (`useRecord`), y el servidor falso
+contesta igual. `31 · Las líneas de una factura` falla con los nombres viejos.
+
+**web-ui 1.6** trae `cellState(línea, columna)` en `LineItems` (solo lectura, obligatorio, oculto,
+error y aviso por CELDA) y `rowState`, y ventana de filas desde 200 en `EditableTable` (2 000
+líneas: 273 → 36 ms por tecla, medido por web-ui). `RecordLinesEditor` lo usa:
+
+- El error que apunta a una celda (`#/values/lines/3/quantity`) se dibuja **debajo de ese valor**
+  y llega a su control como `aria-invalid`; antes era un aviso sobre la línea entera.
+- La advertencia de un valor (`path: ["lines", 0, "price"]`) va en esa celda.
+- El aviso de la línea (`flag`) queda para lo que apunta a la línea y a ninguna celda dibujada
+  (un `id` que el servidor no conoce).
+- Cada celda respeta `states.lines.items[i]` (el precio fijado por volumen, de lectura).
+
+Sigue: editar en la celda (las columnas `edit` de `LineItems`) en vez de sólo en el diálogo —
+falta ver cómo se nombra un control dentro de una celda para un lector de pantalla.
 
 ## Decisiones abiertas
 

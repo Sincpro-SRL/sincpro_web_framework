@@ -50,13 +50,6 @@ const FILTROS: NamedFilter<Factura>[] = [
   },
 ];
 
-/** The search bar's text input. */
-function barInput(root: HTMLElement): HTMLInputElement {
-  const input = root.querySelector<HTMLInputElement>("input[type=text], input:not([type])");
-  if (input === null) throw new Error("the search bar has no text input");
-  return input;
-}
-
 const POR_COBRAR = FACTURAS.filter((f) => f.state === "posted" || f.state === "draft");
 const PAGADAS = FACTURAS.filter((f) => f.state === "paid");
 const PAGADAS_GLOBEX = PAGADAS.filter((f) => f.customer_name.includes("Globex"));
@@ -87,11 +80,14 @@ export const UnFiltroConNombreYElNombreDelCliente: Story = {
     const shown = Math.min(20, PAGADAS.length);
     await expect(await canvas.findByText(`${shown} de ${PAGADAS.length}`)).toBeVisible();
 
-    // With a chip put, the bar's input loses its placeholder — and with it its only name
-    // (web-ui gap, see docs/ROADMAP.md): it is found as the bar's one text input.
-    await userEvent.type(barInput(canvasElement), "Globex");
+    // With a chip put, the bar keeps its names (web-ui 1.2): the panel button says how many
+    // are put, and the input is still «Buscar» — a combobox whose suggestions are options (1.4).
+    await expect(
+      canvas.getByRole("button", { name: "Filtrar, agrupar y favoritos, 1 puesto" }),
+    ).toBeVisible();
+    await userEvent.type(canvas.getByRole("combobox", { name: "Buscar" }), "Globex");
     await userEvent.click(
-      await canvas.findByRole("button", { name: /Nombre del cliente\s*:\s*contiene Globex/ }),
+      await canvas.findByRole("option", { name: /Nombre del cliente\s*:\s*contiene Globex/ }),
     );
     const total = PAGADAS_GLOBEX.length;
     await expect(await canvas.findByText(`${total} de ${total}`)).toBeVisible();
@@ -148,7 +144,7 @@ export const ClientesPorNombreONit: Story = {
     await canvas.findByText("8 de 8");
     await userEvent.type(await canvas.findByPlaceholderText(/Buscar, o #/), "Glob");
     await userEvent.click(
-      await canvas.findByRole("button", { name: /^Nombre\s*:\s*contiene Glob/ }),
+      await canvas.findByRole("option", { name: /^Nombre\s*:\s*contiene Glob/ }),
     );
     await expect(await canvas.findByText("1 de 1")).toBeVisible();
   },

@@ -52,6 +52,8 @@ export function pilesOf<T extends AnyRecord>(
   meta: Meta | null,
   locale: string | undefined,
   rowsOf: (bucket: Bucket<T>) => readonly T[] | undefined,
+  /** What a group's next «more» brings (`Pile.more`); omitted, web-ui says nothing about it. */
+  brings?: (bucket: Bucket<T>) => number | false | undefined,
 ): { piles: Pile<T>[]; bucketAt: ReadonlyMap<string, Bucket<T>>; deepest: number } {
   const bucketAt = new Map<string, Bucket<T>>();
   const none = frameworkCopy().list.noValue;
@@ -72,6 +74,11 @@ export function pilesOf<T extends AnyRecord>(
   const detailed = (bucket: Bucket<T>) => {
     const detail = detailOf(meta, bucket.measures, locale);
     return detail === undefined ? {} : { detail };
+  };
+
+  const more = (bucket: Bucket<T>, deepest: boolean): { more?: number | false } => {
+    const next = deepest ? brings?.(bucket) : undefined;
+    return next === undefined ? {} : { more: next };
   };
 
   const walk = (
@@ -95,6 +102,7 @@ export function pilesOf<T extends AnyRecord>(
         ...detailed(bucket),
         items: below.length === 0 ? [...(rowsOf(bucket) ?? [])] : [],
         piles: walk(below, path, depth + 1),
+        ...more(bucket, below.length === 0),
       };
     });
 

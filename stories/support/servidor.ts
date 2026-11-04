@@ -120,6 +120,70 @@ export function servidorVentas() {
     return { number, version: 1 };
   }
 
+  /**
+   * The lines as sincpro_framework computes them: each subtotal from its quantity and price.
+   * What the form sent, in its order; a new line still without an id.
+   */
+  const computed = (lines: readonly AnyRecord[]): AnyRecord[] =>
+    lines.map((line) => ({
+      ...line,
+      subtotal: (Number(line["quantity"] ?? 0) * Number(line["price"] ?? 0)).toFixed(2),
+    }));
+
+  /** What the domain says of each line: its states (`items[i]`) and its warnings (`path`). */
+  const linesSaid = (lines: readonly AnyRecord[]) => ({
+    // A line of 100 or more takes the volume price: the price list sets it, not the form.
+    items: lines.map((line) =>
+      Number(line["quantity"] ?? 0) >= 100 ? { price: { readonly: true } } : {},
+    ),
+    advice: lines.flatMap((line, i) =>
+      line["price"] !== undefined && line["price"] !== "" && Number(line["price"]) < 1
+        ? [{ message: "Precio bajo el costo", field: "lines", path: ["lines", i, "price"] }]
+        : [],
+    ),
+  });
+
+  /** The lines written whole, in order (sincpro_framework): a line names an id the invoice has,
+   *  or none — the server mints it. Every wrong cell answers 422 with where it is. */
+  function linesWritten(
+    route: string,
+    f: Factura,
+    lines: readonly AnyRecord[],
+  ): Factura["lines"] {
+    const known = new Set(f.lines.items.map((line) => line.id));
+    const errors = lines.flatMap((line, i) => [
+      ...(line["id"] !== undefined && !known.has(String(line["id"]))
+        ? [
+            {
+              pointer: `#/values/lines/${i}/id`,
+              detail: `La línea ${String(line["id"])} no es de esta factura.`,
+            },
+          ]
+        : []),
+      ...(Number(line["quantity"] ?? 0) <= 0
+        ? [
+            {
+              pointer: `#/values/lines/${i}/quantity`,
+              detail: "La cantidad tiene que ser mayor a cero.",
+            },
+          ]
+        : []),
+    ]);
+    if (errors.length > 0)
+      throw refuse(route, 422, {
+        kind: "invalid",
+        reason: "VALIDATION",
+        title: "La factura no se guardó",
+        errors,
+      });
+    const items = computed(lines).map((line) => ({
+      ...line,
+      id: line["id"] === undefined ? `L-${f.number}-n${++seq}` : String(line["id"]),
+    })) as unknown as Factura["lines"]["items"];
+    f.amount_total = items.reduce((sum, line) => sum + Number(line.subtotal), 0).toFixed(2);
+    return { items, count: { value: items.length, exact: true }, cursor: null };
+  }
+
   function handle(method: Method, route: string, body: unknown): unknown {
     const sent = (body ?? {}) as AnyRecord;
     const [, , number, action] = route.split("/");
@@ -127,13 +191,28 @@ export function servidorVentas() {
     if (method === "POST" && route === "/facturas/preview") {
       const values = sent["values"] as AnyRecord;
       const card = values["payment"] === "card";
+      const lines = Array.isArray(values["lines"])
+        ? computed(values["lines"] as AnyRecord[])
+        : undefined;
+      const said = lines === undefined ? undefined : linesSaid(lines);
       return {
-        values: {},
-        fields: { card_reference: { required: card, visible: card } },
-        advice:
-          typeof values["notes"] === "string" && values["notes"].length > 80
-            ? [{ field: "notes", text: "La nota es larga: va impresa en la factura." }]
-            : [],
+        values: lines === undefined ? {} : { lines },
+        states: {
+          card_reference: { required: card, visible: card },
+          ...(said === undefined ? {} : { lines: { items: said.items } }),
+        },
+        warnings: [
+          ...(typeof values["notes"] === "string" && values["notes"].length > 80
+            ? [
+                {
+                  field: "notes",
+                  path: ["notes"],
+                  message: "La nota es larga: va impresa en la factura.",
+                },
+              ]
+            : []),
+          ...(said?.advice ?? []),
+        ],
       };
     }
 
@@ -141,21 +220,28 @@ export function servidorVentas() {
 
     const f = find(route, decodeURIComponent(number ?? ""));
 
+    // sincpro_framework's `Edit` (save_draft): the record as the form holds it, the fields it
+    // changed, the draft version it read; answers the record and the draft it is now.
     if (method === "PUT" && action === "draft") {
       const kept = drafts.get(f.number);
-      if ((kept?.version ?? 0) !== sent["expected"])
+      if ((kept?.version ?? 0) !== sent["version"])
         throw refuse(route, 409, {
           kind: "conflict",
           reason: "DRAFT_CONFLICT",
           detail: "Otra pestaña guardó el borrador antes.",
         });
+      const values = sent["values"] as AnyRecord;
+      const changed = new Set(sent["changed"] as string[]);
       const next: Draft = {
-        values: sent["values"] as AnyRecord,
+        values: Object.fromEntries(Object.entries(values).filter(([k]) => changed.has(k))),
         version: (kept?.version ?? 0) + 1,
-        origin_version: f.version,
+        origin_version: Number(sent["origin_version"] ?? f.version),
       };
       drafts.set(f.number, next);
-      return next;
+      return {
+        factura: { ...f, ...next.values },
+        draft: { version: next.version, origin_version: next.origin_version },
+      };
     }
 
     if (method === "PUT" && action === undefined) {
@@ -186,6 +272,8 @@ export function servidorVentas() {
             { pointer: "/card_reference", detail: "Falta la referencia de la tarjeta." },
           ],
         });
+      if (Array.isArray(values["lines"]))
+        values["lines"] = linesWritten(route, f, values["lines"] as AnyRecord[]);
       Object.assign(f, values, { version: f.version + 1 });
       drafts.delete(f.number);
       event(f, "Factura editada");

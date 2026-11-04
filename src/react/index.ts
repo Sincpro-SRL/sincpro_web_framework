@@ -23,7 +23,6 @@ export {
 } from "@sincpro/web-framework/react/useListing";
 export { type Lookup, useLookup } from "@sincpro/web-framework/react/useLookup";
 export {
-  type Advice,
   type Editing,
   type RecordReading,
   type RecordState,
