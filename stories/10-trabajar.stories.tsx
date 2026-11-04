@@ -105,7 +105,7 @@ function Factura({ number, servidor }: { number: string; servidor: Servidor }) {
           <RecordField record={factura} name="notes" />
           <RecordField record={factura} name="due_date" />
           {edit.advice.map((one) => (
-            <Callout key={one.text} tone="info" title={one.text}>
+            <Callout key={one.message} tone="info" title={one.message}>
               {null}
             </Callout>
           ))}

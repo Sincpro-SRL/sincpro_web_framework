@@ -2,26 +2,26 @@
 
 import { type AnyRecord, choicesOf } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
+import { errorAt } from "@sincpro/web-framework/core/edit";
+import { editableLines } from "@sincpro/web-framework/core/lines";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
 import { relationFieldOf } from "@sincpro/web-framework/core/relation";
 import { useEntityFor, useFramework } from "@sincpro/web-framework/react/context";
 import type { RecordReading } from "@sincpro/web-framework/react/useRecord";
+import { controlFor, type FieldControl } from "@sincpro/web-framework/web/record/control";
 import { EntityPicker } from "@sincpro/web-framework/web/record/EntityPicker";
+import { RecordLinesEditor } from "@sincpro/web-framework/web/record/lines";
 import { useRecordOpening } from "@sincpro/web-framework/web/record/opening";
 import { RecordLines } from "@sincpro/web-framework/web/record/record";
 import { RelatedList } from "@sincpro/web-framework/web/record/RelatedList";
+export type { FieldControl } from "@sincpro/web-framework/web/record/control";
 import {
   Checkbox,
-  DatePicker,
   type DirtyState,
   Field,
-  NumberInput,
   type OpenTarget,
   ReadValue,
   RelationValue,
-  Select,
-  TagsField,
-  TextInput,
 } from "@sincpro/web-ui";
 import type { ReactNode } from "react";
 
@@ -45,13 +45,6 @@ import type { ReactNode } from "react";
  *     <RecordField record={invoice} name="due_date" />
  *     <RecordField record={invoice} name="customer_id" />
  */
-export type FieldControl = {
-  value: unknown;
-  set: (value: unknown) => void;
-  readonly: boolean;
-  invalid: boolean;
-  label: string;
-};
 
 export function RecordField<T extends Record<string, unknown>>({
   record,
@@ -75,12 +68,18 @@ export function RecordField<T extends Record<string, unknown>>({
   if (!state.visible) return null;
   // A one2many of a declared entity is that entity's own list, filtered to this record by
   // the server — never the page the record happened to bring — and a row opens its record.
-  // A one2many of no declared entity (the lines of an invoice): the page the record brought,
-  // with its real total.
+  // A one2many of no declared entity (the lines of an invoice): edited inside the record as a
+  // whole list (`RecordLinesEditor`) — or, when the record brought only a page, that page read
+  // only with its real total.
   if (as === undefined && relation?.field.type === "one2many" && target === undefined) {
-    const lines = (
-      <RecordLines record={record.record ?? {}} meta={meta} name={name} locale={locale} />
-    );
+    // Editable when the record holds ALL its lines; a page of them stays read only.
+    const whole = editableLines(edit.values[name]);
+    const lines =
+      whole === null ? (
+        <RecordLines record={record.record ?? {}} meta={meta} name={name} locale={locale} />
+      ) : (
+        <RecordLinesEditor record={record} name={name} lines={whole} />
+      );
     return bare ? lines : <Field label={view.label}>{lines}</Field>;
   }
   if (as === undefined && relation?.field.type === "one2many" && target !== undefined) {
@@ -103,7 +102,7 @@ export function RecordField<T extends Record<string, unknown>>({
     return bare ? list : <Field label={view.label}>{list}</Field>;
   }
   const value = edit.values[name];
-  const error = edit.errors[name];
+  const error = errorAt(edit.errors, name);
   const control: FieldControl = {
     value,
     set: (next) => edit.set(name, next),
@@ -184,60 +183,6 @@ export function RecordField<T extends Record<string, unknown>>({
       )}
     </Field>
   );
-}
-
-function controlFor(
-  control: FieldControl,
-  type: string,
-  exact: boolean,
-  choices: { value: unknown; label: string }[],
-): ReactNode {
-  const { value, set } = control;
-  if (choices.length > 0)
-    return (
-      <Select
-        value={value === null || value === undefined ? "" : String(value)}
-        options={choices.map((one) => ({ value: String(one.value), label: one.label }))}
-        onChange={set}
-      />
-    );
-  switch (type) {
-    case "integer":
-    case "number":
-      return (
-        <NumberInput
-          value={value === null || value === undefined || value === "" ? "" : Number(value)}
-          // A decimal travels as text so no digit is lost; the server reads it that way back.
-          onChange={(next) => set(next === "" ? null : exact ? String(next) : next)}
-        />
-      );
-    case "date":
-      return (
-        <DatePicker
-          value={typeof value === "string" && value !== "" ? value : null}
-          onChange={set}
-        />
-      );
-    case "text[]": {
-      // A list of words is chips: each word is its own key, and typing a new one adds it.
-      const words = Array.isArray(value) ? value.map(String) : [];
-      return (
-        <TagsField
-          value={words}
-          options={words.map((word) => ({ value: word, label: word }))}
-          onChange={set}
-          onCreate={(word) => word}
-        />
-      );
-    }
-    default:
-      return (
-        <TextInput
-          value={value === null || value === undefined ? "" : String(value)}
-          onChange={set}
-        />
-      );
-  }
 }
 
 /**

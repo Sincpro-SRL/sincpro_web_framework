@@ -13,14 +13,20 @@ import type { Listing } from "@sincpro/web-framework/react/useListing";
 import { columnsOf } from "@sincpro/web-framework/web/list/columns";
 import { EntitySearchBar } from "@sincpro/web-framework/web/list/EntitySearchBar";
 import { pilesOf } from "@sincpro/web-framework/web/list/groups";
+import { over, presentationOf } from "@sincpro/web-framework/web/list/presentation";
 import { type RowCommand, useRowCommands } from "@sincpro/web-framework/web/list/rowCommands";
 import {
   Button,
   Callout,
+  type CardWays,
   List,
   type ListCrumb,
   Pagination,
+  pathKey,
+  type Pile,
+  RecordCard,
   type RowAction,
+  type RowOf,
   SearchField,
   Tag,
 } from "@sincpro/web-ui";
@@ -41,7 +47,8 @@ import { type ReactNode, useEffect, useId, useMemo, useState } from "react";
  *
  * Grouping obeys the same rule: «Group by» in the search bar asks the SERVER for the groups of
  * the whole set (`useGroups`), drawn as piles with their real count; a group's rows are read
- * when it is opened. Grouped, the list shows rows: web-ui's table groups the page it holds.
+ * when it is opened, and «See N more» reads its next page on the server's cursor. Since web-ui
+ * 1.4 every face draws piles counted elsewhere — the table too — so grouping keeps the face.
  *
  * Where a record opens is the composer's question: with `api`, a row opens the page and the
  * identity column is the composer's `RecordLink` (peek, side panel, window); without it, the
@@ -287,17 +294,46 @@ export function EntityList<T extends AnyRecord>({
   const facts = shown
     .filter((c) => c.id !== display && c.id !== identity && !c.defaultHidden)
     .slice(0, 3);
-  const rowOf = (row: T) => ({
-    name: textOf(meta, display, row[display], locale) ?? idOf(row),
-    meta: [
-      ...(display === identity ? [] : [idOf(row)]),
-      ...facts.map((c) => textOf(meta, c.id, row[c.id], locale)).filter(Boolean),
-    ].join(" · "),
-  });
+  // The entity's own look of a row and a card (`presented`) goes over these defaults.
+  const look = presentationOf(listing.entity);
+  const rowOf = (row: T): RowOf =>
+    over(
+      {
+        name: textOf(meta, display, row[display], locale) ?? idOf(row),
+        meta: [
+          ...(display === identity ? [] : [idOf(row)]),
+          ...facts.map((c) => textOf(meta, c.id, row[c.id], locale)).filter(Boolean),
+        ].join(" · "),
+      },
+      look.row?.(row),
+    );
+  // Without a look of its own, the board's card is web-ui's, made of the row. With one, the
+  // same card — the row's name, meta and tags — under it, and pressing it is still the list's:
+  // web-ui (1.5) hands an own card the list's press rule (`ways.press`: open, or choose).
+  const ownCard = look.card;
+  const cardOfRow =
+    ownCard === undefined
+      ? undefined
+      : (row: T, ways: CardWays) => {
+          const d = rowOf(row);
+          return (
+            <RecordCard
+              {...over(
+                {
+                  title: d.name,
+                  ...(d.tags === undefined ? {} : { tags: d.tags }),
+                  ...(d.meta === undefined ? {} : { meta: d.meta }),
+                },
+                ownCard(row),
+              )}
+              {...(ways.press === undefined ? {} : { onOpen: ways.press })}
+            />
+          );
+        };
 
   // Grouped: the SERVER counts the groups; a group's rows are read when it is opened, so every
-  // group starts closed. web-ui's table groups the rows it holds — the page — so a grouped list
-  // shows rows, the face that draws the piles it is given.
+  // group starts closed. Every face of web-ui (1.4) draws these piles, the table included, and
+  // each says what its next «more» brings (1.5).
   const groups = useGroups(listing, sums === undefined ? {} : { sums: sums || [] });
   const grouped = groups.levels.length > 0;
   const { piles, bucketAt } = pilesOf(
@@ -306,6 +342,7 @@ export function EntityList<T extends AnyRecord>({
     meta,
     locale,
     groups.rowsOf,
+    groups.brings,
   );
   const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
   useEffect(() => setOpened(new Set()), [groups.buckets]);
@@ -331,6 +368,11 @@ export function EntityList<T extends AnyRecord>({
           piles,
           collapsed,
           onToggle: toggle,
+          // «See N more» inside an open group: its next page, on the server's cursor (web-ui 1.4).
+          onMore: (pile: Pile<T>) => {
+            const bucket = bucketAt.get(pathKey(pile.path));
+            if (bucket !== undefined) groups.more(bucket);
+          },
         },
       }
     : {};
@@ -349,7 +391,7 @@ export function EntityList<T extends AnyRecord>({
       items={listing.rows}
       keyOf={idOf}
       embedded={embedded}
-      present={grouped ? "rows" : present}
+      present={present}
       onPresentChange={(next) => setPresent(next as View)}
       {...grouping}
       sort={
@@ -366,9 +408,13 @@ export function EntityList<T extends AnyRecord>({
         // Only the FIRST reading shows the skeleton. Refining (typing, a filter, the next
         // page) keeps the rows on screen until the server answers: web-ui swaps the body for
         // a skeleton while `loading`, and a row that vanished under the pointer lost a click.
+        // Meanwhile `refreshing` (web-ui 1.4) draws a quiet bar over the rows: asking, not gone.
         loading: grouped
-          ? groups.status === "loading"
+          ? groups.status === "loading" && groups.buckets.length === 0
           : listing.status === "loading" && listing.rows.length === 0,
+        refreshing: grouped
+          ? groups.status === "loading" && groups.buckets.length > 0
+          : listing.status === "loading" && listing.rows.length > 0,
         error:
           failure === null
             ? null
@@ -483,9 +529,11 @@ export function EntityList<T extends AnyRecord>({
       ) : null}
       {/* Always written, even when not asked for: web-ui draws a NARROW list — a window, a side
           panel, a phone — as rows whatever was asked, and a list with no rows face draws nothing
-          there. It is also the face that shows groups the server counted. */}
+          there. */}
       <List.Rows<T> row={rowOf} />
-      {views.includes("board") ? <List.Board<T> /> : null}
+      {views.includes("board") ? (
+        <List.Board<T> {...(cardOfRow === undefined ? {} : { card: cardOfRow })} />
+      ) : null}
       {refused === null ? null : (
         <Callout tone="bad" title={refused.heading}>
           {refused.sentence}

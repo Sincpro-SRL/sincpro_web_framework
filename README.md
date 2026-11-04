@@ -278,6 +278,21 @@ function InvoiceView({ api, resource }: ViewProps) {
 }
 ```
 
+How a record of an entity LOOKS — as a choice, a row, a card — is said once, around the entity,
+and every place that draws one uses it (`EntityPicker`, `EntityTags`, ⌘K, `EntityList`'s rows and
+board). Each size answers web-ui's props for it, over the default; give only what changes:
+
+```tsx
+export const customers = presented(
+  entity<Customer>("sales:customer", { list: "/customers" }),
+  {
+    option: (c) => ({ meta: `NIT ${c.tax_id}`, aside: <Balance value={c.balance} /> }),
+    row: (c) => (c.blocked ? { tags: <Tag tone="bad">Blocked</Tag> } : {}),
+    card: (c) => ({ subtitle: c.city }),
+  },
+);
+```
+
 Any record, at any size, from its summary:
 
 ```tsx
@@ -315,12 +330,14 @@ hook and draw your own, or go straight to the loose piece.
 | Where is the data?               | `entity()`                                    | —                                     | `restTransport`, `memoryTransport`   |
 | What is each field?              | `Meta` from the server, or `defineMeta`       | —                                     | `textOf`, `viewOf`, `metaFromSchema` |
 | What is a record, at any size?   | `cardOf`, `relationOf`                        | `useSummaryOf`                        | `summaryOf`                          |
+| How does a record look?          | `presented(entity, { option, row, card })`    | —                                     | `presentationOf`                     |
 | N records: search, filter, page  | `EntityList`, `EntitySearchBar`               | `useListing`, `useGroups`             | `transport.list(route, criteria)`    |
 | A named slice (to collect, …)    | `defineList` + `listView`                     | `useListing(list)`                    | `scopeOf`                            |
 | A record's whole screen          | `EntityRecord`, `entityView` without `record` | —                                     | `formOf`                             |
 | Previous / next from a record    | `EntityRecord` (from a list)                  | —                                     | `placeOf`, `stepIn` (`Trail`)        |
 | How much each group adds up      | `EntityList sums`                             | `useGroups` (`sums`)                  | `sumsOf`, `detailOf`                 |
 | One record: read, edit, save     | `RecordField`, `factsOf`, `RecordLines`       | `useRecord`                           | `transport.one`, `transport.send`    |
+| Its lines: add, edit, remove     | `RecordField name="lines"` (`LineItems`)      | `useRecord` (`edit.cell`, `errorAt`)  | `lineKey`, `editableLines`, `pathOf` |
 | Its relations, inside it         | `RelatedList`                                 | `useRelated`                          | `relatedOf`                          |
 | Choose one (literal search)      | `EntityPicker`, `chooserIn`                   | `useLookup`                           | `lookupOf` + criteria's `matching`   |
 | Choose several (many2many)       | `EntityTags`                                  | `useLookup` (`values`)                | `lookupOf`                           |
@@ -340,6 +357,23 @@ The rules behind them, in short:
 - **What a record does not have is not drawn**: no picture, no image; no state, no tag.
 - **Every word on screen** is the model's (`labelOf`, `choiceLabelOf`) or the framework's copy
   table (`frameworkCopy()`), never a string in a component.
+
+### Where state lives
+
+There is no store of ours to learn: each kind of state already has its owner.
+
+| State                                        | Lives in                                           | Read with                          |
+| -------------------------------------------- | -------------------------------------------------- | ---------------------------------- |
+| Who answers, language, known models          | `FrameworkProvider` (this package)                 | the hooks, through context         |
+| What the backend sees on every request       | the transport's `headers` (e.g. `sincpro-context`) | the backend's `use_context()`      |
+| What an opening carries (company, a default) | composer: the reference's `params`                 | `api.self.params`, `api.setParams` |
+| The record a modal covers                    | composer: `api.over`                               | `api.over`                         |
+| What a chooser was asked                     | composer: `pick(…, { question })`                  | `api.choosing`                     |
+| What the user is on, what is selected        | composer: `api.context`                            | `useWorkspaceContext(api)`         |
+| A screen's list, record, groups              | the hooks                                          | `useListing`, `useRecord`, …       |
+
+Not yet: a new record does not take the `params` it was opened with as its initial values
+(`ROADMAP.md`, «Estado y contexto»).
 
 ### Inside
 

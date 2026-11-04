@@ -1,14 +1,19 @@
 import assert from "node:assert/strict";
 
 import {
+  adviceAt,
   changesOf,
   entity,
+  errorAt,
   errorsByField,
   fieldStateOf,
+  type FieldStates,
   historyOf,
+  lineStatesOf,
   memoryTransport,
   missingOf,
   pathFor,
+  pathOf,
   restTransport,
   writeRoute,
 } from "@sincpro/web-framework";
@@ -55,13 +60,80 @@ test("only what changed travels", () => {
 });
 
 test("a field's error is read from the problem's JSON pointer", () => {
+  const errors = errorsByField([
+    { pointer: "/card_reference", detail: "Falta." },
+    { pointer: "/values/notes/0", detail: "Larga." },
+  ]);
+  assert.deepEqual(errors, { card_reference: "Falta.", "notes/0": "Larga." });
+  // A field is invalid when an error points at it or inside it.
+  assert.equal(errorAt(errors, "notes"), "Larga.");
+  assert.equal(errorAt(errors, "card_reference"), "Falta.");
+  assert.equal(errorAt(errors, "discount"), undefined);
+});
+
+test("a line's cell error keeps its whole path, from a pointer written as a fragment", () => {
+  // sincpro_framework writes `#/values/lines/1/qty` (RFC 6901 as a URI fragment): the "#" used
+  // to leave every error under the key "#", and a cell's error fell on the whole field.
+  const errors = errorsByField([
+    { pointer: "#/values/lines/1/qty", detail: "La cantidad tiene que ser mayor a cero." },
+    { pointer: "#/values/discount", detail: "Hasta 50 %." },
+    { pointer: "#/values/lines/1/price", detail: "Bajo el costo." },
+  ]);
+  assert.deepEqual(errors, {
+    "lines/1/qty": "La cantidad tiene que ser mayor a cero.",
+    discount: "Hasta 50 %.",
+    "lines/1/price": "Bajo el costo.",
+  });
+  assert.equal((errors as Record<string, string>)["#"], undefined);
+  assert.equal(errorAt(errors, "lines"), "La cantidad tiene que ser mayor a cero.");
+  assert.equal(errorAt(errors, "lines/1"), "La cantidad tiene que ser mayor a cero.");
+  assert.equal(errorAt(errors, "lines/0"), undefined);
+  // The first word for a place wins; an escaped "/" in a name is read back.
   assert.deepEqual(
     errorsByField([
-      { pointer: "/card_reference", detail: "Falta." },
-      { pointer: "/values/notes/0", detail: "Larga." },
+      { pointer: "#/values/a~1b", detail: "uno" },
+      { pointer: "/a~1b", detail: "dos" },
     ]),
-    { card_reference: "Falta.", notes: "Larga." },
+    { "a/b": "uno" },
   );
+});
+
+test("a warning lands where an error would, by its path or else its field", () => {
+  const advice = [
+    { message: "Precio bajo el costo", field: "lines", path: ["lines", 1, "price"] },
+    { message: "Descuento alto", field: "discount" },
+    { message: "Sobre la factura" },
+  ];
+  assert.equal(pathOf(["lines", 1, "price"]), pathOf("#/values/lines/1/price"));
+  assert.deepEqual(
+    adviceAt(advice, "lines/1").map((one) => one.message),
+    ["Precio bajo el costo"],
+  );
+  assert.deepEqual(adviceAt(advice, "lines/0"), []);
+  assert.deepEqual(
+    adviceAt(advice, "discount").map((one) => one.message),
+    ["Descuento alto"],
+  );
+});
+
+test("each line's states are the server's items, by position — never a state of the field", () => {
+  const fromServer: FieldStates = {
+    lines: {
+      required: true,
+      items: [{ price: { readonly: true } }, { quantity: { required: true } }],
+    },
+  };
+  assert.deepEqual(fieldStateOf(null, "lines", {}, fromServer), {
+    readonly: false,
+    required: true,
+    visible: true,
+  });
+  assert.deepEqual(lineStatesOf(fromServer, "lines")[0], { price: { readonly: true } });
+  assert.equal(
+    fieldStateOf(null, "price", {}, lineStatesOf(fromServer, "lines")[0]).readonly,
+    true,
+  );
+  assert.deepEqual(lineStatesOf(fromServer, "notes"), []);
 });
 
 test("a write route says how it is sent, and fills the key", () => {

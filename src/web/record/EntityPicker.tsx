@@ -8,6 +8,7 @@ import { isList, type ListDefinition } from "@sincpro/web-framework/core/list";
 import { useListing } from "@sincpro/web-framework/react/useListing";
 import { useLookup } from "@sincpro/web-framework/react/useLookup";
 import { EntityList } from "@sincpro/web-framework/web/list/EntityList";
+import { over, presentationOf } from "@sincpro/web-framework/web/list/presentation";
 import { Dialog, IconButton, type OpenTarget, Picker } from "@sincpro/web-ui";
 import { TextSearch } from "lucide-react";
 import { useState } from "react";
@@ -82,19 +83,33 @@ export function EntityPicker<T extends AnyRecord>({
     ...(value === undefined ? {} : { value }),
   });
   const person = (isList(entity) ? entity.entity : entity).summary.person === true;
+  const look = presentationOf(entity).option;
   const [choosing, setChoosing] = useState(false);
   const browseAll: (query: string) => void = onBrowseAll ?? (() => setChoosing(true));
   const picker = (
     <Picker
-      items={lookup.options.map((one) => ({
-        id: one.id,
-        name: one.label,
-        ...(one.detail === undefined ? {} : { meta: one.detail, haystack: one.detail }),
-        // A person or a company is chosen by their face: the photo, or their initials.
-        ...(person ? { avatar: one.image ?? true } : {}),
-      }))}
+      items={lookup.options.map((one) =>
+        over(
+          {
+            id: one.id,
+            name: one.label,
+            ...(one.detail === undefined ? {} : { meta: one.detail, haystack: one.detail }),
+            // A person or a company is chosen by their face: the photo, or their initials.
+            ...(person ? { avatar: one.image ?? true } : {}),
+          },
+          // The entity's own look of a choice, over the default (`presented`).
+          look === undefined || one.record === undefined ? undefined : look(one.record as T),
+        ),
+      )}
       {...(value === undefined ? {} : { value })}
-      {...(lookup.chosen === undefined ? {} : { valueLabel: lookup.chosen.label })}
+      {...(lookup.chosen === undefined
+        ? {}
+        : {
+            valueLabel:
+              (lookup.chosen.record === undefined || look === undefined
+                ? undefined
+                : look(lookup.chosen.record as T).name) ?? lookup.chosen.label,
+          })}
       onChange={onChange}
       // Typed text is the server's literal search; the options are its answer, drawn whole.
       {...(lookup.searchable ? { onSearch: lookup.search } : {})}

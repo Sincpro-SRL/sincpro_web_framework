@@ -1,12 +1,5 @@
-import {
-  type Criteria,
-  type Dropped,
-  type Envelope,
-  type Meta,
-  pageFrom,
-  plain,
-  readProblem,
-} from "@sincpro/criteria";
+import { type Criteria, type Dropped, type Meta, readProblem } from "@sincpro/criteria";
+import { RestError, restSource } from "@sincpro/criteria/rest";
 import {
   type Draft,
   type Method,
@@ -19,15 +12,11 @@ import {
 /**
  * The REST wire of sincpro_framework (`FastApiGateway`).
  *
- * Context: two things `restSource` from `@sincpro/criteria` 0.3 gets wrong against
- * sincpro_framework 3.27, both found by forge's console, which had to write its own client:
- *
- * - it appends `?criteria=` to the route as it is, which breaks a route that already carries
- *   its own query (`/projects?tenant_id=acme`) — here the criteria joins that query;
- * - it sends `pack()` (base64url), and the REST entrypoint reads the parameter as plain JSON
- *   and refuses anything else («criteria is not JSON») — here it travels as JSON.
- *
- * Once criteria fixes both, this keeps only what it adds: `one()`.
+ * Context: a list is criteria's `restSource` (0.3.1 sends the criteria as plain JSON and joins
+ * a route that carries its own query, `/projects?tenant_id=acme` — the two things forge's
+ * console found wrong in 0.3.0, fixed there). What this adds is what criteria does not know:
+ * one record (`one()`), a write (`send()`, with its `Idempotency-Key`), and its refusals as a
+ * `TransportError`, the one error every screen explains.
  *
  *     const transport = restTransport({
  *       base: "/v1",
@@ -57,21 +46,22 @@ export function restTransport(options: RestOptions = {}): Transport {
   const base = options.base ?? "";
   const doFetch = options.fetch ?? ((input, init) => fetch(input, init));
 
+  const own = () =>
+    typeof options.headers === "function" ? options.headers() : (options.headers ?? {});
+
   async function get(
     route: string,
     url: string,
     signal?: AbortSignal,
     write?: { method: Method; body: unknown; key?: string | undefined },
   ): Promise<unknown> {
-    const own =
-      typeof options.headers === "function" ? options.headers() : (options.headers ?? {});
     const headers = write
       ? {
-          ...own,
+          ...own(),
           "Content-Type": "application/json",
           ...(write.key === undefined ? {} : { "Idempotency-Key": write.key }),
         }
-      : own;
+      : own();
     const response = await doFetch(url, {
       headers,
       ...(write ? { method: write.method, body: JSON.stringify(write.body) } : {}),
@@ -85,8 +75,14 @@ export function restTransport(options: RestOptions = {}): Transport {
 
   return {
     async list(route, criteria, signal) {
-      const answer = await get(route, urlOf(base, route, plain(criteria)), signal);
-      return pageFrom(answer as Envelope & Record<string, unknown>);
+      const source = restSource<never>(`${base}${route}`, { headers: own, fetch: doFetch });
+      try {
+        return await source.read(criteria as never, signal);
+      } catch (error) {
+        if (error instanceof RestError)
+          throw new TransportError(route, error.status, error.problem, undefined);
+        throw error;
+      }
     },
 
     async one<T>(route: string, signal?: AbortSignal): Promise<One<T>> {

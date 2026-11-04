@@ -173,10 +173,11 @@ export const BuscarEnTodosConUnaTabla: Story = {
     // Always a click away, even with eight customers: the chooser over the whole set.
     await userEvent.click(await canvas.findByRole("button", { name: "Buscar en todos" }));
     const chooser = await page.findByRole("dialog", { name: "Clientes" });
-    // A table, with the columns asked for.
-    await expect(
-      await within(chooser).findByRole("columnheader", { name: /NIT/ }),
-    ).toBeVisible();
+    // A table, with the columns asked for. The window fades in: its headers are in the document
+    // before they are visible, and on a loaded runner the first look can land in between.
+    await waitFor(() =>
+      expect(within(chooser).getByRole("columnheader", { name: /NIT/ })).toBeVisible(),
+    );
     await expect(within(chooser).getByRole("columnheader", { name: /Ciudad/ })).toBeVisible();
     // The literal search, answered by the server.
     await userEvent.type(within(chooser).getByLabelText("Buscar"), "Globex{Enter}");

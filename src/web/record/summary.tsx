@@ -23,15 +23,30 @@ function lastChange(summary: RecordSummary): string | null {
   return created.at === null ? null : copy.createdLine(created.at, created.by);
 }
 
+/** Its picture: a person's or a company's face is round, with the initials when there is no
+ *  photo (`person`); anything else is its square photo, or nothing. The same in every size. */
+function mediaOf(
+  summary: RecordSummary,
+): { src?: string; alt: string; person?: true } | undefined {
+  if (summary.person)
+    return {
+      person: true,
+      alt: summary.name,
+      ...(summary.image === null ? {} : { src: summary.image }),
+    };
+  return summary.image === null ? undefined : { src: summary.image, alt: summary.name };
+}
+
 /** The board's card: the state above, the name, what it is, its description, its last change. */
 export function cardOf(summary: RecordSummary): CardProps {
   const footer = lastChange(summary);
+  const media = mediaOf(summary);
   return {
     title: summary.name,
     ...(summary.type === null ? {} : { subtitle: summary.type }),
     ...(summary.state === null ? {} : { tags: <Tag tone="neutral">{summary.state}</Tag> }),
     ...(summary.description === null ? {} : { meta: summary.description }),
-    ...(summary.image === null ? {} : { media: { src: summary.image, alt: summary.name } }),
+    ...(media === undefined ? {} : { media }),
     ...(footer === null
       ? {}
       : { footer: <span className="text-micro text-muted">{footer}</span> }),
@@ -52,11 +67,7 @@ export function relationOf(summary: RecordSummary): RelationProps {
       ? []
       : [{ label: copy.updated, value: copy.when(summary.updated.at, summary.updated.by) }]),
   ];
-  const media = summary.person
-    ? { person: true as const, ...(summary.image === null ? {} : { src: summary.image }) }
-    : summary.image === null
-      ? undefined
-      : { src: summary.image, alt: summary.name };
+  const media = mediaOf(summary);
   const secondary = summary.type ?? (summary.id === summary.name ? null : summary.id);
   const card = {
     ...(summary.state === null ? {} : { tag: { label: summary.state } }),

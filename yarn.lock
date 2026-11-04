@@ -1038,27 +1038,27 @@
     estree-walker "^2.0.2"
     picomatch "^4.0.2"
 
-"@sincpro/criteria-react@^0.3.0":
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/criteria-react/-/criteria-react-0.3.0.tgz#6c00f6ade13f431e3cb425dde3f1f20325aad815"
-  integrity sha512-E/yBeVZ3YeynWdbCYirPMgvZAZhyvdoBVTvabsMnSw4OVgA1HX+dOritW3IbL6R/MZ8g1LuSfypYIkZaBde9ow==
+"@sincpro/criteria-react@^0.3.1":
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/@sincpro/criteria-react/-/criteria-react-0.3.1.tgz#a56459b009e54a9040728e52fb3d7cd0cc9ac467"
+  integrity sha512-SsJOOQtWCTVRUK7CALDR/TpEq8MDNzx8QuucHoA+I60oaHYDWEmDL/WvYjveDJyO8Jaea3BFxYwX/w7ITlIDug==
 
-"@sincpro/criteria@^0.3.0":
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/criteria/-/criteria-0.3.0.tgz#3526d22871b9d8817fdbdaad4e1ab7ed3e38d319"
-  integrity sha512-IfdvHDnKlDPkHmedsyf3wxQnDy6eiJh45z5tC+rKXQf14+xlTWiaORT6lAVo0WX4zv6KCSCZU/lz6wyYdybAOQ==
+"@sincpro/criteria@^0.3.1":
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/@sincpro/criteria/-/criteria-0.3.1.tgz#dc41ccbc1b12d118b6dfdb9ed9ff321adefce250"
+  integrity sha512-7mh5uCzxoR7PdDptSc50oZ7YUd0cnRiEw5QUPCHfyG+FY+wb8CkiUEczmiv1OS9AGwITZeiuE1k28VlRd8y0eQ==
 
-"@sincpro/web-composer@^1.4.0":
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/web-composer/-/web-composer-1.4.0.tgz#a33159db227ae161349050547105522c0703d024"
-  integrity sha512-GtjieuTOEPEqhpV3d0F9a1ZzxQUiTeECzzxkoN9V/+jx/GV3D+Kfx7zqLWl/dt9WQ9vV46BZvr6dol2j1PVM7g==
+"@sincpro/web-composer@^1.5.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/web-composer/-/web-composer-1.5.0.tgz#6e4344e0fcf0957e3e6e69192b59410c21a63464"
+  integrity sha512-1W7sCvXHcHCAlDPMOBrVUD8YtYRJlh155bYSnxP1I7woVqFa+9ddb1oJ3nRjMeSuUeUA8F1B6zN17HrSneGwow==
   dependencies:
     "@atlaskit/pragmatic-drag-and-drop" "^4.0.0"
 
-"@sincpro/web-ui@^1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/web-ui/-/web-ui-1.1.0.tgz#82ae66905039968c91bfc060392c39d5b1441f4f"
-  integrity sha512-9T/SG9ZYTaI7cXuA/fxVYU83YwntYN4T8XcjszTVNgp3u7+ZrNJ26DSEcoPupSrEwFe2lwsiC9ww4ELtFUIi/Q==
+"@sincpro/web-ui@^1.6.0":
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/web-ui/-/web-ui-1.6.0.tgz#5ebd01cbb006537fd48784e3e34783a4e5d5cd5c"
+  integrity sha512-dVPvmcL9vzRZFl4rVmrtKlkpl45axwZ8mxe4uOl/czgZp3o/LwQIBok+mpHxaI9/N58FQaeob0LTl15rhLv9rQ==
   dependencies:
     "@codemirror/lang-json" "^6.0.2"
     "@codemirror/lint" "^6.9.7"

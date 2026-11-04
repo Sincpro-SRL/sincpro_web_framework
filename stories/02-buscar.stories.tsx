@@ -72,3 +72,36 @@ export const UnClientePorNit: Story = {
     await expect(await canvas.findByText("1 de 1")).toBeVisible();
   },
 };
+
+export const SeVeQueEstaPreguntando: Story = {
+  render: function Render() {
+    const listing = useListing(facturas, { paging: "more", pageSize: 20 });
+    return (
+      <EntityList
+        listing={listing}
+        search="box"
+        columns={["number", "customer", "state", "amount_total"]}
+      />
+    );
+  },
+  decorators: [
+    (Story) => (
+      <Escenario tables={VENTAS} latency={600}>
+        <Story />
+      </Escenario>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("20 de 64");
+    await userEvent.type(canvas.getByRole("searchbox", { name: "Buscar" }), "0007{Enter}");
+    // While the server thinks, the rows STAY and a quiet bar says it is asking (web-ui 1.4,
+    // `state.refreshing`): no skeleton, no silence.
+    await expect(
+      await canvas.findByRole("progressbar", { name: "Actualizando la lista…" }),
+    ).toBeVisible();
+    await expect(canvas.getAllByRole("row").length).toBe(21);
+    await expect(await canvas.findByText("1 de 1")).toBeVisible();
+    await expect(canvas.queryByRole("progressbar")).toBeNull();
+  },
+};

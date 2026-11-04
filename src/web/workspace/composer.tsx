@@ -8,6 +8,7 @@ import { lookupOf } from "@sincpro/web-framework/core/lookup";
 import type { Transport } from "@sincpro/web-framework/core/transport";
 import { useListing } from "@sincpro/web-framework/react/useListing";
 import { EntityList } from "@sincpro/web-framework/web/list/EntityList";
+import { presentationOf } from "@sincpro/web-framework/web/list/presentation";
 import {
   type RecordOpening,
   RecordOpeningProvider,
@@ -121,11 +122,18 @@ export function entityView<T extends AnyRecord>(
         ...matching(meta, query),
         meta: false,
       });
-      return lookupOf(meta, page.rows).map((one) => ({
-        ref: entity.ref(one.id),
-        label: one.label,
-        ...(one.detail === undefined ? {} : { detail: one.detail }),
-      }));
+      // ⌘K writes text: of the entity's look of a choice, its name and its meta.
+      const look = presentationOf(entity).option;
+      return lookupOf(meta, page.rows, entity.summary).map((one) => {
+        const own =
+          look === undefined || one.record === undefined ? {} : look(one.record as T);
+        const detail = own.meta ?? one.detail;
+        return {
+          ref: entity.ref(one.id),
+          label: own.name ?? one.label,
+          ...(detail === undefined ? {} : { detail }),
+        };
+      });
     },
     load: async () => EntityView,
   };

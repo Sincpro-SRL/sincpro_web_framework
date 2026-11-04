@@ -53,7 +53,10 @@ export const DeLaListaAlRegistroYSusRelaciones: Story = {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
     // The list nobody wrote: searched literally, on Enter — and a row to the record.
-    await userEvent.type(await canvas.findByRole("textbox"), `${GLOBEX_INVOICE}{Enter}`);
+    await userEvent.type(
+      await canvas.findByRole("combobox", { name: "Buscar" }),
+      `${GLOBEX_INVOICE}{Enter}`,
+    );
     await userEvent.click(await canvas.findByText(GLOBEX_INVOICE));
     await canvas.findByRole("heading", { name: GLOBEX_INVOICE });
     // Its state on top (and in its field), in the model's words.

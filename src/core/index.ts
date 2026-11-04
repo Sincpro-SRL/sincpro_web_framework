@@ -16,14 +16,20 @@ export {
   SPANISH_FRAMEWORK_COPY,
 } from "@sincpro/web-framework/core/copy";
 export {
+  type Advice,
+  adviceAt,
   changesOf,
   creationOf,
   defaultsOf,
+  errorAt,
   errorsByField,
   type FieldState,
   fieldStateOf,
   type FieldStates,
+  lineStatesOf,
   missingOf,
+  pathOf,
+  type ServerFieldState,
 } from "@sincpro/web-framework/core/edit";
 export {
   type Entity,
@@ -40,6 +46,14 @@ export {
 } from "@sincpro/web-framework/core/entity";
 export { type FormLayout, formOf } from "@sincpro/web-framework/core/form";
 export { type HistoryEntry, historyOf } from "@sincpro/web-framework/core/history";
+export {
+  blankLine,
+  editableLines,
+  lineKey,
+  linesAnswered,
+  moved,
+  sameLine,
+} from "@sincpro/web-framework/core/lines";
 export {
   defineList,
   type GroupLevel,

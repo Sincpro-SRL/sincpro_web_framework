@@ -20,8 +20,35 @@ const meta: Meta = {
 export default meta;
 type Story = StoryObj;
 
-/** The rows of the table on screen, header excluded. */
-const bodyRows = (root: HTMLElement) => within(root).getAllByRole("row").length - 1;
+/** The rows the table DRAWS, header excluded — the spacers of the window are not rows. */
+const drawnRows = (root: HTMLElement) => within(root).getAllByRole("row").length - 1;
+
+/**
+ * The rows the table HAS, header excluded. From 200 rows web-ui (1.2) draws only those in view
+ * and says the real count in `aria-rowcount`; under that, every row is drawn and counted.
+ */
+const bodyRows = (root: HTMLElement) => {
+  const declared = within(root).getByRole("table").getAttribute("aria-rowcount");
+  return declared === null ? drawnRows(root) : Number(declared) - 1;
+};
+
+/**
+ * Scroll to the end of the table, as a person would: from 200 rows only those in view are drawn,
+ * and a group's foot — its «Ver N más» — is drawn when it comes into view.
+ */
+const toTheEnd = (root: HTMLElement) => {
+  for (
+    let at: HTMLElement | null = within(root).getByRole("table");
+    at;
+    at = at.parentElement
+  )
+    if (at.scrollHeight > at.clientHeight + 1) {
+      at.scrollTop = at.scrollHeight;
+      at.dispatchEvent(new Event("scroll"));
+    }
+  window.scrollTo(0, document.documentElement.scrollHeight);
+  window.dispatchEvent(new Event("scroll"));
+};
 
 export const PorPaginas: Story = {
   render: function Render() {
@@ -88,6 +115,8 @@ export const CargarMasTieneTecho: Story = {
     await expect(await canvas.findByText(/Se muestran los primeros 300/)).toBeVisible();
     await expect(canvas.queryByRole("button", { name: "Cargar más" })).toBeNull();
     await expect(bodyRows(canvasElement)).toBe(300);
+    // The ceiling no longer has to save the page from freezing: of 300, only those in view are drawn.
+    await expect(drawnRows(canvasElement)).toBeLessThan(300);
   },
 };
 
@@ -147,5 +176,35 @@ export const AgruparDoscientosMil: Story = {
     // Opening one reads ITS first page: fifty rows, not fifty thousand.
     await userEvent.click(banco);
     await waitFor(() => expect(canvas.queryAllByText(/M-\d{7}/)).toHaveLength(50));
+    // Grouped, the list keeps its face: the table draws the piles the server counted (web-ui
+    // 1.4) — it used to fall back to rows, because the table grouped only the page it held.
+    await expect(canvas.getByRole("table")).toBeVisible();
+    // And inside it, the next fifty — on the server's cursor, appended (web-ui 1.4 `onMore`).
+    // The button says what ONE press brings, not what is missing (web-ui 1.5 `Pile.more`).
+    await userEvent.click(
+      await canvas.findByRole("button", { name: /^Ver 50 más de 49[.,]?950$/ }),
+    );
+    await waitFor(() => expect(canvas.queryAllByText(/M-\d{7}/)).toHaveLength(100));
+    await expect(
+      canvas.getByRole("button", { name: /^Ver 50 más de 49[.,]?900$/ }),
+    ).toBeVisible();
+    // Up to the ceiling of a group (500, the list's), and there the button goes: the group says
+    // what it shows and the search is what narrows it.
+    // From 200 rows the table draws only those in view: the button's count is what is followed.
+    const left = (shown: number) =>
+      new RegExp(`^Ver 50 más de 49[.,]?${50_000 - shown - 49_000}$`);
+    for (let shown = 100; shown < 450; shown += 50) {
+      await userEvent.click(canvas.getByRole("button", { name: left(shown) }));
+      await waitFor(async () => {
+        toTheEnd(canvasElement);
+        await expect(canvas.getByRole("button", { name: left(shown + 50) })).toBeVisible();
+      });
+    }
+    await userEvent.click(canvas.getByRole("button", { name: left(450) }));
+    await waitFor(async () => {
+      toTheEnd(canvasElement);
+      await expect(canvas.getByText(/^Se muestran 500 de 50[.,]?000$/)).toBeVisible();
+    });
+    await expect(canvas.queryByRole("button", { name: /^Ver \d+ más/ })).toBeNull();
   },
 };

@@ -96,9 +96,40 @@ Rules for any agent (or person) changing this package. Read the README for the i
   is already known). Deciding it later changes the criteria and restarts the reading.
 - **`EntityList`'s `cells` is memoised by identity** — its functions may close over state.
   Memoise it in the screen, or the table redraws every cell on every render.
-- **web-ui's search bar** loses its input's accessible name once a chip is placed, and its panel
-  trigger reads «1» instead of its title. Find them by structure in a play, and leave the fix
-  to web-ui (listed in `ROADMAP.md`).
+- **web-ui's search bar is a `combobox` «Buscar» and its suggestions are `option`s** (1.4). The
+  loose box (`search="box"`, `SearchField`) is still a `searchbox`. Never find either as «the
+  first textbox»: the first textbox moves when a piece changes role.
+- **How a record LOOKS is declared with `presented(entity, { option, row, card })`**
+  (`web/list/presentation.ts`), not in `entity()`: `core/` cannot name a React node. Each size
+  answers web-ui's PROPS for it, merged over the default (`over`) — a place that draws a record
+  of an entity reads `presentationOf(entity)` and applies it, or it is not «everywhere».
+- **web-ui's table draws only the rows in view from 200 on** (1.2, `rowWindow`). Counting `<tr>`
+  in a play counts what is drawn, not what the list holds: read the table's `aria-rowcount`
+  (story 15's `bodyRows`).
+
+- **Before saying «the composer lacks X», read its README** (`~/dev/sincpro_web_composer`). What
+  an opening carries is already there: `params` (in the reference: survives reload and links —
+  a company, a filter, a default), `api.over` (a modal's host record), `pick(…, { question })` and
+  `api.choosing` (a chooser knows it is one; on composer main after 1.4.0), `api.context`
+  (focused and selection). The global part is `FrameworkProvider`, and what the backend must see
+  on every request goes in the transport's `headers`. No second store here. An analysis once
+  asked composer for all of this because it read only `api.context`.
+- **The shape of a command's answer is the application's** (its DTO), not a framework contract:
+  a create that answers `{project_id}` under a meta whose identity is `id` is that service's bug
+  (sincpro_framework#228, closed). The front reads the identity by `get_id`/`identity`.
+
+- **A server's word points with a JSON pointer, `#/values/lines/1/qty`** (sincpro_framework):
+  read it with `pathOf` / `errorsByField` — whole path kept — and place it with `errorAt` /
+  `adviceAt`. A warning is `{message, field, path}` (not `text`); a preview answers `states` and
+  `warnings` (sincpro_framework 3.28.2 — `fields`/`advice` before). The fake server in
+  `stories/support/servidor.ts` must speak the REAL contract: when it spoke its own (`text`,
+  `expected`), the stories passed while the real backend drew empty warnings and refused drafts.
+- **Lines travel whole and in order; a new line has NO id** (`core/lines`). Its key lives apart
+  (`lineKey`, carried with `sameLine`, matched by position with `linesAnswered`). Never invent a
+  per-line command: add, remove, undo and reorder are the screen's. A page of lines is never
+  editable — written back whole it deletes what it did not bring (`editableLines`).
+- **A `LineItems` callback can run seconds after its render** («Deshacer» in a toast): start from
+  the list on screen NOW (a ref), never the render's.
 
 - **The in-memory server answers COPIES.** A row it returns is never the row it keeps — over a
   wire nobody holds the server's object. Returning the same object hid a conflict once: the
@@ -108,9 +139,6 @@ Rules for any agent (or person) changing this package. Read the README for the i
 - **web-ui's table turns a row click into a PEEK whenever `onPeek` is given** (`onPeek ?? onOpen`).
   So `EntityList` never passes one by itself: a row opens the page, and the peek, side panel and
   window are the composer's `RecordLink` on the identity column.
-- **A `Record` edited with `dirtyOf` must have `Record.Actions`.** Without them web-ui's `Record`
-  remounts its paper the moment `dirty` appears: the field being typed in loses its focus after
-  one letter. A web-ui bug (ROADMAP); found by a play that typed and read back what it typed.
 - **web-ui's `Picker` offers «see all…» only while it holds rows it does not draw** — never when
   given `onLoadMore`. `EntityPicker` does not pass it, so the chooser (the server search) is
   always reachable.

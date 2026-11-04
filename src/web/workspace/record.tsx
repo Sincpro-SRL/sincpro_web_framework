@@ -132,11 +132,14 @@ export function EntityRecord<T extends AnyRecord>({
           {shown.map((name) => (
             <RecordField key={name} record={reading} name={name} />
           ))}
-          {edit.advice.map((one) => (
-            <Callout key={one.text} tone="info" title={one.text}>
-              {null}
-            </Callout>
-          ))}
+          {/* A line's warning goes on its line (`RecordField` of the lines): here, the rest. */}
+          {edit.advice
+            .filter((one) => (one.path?.length ?? 0) <= 1)
+            .map((one) => (
+              <Callout key={one.message} tone="info" title={one.message}>
+                {null}
+              </Callout>
+            ))}
         </div>
         {tabs.length === 0 || reading.isNew ? null : (
           <Record.Pages current={page ?? tabs[0]} onChange={setPage}>

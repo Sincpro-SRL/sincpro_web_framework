@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-import { entityView, lookupOf, memoryTransport } from "@sincpro/web-framework";
+import { entityView, lookupOf, memoryTransport, presented } from "@sincpro/web-framework";
 import { test } from "vitest";
 
 import {
@@ -18,12 +18,18 @@ const Nothing = () => null;
 
 test("a record as a choice: its display, and its key beside it when they differ", () => {
   const [first] = lookupOf(clienteMeta, CLIENTES);
-  assert.deepEqual(first, { id: "C-001", label: "Importadora del Oriente", detail: "C-001" });
+  assert.deepEqual(first, {
+    id: "C-001",
+    label: "Importadora del Oriente",
+    detail: "C-001",
+    record: CLIENTES[0],
+  });
 });
 
 test("a choice reads its key from the model the server sent", () => {
-  const [one] = lookupOf(tenantMeta, [{ id: "acme", display_name: "ACME" }]);
-  assert.deepEqual(one, { id: "acme", label: "ACME", detail: "acme" });
+  const acme = { id: "acme", display_name: "ACME" };
+  const [one] = lookupOf(tenantMeta, [acme]);
+  assert.deepEqual(one, { id: "acme", label: "ACME", detail: "acme", record: acme });
 });
 
 test("an entity is a workspace reference: the list without an id, a record with one", () => {
@@ -54,4 +60,28 @@ test("a choice carries the record's picture: a person is chosen by their face", 
   // A picture the entity names by a field of its own.
   const [cemento] = lookupOf(productoMeta, PRODUCTOS, productos.summary);
   assert.equal(cemento?.image, PRODUCTOS[0]?.picture);
+});
+
+test("⌘K reads an entity's own look of a choice: its name and its detail, which are text", async () => {
+  const conNit = presented(clientes, {
+    option: (c) => ({ meta: `NIT ${String(c.tax_id)}` }),
+  });
+  const spec = entityView(conNit, {
+    transport: memoryTransport(VENTAS),
+    name: "Clientes",
+    list: Nothing,
+    record: Nothing,
+  });
+  const [hit] = (await spec.search?.("Globex")) ?? [];
+  assert.equal(hit?.label, "Globex Bolivia");
+  assert.equal(hit?.detail, `NIT ${CLIENTES[3]?.tax_id}`);
+  // Without a look of its own, the key: what told two «Globex» apart before.
+  const [plain] =
+    (await entityView(clientes, {
+      transport: memoryTransport(VENTAS),
+      name: "Clientes",
+      list: Nothing,
+      record: Nothing,
+    }).search?.("Globex")) ?? [];
+  assert.equal(plain?.detail, "C-004");
 });

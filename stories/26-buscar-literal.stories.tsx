@@ -101,7 +101,7 @@ export const LaBarraBuscaLiteral: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByText("1–20");
-    const box = await canvas.findByRole("textbox");
+    const box = await canvas.findByRole("combobox", { name: "Buscar" });
     await userEvent.type(box, "Globex");
     await userEvent.keyboard("{Enter}");
     // One chip: the entity's whole template, every field it searches at once.

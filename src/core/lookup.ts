@@ -11,7 +11,14 @@ import { type SummaryFields, summaryFieldsOf } from "@sincpro/web-framework/core
  * («Globex Bolivia · C-004»), which is what tells two «Globex» apart. Its picture is the
  * record's summary image (`entity(…, { summary })`): a person is chosen by their face.
  */
-export type LookupOption = { id: string; label: string; detail?: string; image?: string };
+export type LookupOption = {
+  id: string;
+  label: string;
+  detail?: string;
+  image?: string;
+  /** The row it was read from: what an entity's own presentation draws the choice with. */
+  record?: AnyRecord;
+};
 
 export function lookupOf(
   meta: Meta | null | undefined,
@@ -27,6 +34,8 @@ export function lookupOf(
     const imageField = summaryFieldsOf(meta, row, summary).image;
     const picture = imageField === undefined ? undefined : row[imageField];
     const image = typeof picture === "string" && picture !== "" ? { image: picture } : {};
-    return label === id ? { id, label, ...image } : { id, label, detail: id, ...image };
+    return label === id
+      ? { id, label, ...image, record: row }
+      : { id, label, detail: id, ...image, record: row };
   });
 }
