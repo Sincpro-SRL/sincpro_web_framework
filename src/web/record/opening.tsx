@@ -18,6 +18,9 @@ export type RecordOpening = {
   open: (ref: EntityRef, to: OpenTarget) => void;
   /** Where it may open from here, the default first. */
   targets: readonly OpenTarget[];
+  /** The form is not on a page — a panel, a peek, a modal: a list inside it starts as rows
+   *  (a table of seven columns in 760 px breaks every number and date into three lines). */
+  narrow?: boolean;
   /** «Buscar más…»: the entity's own list opened to choose (in composer, a modal that answers),
    *  on what was typed. Without it the picker brings its own chooser. */
   choose?: (entity: Entity, answer: (id: string) => void, query: string) => void;

@@ -30,7 +30,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
  *
  *     search(text)   the entity's own search template (`meta.search`), as the server fills it
  *     filter(where)  what a search bar or a criteria builder put — any depth of all/any/negate
- *     orderBy(sort)  the order, asked of the SERVER: a page sorted locally lies about page two
+ *     orderBy(sort)  the order — one field or several —, asked of the SERVER: a page sorted
+ *                    locally lies about page two
  *
  * All three refine the same reading instead of starting another. It holds state and draws
  * nothing: `EntityList` draws it, and a screen that needs another shape draws it itself.
@@ -65,9 +66,12 @@ export type Listing<T> = {
   /** What the search bar put; `undefined` is nothing. */
   where: Expression<T> | undefined;
   filter: (where: Expression<T> | undefined) => void;
-  /** The order the server was asked for; `null` is the entity's own default. */
-  order: Sort | null;
-  orderBy: (order: Sort | null) => void;
+  /** The order the server was asked for, by one field then the next; empty is the entity's own
+   *  default. */
+  order: readonly Sort[];
+  /** One field, several (`[{ field: "state" }, { field: "amount_total", descending: true }]`),
+   *  or `null` / `[]` for the entity's default — always a question to the server. */
+  orderBy: (order: Sort | readonly Sort[] | null) => void;
   /** How the set is walked: a page at a time, or «load more» up to a ceiling. */
   paging: Paging;
   /** Where the page on screen is — `pages` mode. `from`/`to` count from 1. */
@@ -113,7 +117,11 @@ export type ListingOptions<T> = {
 /** How long typing has to pause before the search goes out. */
 const TYPING_PAUSE = 200;
 
-type Narrowing<T> = { text: string; where: Expression<T> | undefined; order: Sort | null };
+type Narrowing<T> = {
+  text: string;
+  where: Expression<T> | undefined;
+  order: readonly Sort[];
+};
 
 function routeOf(list: string, params: Readonly<Record<string, string>> | undefined): string {
   const query = new URLSearchParams(
@@ -173,7 +181,7 @@ export function useListing<T extends AnyRecord>(
   const [narrowing, setNarrowing] = useState<Narrowing<T>>({
     text: "",
     where: undefined,
-    order: null,
+    order: [],
   });
   const typing = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => void (typing.current && clearTimeout(typing.current)), []);
@@ -183,7 +191,7 @@ export function useListing<T extends AnyRecord>(
     const found = searchOver<T>(meta, next.text);
     if (found !== undefined) criteria = merge<T>(criteria, { where: found });
     if (next.where !== undefined) criteria = merge<T>(criteria, { where: next.where });
-    if (next.order !== null) criteria = merge<T>(criteria, { order: [next.order] });
+    if (next.order.length > 0) criteria = merge<T>(criteria, { order: [...next.order] });
     return criteria;
   };
 
@@ -221,8 +229,14 @@ export function useListing<T extends AnyRecord>(
   };
   const capped = paging === "more" && reading.rows.length >= maxRows;
 
+  // Two changes in one gesture — the builder applies a filter AND an order — must both stand:
+  // each starts from the latest, never from the render that made the callback (the second one
+  // used to undo the first).
+  const now = useRef(narrowing);
+  now.current = narrowing;
   const narrow = (change: Partial<Narrowing<T>>, debounce: boolean) => {
-    const next = { ...narrowing, ...change };
+    const next = { ...now.current, ...change };
+    now.current = next;
     setNarrowing(next);
     if (typing.current) clearTimeout(typing.current);
     // The pause ends with the refine of THAT moment, not of the keystroke: a model that arrived
@@ -253,7 +267,11 @@ export function useListing<T extends AnyRecord>(
     where: narrowing.where,
     filter: (where) => narrow({ where }, false),
     order: narrowing.order,
-    orderBy: (order) => narrow({ order }, false),
+    orderBy: (order) =>
+      narrow(
+        { order: order === null ? [] : Array.isArray(order) ? order : [order as Sort] },
+        false,
+      ),
     paging,
     page: {
       index,

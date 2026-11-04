@@ -136,9 +136,22 @@ Rules for any agent (or person) changing this package. Read the README for the i
   screen's record changed version under it.
 - **While a record is dirty, web-ui shows «Guardar / Descartar» IN PLACE of its actions.** A
   play that needs an action must use it before typing.
-- **web-ui's table turns a row click into a PEEK whenever `onPeek` is given** (`onPeek ?? onOpen`).
-  So `EntityList` never passes one by itself: a row opens the page, and the peek, side panel and
-  window are the composer's `RecordLink` on the identity column.
+- **A record opens anywhere the workspace can put it** (`EntityList openTargets`, default
+  `targetsFor(api)`): a press is the page, 👁 the peek — `onPeek` WITH `rowClick="open"` (web-ui
+  1.5+; without `rowClick` a row click becomes a peek) — and «Abrir en…» (`OpenInMenu`, web-ui's
+  own words) the rest, beside the name in the table and on each row. Never only hover icons;
+  never a modal from inside a modal. A one2many gets the same through `RecordOpening`.
+- **Lists of records search with the BAR** (filters, builder, grouping) — the one2many and the
+  «Buscar más…» chooser too. `search="box"` is a screen's explicit choice. With Enter the bar
+  takes its FIRST suggestion, which may be a field filter (web-ui): a play picks the literal
+  option by name.
+- **A pivot is folded by the SERVER** (`usePivot`: grouped by both axes, and by the columns
+  alone), handed to web-ui as `folded`. Never web-ui's `spec`: it folds the rows IN HAND.
+- **Order is a list** (`listing.order: Sort[]`, `orderBy(one | many | null)`): the builder writes
+  several; web-ui's table and sort menu show and set ONE (the first).
+- **A form's fields go in web-ui's `FormSection`**, never a hand-made column: two columns on a
+  page and in a modal, one in a panel or a peek (`api.surface`) — the grid does not narrow by
+  itself. A list inside a record not on a page starts as rows (`RecordOpening.narrow`).
 - **web-ui's `Picker` offers «see all…» only while it holds rows it does not draw** — never when
   given `onLoadMore`. `EntityPicker` does not pass it, so the chooser (the server search) is
   always reachable.

@@ -69,3 +69,73 @@ export const PorUnaColumna: Story = {
     await expect(canvas.getByText("1–20")).toBeVisible();
   },
 };
+
+/** The paid ones by state, then by total — over ALL 64, as the server filters and sorts. */
+const pagadasPorEstadoYTotal = FACTURAS.filter((f) => f.state === "paid").sort(
+  (a, b) => a.state.localeCompare(b.state) || Number(a.amount_total) - Number(b.amount_total),
+);
+
+export const PorVariosCampos: Story = {
+  render: function Render() {
+    const listing = useListing(facturas, { pageSize: 20 });
+    return <EntityList listing={listing} columns={["number", "state", "amount_total"]} />;
+  },
+  decorators: [
+    (Story) => (
+      <Escenario tables={VENTAS} observe={observar}>
+        <Story />
+      </Escenario>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await canvas.findByText("1–20");
+    const builder = async () => {
+      await userEvent.click(await canvas.findByRole("button", { name: /Filtrar/ }));
+      await userEvent.click(
+        await canvas.findByRole("button", { name: /Abrir el constructor/ }),
+      );
+      const dialog = await page.findByRole("dialog", { name: "Constructor de criteria" });
+      await waitFor(() => expect(dialog).toBeVisible());
+      return within(dialog);
+    };
+    // The builder filters (state = paid) and orders by as many fields as asked: state, then
+    // total — one gesture, both must stand.
+    let dialog = await builder();
+    await userEvent.selectOptions(dialog.getByLabelText("Campo"), "state");
+    const valor = dialog
+      .getByLabelText("Comparación")
+      .closest("[role=dialog]")!
+      .querySelector<HTMLInputElement>("input")!;
+    await userEvent.type(valor, "paid");
+    // «ordenar por…» opens the fields that may order, named like it: pick one there.
+    const ordenarPor = async (field: string) => {
+      await userEvent.click(dialog.getByRole("button", { name: "ordenar por…" }));
+      const offered = (await dialog.findAllByLabelText("ordenar por…")).find(
+        (one) => one.tagName !== "BUTTON",
+      )!;
+      await userEvent.click(within(offered).getAllByText(field)[0]!);
+    };
+    await ordenarPor("state");
+    await ordenarPor("amount_total");
+    await userEvent.click(dialog.getByRole("button", { name: "Aplicar" }));
+    // Both travel to the server, in that order — and the first row is the first of all 64.
+    await waitFor(() =>
+      expect(pedidos.at(-1)?.order).toEqual([{ field: "state" }, { field: "amount_total" }]),
+    );
+    await expect(JSON.stringify(pedidos.at(-1)?.where)).toContain("paid");
+    const primera = () =>
+      canvasElement.querySelector("tbody tr:not([aria-hidden]) td")?.textContent ?? "";
+    await waitFor(() => expect(primera()).toContain(pagadasPorEstadoYTotal[0]!.number));
+    // The table shows the first; the builder, reopened, keeps both.
+    await expect(canvas.getByRole("columnheader", { name: /Estado/ })).toHaveAttribute(
+      "aria-sort",
+      "ascending",
+    );
+    await userEvent.keyboard("{Escape}");
+    dialog = await builder();
+    await expect(dialog.getByLabelText("quitar el orden por state")).toBeVisible();
+    await expect(dialog.getByLabelText("quitar el orden por amount_total")).toBeVisible();
+  },
+};

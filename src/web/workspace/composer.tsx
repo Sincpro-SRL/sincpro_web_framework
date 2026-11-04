@@ -61,6 +61,7 @@ function InWorkspace({ api, children }: { api: WorkspaceApi; children: ReactNode
     () => ({
       open: (ref, to) => openIn(api, ref, to),
       targets,
+      narrow: api.surface !== "page",
       choose: (entity, answer, query) =>
         api.pick(entity.chooserRef(query), (ref) => ref.id === undefined || answer(ref.id), {
           // Never a modal over a modal: from inside one, the chooser docks beside it.

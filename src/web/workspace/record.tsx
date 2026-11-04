@@ -14,7 +14,7 @@ import { useSummaryOf } from "@sincpro/web-framework/react/useSummary";
 import { dirtyOf, RecordField } from "@sincpro/web-framework/web/record/edit";
 import { Refused } from "@sincpro/web-framework/web/Refused";
 import { useRecordInWorkspace } from "@sincpro/web-framework/web/workspace/workspace";
-import { Button, Callout, Record, Skeleton } from "@sincpro/web-ui";
+import { Button, Callout, FormSection, Record, Skeleton } from "@sincpro/web-ui";
 import { type ReactNode, useState } from "react";
 
 /**
@@ -78,6 +78,7 @@ export function EntityRecord<T extends AnyRecord>({
   const { meta, locale, edit } = reading;
   const layout = formOf(meta, entity.summary);
   const shown = fields ?? layout.fields;
+  const ownActions = actions?.(reading) ?? null;
   const tabs = pages ?? layout.pages;
   const summary = reading.isNew ? undefined : summarize(reading.record, meta);
   const dirty = dirtyOf(reading);
@@ -101,46 +102,55 @@ export function EntityRecord<T extends AnyRecord>({
       {...(dirty === undefined ? {} : { dirty })}
       {...(edit.failure === null ? {} : { error: String((edit.failure as Error).message) })}
     >
-      <Record.Rail>
-        {crumbs.length === 0 ? null : <Record.Crumbs crumbs={crumbs} />}
-        {place === null ? null : (
-          <Record.Pager
-            index={place.index}
-            total={place.total}
-            onPrev={go(-1)}
-            onNext={go(1)}
-          />
-        )}
-        {/* Always there on an edited record: without them web-ui remounts the paper the moment
-            something is typed (AGENTS.md). */}
-        <Record.Actions>{actions?.(reading) ?? null}</Record.Actions>
-      </Record.Rail>
+      {/* The rail only when it carries something: an empty one is a blank band under the title
+          of a modal or a panel. (It used to be needed always — a web-ui remount, fixed.) */}
+      {crumbs.length === 0 && place === null && ownActions === null ? null : (
+        <Record.Rail>
+          {crumbs.length === 0 ? null : <Record.Crumbs crumbs={crumbs} />}
+          {place === null ? null : (
+            <Record.Pager
+              index={place.index}
+              total={place.total}
+              onPrev={go(-1)}
+              onNext={go(1)}
+            />
+          )}
+          {ownActions === null ? null : <Record.Actions>{ownActions}</Record.Actions>}
+        </Record.Rail>
+      )}
       <Record.Paper layout="horizontal">
-        <div className="flex flex-col gap-3 p-4">
-          {edit.conflict ? (
-            <Callout tone="warn" title={copy.conflict}>
-              <Button size="sm" role="secondary" onClick={reading.reload}>
-                {copy.reload}
-              </Button>
-            </Callout>
-          ) : null}
-          {edit.restored ? (
-            <Callout tone="info" title={copy.restored}>
-              {null}
-            </Callout>
-          ) : null}
+        {edit.conflict || edit.restored ? (
+          <div className="flex flex-col gap-3">
+            {edit.conflict ? (
+              <Callout tone="warn" title={copy.conflict}>
+                <Button size="sm" role="secondary" onClick={reading.reload}>
+                  {copy.reload}
+                </Button>
+              </Callout>
+            ) : null}
+            {edit.restored ? (
+              <Callout tone="info" title={copy.restored}>
+                {null}
+              </Callout>
+            ) : null}
+          </div>
+        ) : null}
+        {/* web-ui's form grid (its «Operación» template): two columns on a page and in a modal,
+            one in a side panel, a window or a peek — web-ui's grid does not narrow by itself
+            (ROADMAP). A hand-made column left half the sheet empty on a page. */}
+        <FormSection columns={api.surface === "page" || api.surface === "modal" ? 2 : 1}>
           {shown.map((name) => (
             <RecordField key={name} record={reading} name={name} />
           ))}
-          {/* A line's warning goes on its line (`RecordField` of the lines): here, the rest. */}
-          {edit.advice
-            .filter((one) => (one.path?.length ?? 0) <= 1)
-            .map((one) => (
-              <Callout key={one.message} tone="info" title={one.message}>
-                {null}
-              </Callout>
-            ))}
-        </div>
+        </FormSection>
+        {/* A line's warning goes on its line (`RecordField` of the lines): here, the rest. */}
+        {edit.advice
+          .filter((one) => (one.path?.length ?? 0) <= 1)
+          .map((one) => (
+            <Callout key={one.message} tone="info" title={one.message}>
+              {null}
+            </Callout>
+          ))}
         {tabs.length === 0 || reading.isNew ? null : (
           <Record.Pages current={page ?? tabs[0]} onChange={setPage}>
             {tabs.map((name) => (

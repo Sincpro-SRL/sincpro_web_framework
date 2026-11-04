@@ -50,7 +50,8 @@ export function RelatedList<P extends AnyRecord, T extends AnyRecord>({
     <EntityList
       listing={listing}
       embedded
-      search="box"
+      // The bar, not a box: a relation of records is searched like any list of records —
+      // named filters, the criteria builder, grouping. A screen that wants a box passes one.
       {...list}
       {...(columns === undefined ? {} : { columns })}
     />

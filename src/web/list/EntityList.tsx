@@ -4,15 +4,18 @@ import { type AnyRecord, type Criteria, nameOf } from "@sincpro/criteria";
 import { RecordLink, useCrumbs, type WorkspaceApi } from "@sincpro/web-composer";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { PICK_PARAM, QUERY_PARAM, TRAIL_PARAM } from "@sincpro/web-framework/core/entity";
-import type { NamedFilter } from "@sincpro/web-framework/core/list";
+import type { GroupLevel, NamedFilter } from "@sincpro/web-framework/core/list";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
 import { explain } from "@sincpro/web-framework/core/transport";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useGroups } from "@sincpro/web-framework/react/useGroups";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
+import { usePivot } from "@sincpro/web-framework/react/usePivot";
 import { columnsOf } from "@sincpro/web-framework/web/list/columns";
 import { EntitySearchBar } from "@sincpro/web-framework/web/list/EntitySearchBar";
 import { pilesOf } from "@sincpro/web-framework/web/list/groups";
+import { OpenInMenu, openOptions, targetsFor } from "@sincpro/web-framework/web/list/openIn";
+import { pivotOf } from "@sincpro/web-framework/web/list/pivot";
 import { over, presentationOf } from "@sincpro/web-framework/web/list/presentation";
 import { type RowCommand, useRowCommands } from "@sincpro/web-framework/web/list/rowCommands";
 import {
@@ -21,6 +24,7 @@ import {
   type CardWays,
   List,
   type ListCrumb,
+  type OpenTarget,
   Pagination,
   pathKey,
   type Pile,
@@ -30,7 +34,7 @@ import {
   SearchField,
   Tag,
 } from "@sincpro/web-ui";
-import { type ReactNode, useEffect, useId, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 
 /**
  * A whole collection from a `Listing`: the bar, the search, the set in the views it offers,
@@ -80,10 +84,23 @@ export type EntityListProps<T extends AnyRecord> = {
   cells?: Readonly<Partial<Record<string, (row: T) => ReactNode>>>;
   /**
    * The ways to look at the set, the first one shown: `table` (columns), `rows` (a name and
-   * its facts, what a narrow panel wants) and `board` (cards). The same set, the same search,
-   * the same page in each.
+   * its facts, what a narrow panel wants), `board` (cards) and `sheet` (a spreadsheet, every
+   * cell a value — web-ui's, windowed). The same set, the same search, the same page in each.
+   * Without it, a named list's; else all four on a screen, and the table (rows when narrow)
+   * inside a record.
    */
-  views?: readonly ("table" | "rows" | "board")[];
+  views?: readonly View[];
+  /**
+   * The set crossed by two fields — `{ rows: "state", columns: "payment" }` — counted and added
+   * up by the server (`usePivot`), offered as the `pivot` face. Only while it is on screen does
+   * it ask; never folded from the page.
+   */
+  pivot?: {
+    rows: string | GroupLevel;
+    columns: string | GroupLevel;
+    /** What each crossing adds up. Without it, the figures the model computes. */
+    measures?: readonly string[];
+  };
   /** Without it, the model's own name. */
   title?: string;
   description?: string;
@@ -91,6 +108,14 @@ export type EntityListProps<T extends AnyRecord> = {
   actions?: ReactNode;
   onOpen?: (row: T) => void;
   onPeek?: (row: T) => void;
+  /**
+   * Where a row's record may open besides a press (the page): a look (👁), a modal, beside, a
+   * window — offered in «Abrir en…» by the row's name. With `api`, everywhere the workspace
+   * allows from here (`targetsFor`: no modal from inside a modal); `[]` or a few restrict it.
+   */
+  openTargets?: readonly OpenTarget[];
+  /** Open a row's record there — without `api`, how a screen (a one2many) places it. */
+  onOpenIn?: (row: T, to: OpenTarget) => void;
   /** What an empty list says. */
   empty?: string;
   /**
@@ -132,7 +157,10 @@ export type EntityListProps<T extends AnyRecord> = {
 /** No commands: one constant, so the hook is not handed a new array on every render. */
 const NO_COMMANDS: readonly never[] = [];
 
-type View = "table" | "rows" | "board";
+export type View = "table" | "rows" | "board" | "sheet" | "pivot";
+
+/** What a list offers when nobody said: every face that needs no configuration. */
+const EVERY_VIEW: readonly View[] = ["table", "rows", "board", "sheet"];
 
 export function EntityList<T extends AnyRecord>({
   listing,
@@ -146,6 +174,9 @@ export function EntityList<T extends AnyRecord>({
   actions,
   onOpen,
   onPeek,
+  openTargets,
+  onOpenIn,
+  pivot: pivotAsked,
   empty,
   search = "bar",
   sums,
@@ -161,7 +192,10 @@ export function EntityList<T extends AnyRecord>({
   // screen passes wins.
   const definition = listing.definition;
   const columns = askedColumns ?? definition?.columns;
-  const views = askedViews ?? definition?.views ?? ["table"];
+  const views =
+    askedViews ??
+    definition?.views ??
+    (embedded ? ["table"] : pivotAsked === undefined ? EVERY_VIEW : [...EVERY_VIEW, "pivot"]);
   const filters = askedFilters ?? definition?.filters ?? [];
   const title = askedTitle ?? definition?.title;
   const description = askedDescription ?? definition?.description;
@@ -240,18 +274,55 @@ export function EntityList<T extends AnyRecord>({
     listing.entity.create !== undefined
       ? () => api.open(listing.entity.newRef())
       : undefined;
-  // A row click opens the page — the composer's one predictable gesture. web-ui's table turns a
-  // row click into a PEEK whenever `onPeek` is given, so the list never passes one by itself:
-  // the peek, the side panel and the window are the composer's `RecordLink` on the identity.
+  // A press opens the page — the composer's one predictable gesture. Every other place the
+  // record may open is offered beside its name («Abrir en…») and, for a look, as web-ui's 👁
+  // (`onPeek` with `rowClick="open"`: the press stays «open»). A chooser only chooses.
+  const openingIn =
+    onOpenIn ??
+    (api === undefined
+      ? undefined
+      : (row: T, to: OpenTarget) =>
+          to === "page" ? openWithTrail(row) : api.open(refOf(row), openOptions(to)));
+  const targets =
+    choosing || openingIn === undefined
+      ? []
+      : (openTargets ?? (api === undefined ? [] : targetsFor(api)));
+  const elsewhere = targets.filter((to) => to !== "page");
+  const peeking =
+    onPeek ??
+    (targets.includes("peek") && openingIn !== undefined
+      ? (row: T) => openingIn(row, "peek")
+      : undefined);
+  // The cells are memoised (below): they reach the opener through a ref, so a screen's inline
+  // `onOpenIn` is always the current one without redrawing every cell.
+  const openingNow = useRef(openingIn);
+  openingNow.current = openingIn;
+  const openInOf = (row: T) =>
+    elsewhere.length === 0 || openingIn === undefined ? null : (
+      <OpenInMenu
+        targets={elsewhere}
+        name={idOf(row)}
+        onOpen={(to) => openingNow.current?.(row, to)}
+      />
+    );
   const linked: typeof cells =
-    api === undefined || choosing || cells?.[identity] !== undefined
+    choosing ||
+    cells?.[identity] !== undefined ||
+    (api === undefined && elsewhere.length === 0)
       ? cells
       : {
           ...cells,
           [identity]: (row: T) => (
-            <RecordLink api={api} resource={refOf(row)}>
-              {idOf(row)}
-            </RecordLink>
+            <span className="inline-flex items-center gap-1">
+              {api === undefined ? (
+                idOf(row)
+              ) : (
+                <RecordLink api={api} resource={refOf(row)}>
+                  {idOf(row)}
+                </RecordLink>
+              )}
+              {openInOf(row)}
+            </span>
           ),
         };
   // `useCrumbs`, not `api.crumbs()`: the crumb must follow a name given later (`setTitle`).
@@ -286,7 +357,7 @@ export function EntityList<T extends AnyRecord>({
   const shown = useMemo(
     () => columnsOf<T>(meta, columns, { locale, ...(linked ? { cells: linked } : {}) }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [meta, locale, names, cells, api],
+    [meta, locale, names, cells, api, elsewhere.join(), openingIn === undefined],
   );
 
   // A row and a card read the record by its display and the first fields shown beside it.
@@ -296,6 +367,54 @@ export function EntityList<T extends AnyRecord>({
     .slice(0, 3);
   // The entity's own look of a row and a card (`presented`) goes over these defaults.
   const look = presentationOf(listing.entity);
+  // The pivot asks the server only while it is the face on screen.
+  const axes =
+    pivotAsked === undefined || present !== "pivot" || !views.includes("pivot")
+      ? null
+      : {
+          rows:
+            typeof pivotAsked.rows === "string"
+              ? { field: pivotAsked.rows }
+              : pivotAsked.rows,
+          columns:
+            typeof pivotAsked.columns === "string"
+              ? { field: pivotAsked.columns }
+              : pivotAsked.columns,
+          ...(pivotAsked.measures === undefined ? {} : { measures: pivotAsked.measures }),
+        };
+  const crossing = usePivot(listing, axes);
+  const folded =
+    axes === null
+      ? null
+      : pivotOf({
+          crossed: crossing.crossed,
+          byColumn: crossing.columns,
+          rows: axes.rows,
+          columns: axes.columns,
+          measures: crossing.measures,
+          meta,
+          locale,
+        });
+  // The sheet's columns are the table's on screen: one set of fields, two ways to read them.
+  const sheetColumns = useMemo(
+    () =>
+      shown
+        .filter((column) => !column.defaultHidden)
+        .map((column) => ({
+          id: column.id,
+          header: String(column.header),
+          ...(column.numeric === true ? { numeric: true } : {}),
+        })),
+    [shown],
+  );
+  const first = listing.order[0];
+  const sortable = useMemo(
+    () =>
+      shown
+        .filter((column) => column.sortable === true && column.field !== undefined)
+        .map((column) => ({ field: column.field!, label: String(column.header) })),
+    [shown],
+  );
   const rowOf = (row: T): RowOf =>
     over(
       {
@@ -304,6 +423,7 @@ export function EntityList<T extends AnyRecord>({
           ...(display === identity ? [] : [idOf(row)]),
           ...facts.map((c) => textOf(meta, c.id, row[c.id], locale)).filter(Boolean),
         ].join(" · "),
+        ...(elsewhere.length === 0 ? {} : { actions: openInOf(row) }),
       },
       look.row?.(row),
     );
@@ -394,11 +514,16 @@ export function EntityList<T extends AnyRecord>({
       present={present}
       onPresentChange={(next) => setPresent(next as View)}
       {...grouping}
+      // web-ui's table and sort menu say ONE order (the first); several are written in the
+      // criteria builder of the bar, and a header click asks for that one alone.
       sort={
-        listing.order === null
+        first === undefined
           ? null
-          : { key: listing.order.field, direction: listing.order.descending ? "desc" : "asc" }
+          : { key: first.field, direction: first.descending ? "desc" : "asc" }
       }
+      // The faces with no headers (rows, board) sort too, by the fields the model marks
+      // sortable — on the server, so no `value` is given.
+      sortable={sortable}
       onSortChange={(next) =>
         listing.orderBy(
           next === null ? null : { field: next.key, descending: next.direction === "desc" },
@@ -427,7 +552,7 @@ export function EntityList<T extends AnyRecord>({
       }}
       {...(selection === undefined ? {} : { selection })}
       {...(opening === undefined ? {} : { onOpen: opening })}
-      {...(onPeek === undefined ? {} : { onPeek })}
+      {...(peeking === undefined ? {} : { onPeek: peeking, rowClick: "open" as const })}
     >
       <List.Bar>
         {trail === undefined || trail.length === 0 ? null : <List.Crumbs crumbs={trail} />}
@@ -531,6 +656,33 @@ export function EntityList<T extends AnyRecord>({
           panel, a phone — as rows whatever was asked, and a list with no rows face draws nothing
           there. */}
       <List.Rows<T> row={rowOf} />
+      {views.includes("sheet") ? (
+        <List.Sheet<T>
+          columns={sheetColumns}
+          cell={(row, column) => {
+            const value = row[column.id];
+            return value === null || value === undefined
+              ? null
+              : (textOf(meta, column.id, value, locale) ?? String(value));
+          }}
+        />
+      ) : null}
+      {views.includes("pivot") ? (
+        <List.Pivot<T>
+          folded={
+            folded ??
+            pivotOf({
+              crossed: [],
+              byColumn: [],
+              rows: { field: "" },
+              columns: { field: "" },
+              measures: [],
+              meta,
+              locale,
+            })
+          }
+        />
+      ) : null}
       {views.includes("board") ? (
         <List.Board<T> {...(cardOfRow === undefined ? {} : { card: cardOfRow })} />
       ) : null}

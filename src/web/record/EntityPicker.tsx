@@ -188,7 +188,7 @@ function Chooser<T extends AnyRecord>({
       <EntityList
         listing={listing}
         embedded
-        search="box"
+        // The whole set to choose from is searched with the bar and its builder, like any list.
         {...(columns === undefined ? {} : { columns })}
         onOpen={(row) => onChoose(String(row[key]))}
       />

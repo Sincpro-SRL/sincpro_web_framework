@@ -137,12 +137,34 @@ export function EntitySearchBar<T extends AnyRecord>({
         <Dialog open width="lg" title={copy.builder} onClose={() => setBuilding(false)}>
           <CriteriaBuilder
             model={model}
-            {...(whereOf(put) === undefined ? {} : { initial: { where: whereOf(put)! } })}
+            // What is on: the filter AND the order, by as many fields as were asked — the
+            // builder writes `order: [...]` and it goes to the server whole.
+            {...(whereOf(put) === undefined && listing.order.length === 0
+              ? {}
+              : {
+                  initial: {
+                    ...(whereOf(put) === undefined ? {} : { where: whereOf(put)! }),
+                    ...(listing.order.length === 0
+                      ? {}
+                      : {
+                          order: listing.order.map((one) => ({
+                            field: String(one.field),
+                            ...(one.descending === true ? { descending: true } : {}),
+                          })),
+                        }),
+                  },
+                })}
             onApply={(built) => {
               place(
                 built?.where === undefined
                   ? []
                   : [filterCriteria(built.where, describeFilter(built.where, model))],
+              );
+              listing.orderBy(
+                (built?.order ?? []).map((one) => ({
+                  field: one.field,
+                  ...(one.descending === true ? { descending: true } : {}),
+                })) as never,
               );
               setBuilding(false);
             }}

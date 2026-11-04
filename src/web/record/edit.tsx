@@ -90,13 +90,23 @@ export function RecordField<T extends Record<string, unknown>>({
         entity={target}
         {...(opening === null
           ? {}
-          : {
-              onOpen: (row: AnyRecord) => {
+          : (() => {
+              const refOf = (row: AnyRecord) => {
                 const known = metas.get(target.key);
                 const key = known?.get_id || known?.identity || "id";
-                opening.open(target.ref(String(row[key])), opening.targets[0] ?? "page");
-              },
-            })}
+                return target.ref(String(row[key]));
+              };
+              // A press opens where the view says first; «Abrir en…» offers every other place.
+              return {
+                onOpen: (row: AnyRecord) =>
+                  opening.open(refOf(row), opening.targets[0] ?? "page"),
+                onOpenIn: (row: AnyRecord, to: OpenTarget) => opening.open(refOf(row), to),
+                openTargets: opening.targets,
+                // Not on a page, a list inside the form starts as rows; the table stays a click
+                // away.
+                ...(opening.narrow === true ? { views: ["rows", "table"] as const } : {}),
+              };
+            })())}
       />
     );
     return bare ? list : <Field label={view.label}>{list}</Field>;

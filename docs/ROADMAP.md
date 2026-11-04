@@ -706,6 +706,108 @@ líneas: 273 → 36 ms por tecla, medido por web-ui). `RecordLinesEditor` lo usa
 Sigue: editar en la celda (las columnas `edit` de `LineItems`) en vez de sólo en el diálogo —
 falta ver cómo se nombra un control dentro de una celda para un lector de pantalla.
 
+## Revisión de la UI: la cola (2026-11-04)
+
+Revisado contra el código, las historias, web-ui 1.6 y composer 1.5, con capturas de Storybook
+(modal de la historia 28, panel y modal de la 29, formulario de la 12, ventanas de la 18).
+
+**1. Abrir un registro en cualquier lugar.** Hoy:
+
+| Desde                                      | Qué ofrece                                                                                                                      | Falta                                       |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Fila de la tabla                           | clic → página; el nombre es `RecordLink` de composer: vistazo, costado y ventana **sólo como íconos al pasar el mouse** (y ⇧/⌘) | modal; un «Abrir en…» visible y por teclado |
+| Fila de «filas» y tarjeta del tablero      | clic → página                                                                                                                   | todo lo demás                               |
+| many2one (`RelationValue`, `EntityPicker`) | modal por defecto y «Abrir en…» con todos los destinos                                                                          | —                                           |
+| one2many (`RelatedList`)                   | clic → el primero de `opening.targets` (modal)                                                                                  | los demás destinos                          |
+| ⌘K                                         | página (paleta de composer)                                                                                                     | es de composer: pedido                      |
+
+web-ui ya tiene lo necesario: `List onPeek` + `rowClick="open"` (1.5+: el clic abre la página y 👁
+mira, sin convertir la fila en vistazo — la trampa de `AGENTS.md` sobre `onPeek` quedó vieja),
+`rowActions` / `RowOf.actions` para el resto, y sus propias palabras (`openIn`: «Abrir en un
+modal», «Vista previa», «Abrir al costado», «Abrir en una ventana», «Abrir en…»).
+
+**2. Cómo se ve.**
+
+- **El formulario** de `EntityRecord` mete todos los campos en un `div` propio de una columna: en
+  una página ancha queda una columna angosta y media hoja vacía (capturas 11, 18). web-ui lo dice
+  con `FormSection columns={2}` dentro de `Record.Paper` (su plantilla «Operación»): dos columnas
+  en ancho, una en compacto.
+- **El riel vacío**: `Record.Actions` iba siempre (por un bug de web-ui ya resuelto), así que un
+  registro sin migas, sin pager y sin acciones dibuja una banda vacía bajo el título del modal o
+  del panel (captura 29).
+- **Una tabla en un modal o en un panel** parte cada número en tres renglones («F- / 2026- / 0060»)
+  y cada fecha en tres (captura 29; y también en la página, captura 28). Una lista que es un
+  campo de un registro abierto en un modal o un panel debería empezar en «filas».
+- **El registro en un modal** repite el título (el del modal y el del registro): es el `Record` de
+  web-ui; se anota, no se dibuja otro.
+
+**3. Más vistas.** `EntityList views` admite `table | rows | board`. web-ui dibuja además
+`sheet` (planilla, virtualizada, que sale de las columnas de la tabla), `report`, `pivot`,
+`calendar`, `gantt` y `timeline`. La planilla sale gratis; calendario y pivote necesitan
+preguntarle al SERVIDOR (un rango de fechas, dos niveles agrupados): agrupar o filtrar la página
+estaría mal (`AGENTS.md`).
+
+**4. Ordenar por varios campos.** `useListing.order` es UN `Sort`. El constructor de web-ui ya
+arma `order: [...]` y `EntitySearchBar` lo **tira**. La tabla ordena por un encabezado; las
+caras sin encabezados (`rows`, `board`) no ofrecen ordenar (`List sortable`).
+
+**5. La barra con constructor en toda lista de registros.** `RelatedList` (one2many) y el selector
+de `EntityPicker` usan `search="box"` (una caja de texto): sin filtros ni constructor.
+
+Orden de trabajo: 1 → 2 → 4 → 5 → 3 (planilla; calendario y pivote del servidor al final).
+
+### Hecho (2026-11-04)
+
+- **1. Abrir** — `EntityList openTargets` (por defecto `targetsFor(api)`: modal, vistazo,
+  costado, página, ventana; desde un modal, todo menos modal) y `onOpenIn`. Apretar abre la
+  página; el 👁 de web-ui (`onPeek` + `rowClick="open"`) mira; **«Abrir en…»** (`OpenInMenu`,
+  `Menu` de web-ui con sus palabras `openIn`) va visible al lado del nombre en la tabla y en cada
+  fila. El one2many recibe lo mismo por `RecordOpening`. La ventana se sumó a los destinos de un
+  relacionado. Historia `32 · Abrir un registro donde haga falta` (falla sin el menú).
+- **2. Cómo se ve** — el registro usa `FormSection` de web-ui: dos columnas en página y modal,
+  una en panel, ventana y vistazo (`api.surface`); el riel sólo si lleva algo. Una lista dentro
+  de un registro que no está en una página empieza en «filas» (`RecordOpening.narrow`). Un
+  código, una fecha o un monto no se parten (`columnsOf`: `whitespace-nowrap`). Historia
+  `33 · Un registro se ve bien donde se abra`, que mide geometría (renglones de un texto con un
+  `Range`; una caja da un solo rectángulo aunque tenga tres renglones — la primera versión del
+  play no fallaba sin el cambio).
+- **4. Ordenar por varios campos** — `listing.order` es una lista; el constructor la lee y la
+  escribe, y viaja entera al servidor; la tabla y el menú de orden de las caras sin encabezados
+  (`sortable`) muestran y ponen el primero. Encontrado de paso: dos cambios en un mismo gesto
+  (el constructor aplica filtro Y orden) se pisaban — el segundo partía del estado del render;
+  ahora parte del último. `20 · PorVariosCampos` falla sin cada uno.
+- **5. La barra en toda lista de registros** — el one2many y el selector de «Buscar más…» usan la
+  barra con filtros y constructor; la caja queda para quien la pida (`search="box"`).
+  Historias 09 y 16.
+- **3. Más vistas** — `views` admite `sheet` (la planilla de web-ui con las columnas de la
+  tabla); una lista en pantalla que no dice nada ofrece tabla, filas, tablero y planilla.
+  Historia `34 · Un conjunto, varias formas de mirarlo`.
+
+### Pedidos que salen de esto
+
+- **composer** — ⌘K abre siempre la página: que acepte «Abrir en…» o los modificadores de
+  `RecordLink` (⇧ al costado, ⌘ ventana).
+- **web-ui `FormSection`** no se angosta por su contenedor: dos columnas en un panel de 420 px
+  aplastan los controles. Hoy el framework elige 1 o 2 por superficie; mejor una container query.
+- **web-ui `DataColumn`** — una opción `nowrap` (o que `mono` no parta): hoy el framework envuelve la
+  celda en un `span`.
+- **web-ui orden** — `SortState` es UNO: la tabla no puede mostrar «Estado ↑, Total ↓» ni ⇧-clic
+  para sumar un campo; el constructor sí arma varios.
+- **web-ui `CriteriaBuilder`** — las fichas de orden y la lista de «ordenar por…» muestran el
+  nombre técnico (`amount_total`), no la etiqueta del modelo.
+- **web-ui `SearchBar`** — con Enter toma la primera sugerencia, que puede ser «Estado es 0060» (un
+  valor que el enum no tiene) en vez de la búsqueda literal.
+- **web-ui `Record` en un modal** repite el título: el del modal y el del registro.
+- **web-ui `List.Calendar`** no dice qué rango muestra (`onRangeChange`): sin eso el calendario
+  sólo puede dibujar la página (mentiría sobre el mes) o traer todo (prohibido). Con eso, el
+  framework le pide al servidor `fecha entre inicio y fin`.
+- ~~**Pivote**~~ — hecho: `EntityList pivot={{ rows, columns, measures? }}` ofrece la cara
+  `pivot`; `usePivot` le pregunta al servidor dos veces (por los dos campos, y por las columnas
+  solas para sus totales), nunca trae filas y sólo pregunta mientras es la cara que se mira;
+  `pivotOf` lo pliega en el `Pivot` de web-ui (`folded`) con las palabras del modelo («Pagada»,
+  «Efectivo»). Historia `35 · Cruzar un conjunto por dos campos` (falla si no pregunta). El total
+  general no se dibuja: nadie lo contestó y no se suman celdas.
+
 ## Decisiones abiertas
 
 - **Transportes**: REST hoy; JSON-RPC sale casi gratis (`rpcSource` de criteria). gRPC desde

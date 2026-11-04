@@ -22,6 +22,9 @@ import type { ReactNode } from "react";
  * The fields NOT named still exist: they come after, `optional` and hidden, so the columns
  * menu offers them and nobody edits the screen to see a field the server already sends.
  */
+/** The types whose value is one short thing, read whole. */
+const DATES = new Set(["date", "datetime", "time"]);
+
 export type ColumnOptions<T> = {
   locale?: string | undefined;
   /** The cells that are not plain text, by field name. */
@@ -37,12 +40,16 @@ function columnOf<T extends AnyRecord>(
   const view = viewOf(meta, name, options.locale);
   const text = (row: T) => textOf(meta, name, row[name], options.locale) ?? "";
   const own = options.cells?.[name];
+  // A code, a date, an amount is read whole: «F-2026-0060» in three lines is three values.
+  const whole = view.name === meta?.identity || view.numeric || DATES.has(view.type);
   return {
     id: name,
     header: view.label,
     field: name,
     value: (row) => sortKeyOf(meta, name, row[name]),
-    cell: own ?? text,
+    cell:
+      own ??
+      (whole ? (row: T) => <span className="whitespace-nowrap">{text(row)}</span> : text),
     text,
     numeric: view.numeric,
     sortable: view.sortable,
