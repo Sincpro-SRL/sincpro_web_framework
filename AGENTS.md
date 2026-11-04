@@ -154,6 +154,15 @@ Rules for any agent (or person) changing this package. Read the README for the i
 - **A form's fields go in web-ui's `FormSection`**, never a hand-made column: two columns on a
   page and in a modal, one in a panel or a peek (`api.surface`) — the grid does not narrow by
   itself. A list inside a record not on a page starts as rows (`RecordOpening.narrow`).
+- **A picker opens in the workspace by itself.** `EntityPicker` / `EntityTags` read the view's
+  `RecordOpening` (given by `entityView`): inside a workspace «Buscar más…» is `api.pick` and the
+  chosen opens there — never web-ui's `Dialog` — unless the screen passes `onOpen` /
+  `onBrowseAll`. Their chooser CARRIES the cut (`chooserRef(query, scope)` → `ListScopeProvider`
+  → `useListing`): a chooser that offers what the picker excludes is a bug. Inside a line the
+  lines editor gives an opening without `choose`; `ownChooser` asks for the built-in one.
+- **A new record of an entity with `edit`, keyed by `id`, gets its id HERE** (`newEntityId`, a
+  UUID v7 as 32 hex, sincpro_framework's format): its draft and its save go through the `Edit`
+  route under it. Without `edit` no id is sent — a `create` DTO is the application's.
 - **web-ui's `Picker` offers «see all…» only while it holds rows it does not draw** — never when
   given `onLoadMore`. `EntityPicker` does not pass it, so the chooser (the server search) is
   always reachable.

@@ -1038,6 +1038,49 @@ Command con dos claves y un botón apagado), `11 · ConLaBarraDeLaAplicacion` y 
   necesitaría que el `LineItems` de web-ui la dibuje.
 - Los huecos 4 y 5 (forge), 15 (composer) y 16 (web-ui) no se tocaron.
 
+## Todo se abre en el workspace, y el id lo genera el front (2026-11-04)
+
+Encontrado al revisar los modales: dentro de una aplicación con composer, un `EntityPicker`
+escrito a mano (los de la consola de forge, `group_views` y `user_views`) abría el `Dialog`
+fijo de web-ui en «Buscar más…» y no tenía «Abrir en…»: sólo `RecordField` leía cómo abrir de la
+vista. Y un registro nuevo de una entidad con `edit` no podía guardar un borrador ni crearse por
+el `Edit`, aunque sincpro_framework lo contempla. Historias
+`39 · Todo se abre en el workspace` y `17 · NaceConElIdQueGeneraElFront`; tests `ids` y `entity`.
+
+- **Los pickers leen el workspace solos** — `EntityPicker` y `EntityTags` usan la apertura de la
+  vista (`RecordOpening`, la que `entityView` da) cuando la pantalla no pasa `onOpen` /
+  `onBrowseAll`: el elegido abre donde lo pone el workspace y «Buscar más…» es `api.pick` de la
+  lista de la entidad. Lo que la pantalla pasa sigue ganando. `chooserIn` queda para quien lo
+  cablea a mano. El selector propio queda para un picker fuera de un workspace y para una línea:
+  el editor de líneas da una apertura **sin** `choose` (también a los controles propios de la
+  pantalla) y `ownChooser` lo pide en cualquier otro lado.
+- **El selector lleva el recorte del picker** — antes, aunque se abriera en el workspace,
+  ofrecía la entidad ENTERA: ni el `criteria`, ni el `exclude`, ni el alcance de la lista con
+  nombre. Ahora viaja en la referencia (`chooserRef(query, scope)`, param `scope`: sobrevive a
+  recargar y a un link) y la vista de la entidad lo da a su lista (`ListScopeProvider`), que
+  `useListing` suma como un alcance más — también a la lista que escribe la aplicación. Leído de
+  una URL es texto sin tipos: se lee con `readExpression` de criteria y uno que no se lee no es
+  recorte. Lo que no viaja de una lista con nombre son sus columnas y su título.
+- **UUID v7 desde el front** — sincpro_framework crea un registro nuevo bajo el `id` que nombra
+  el cliente («a UUID v7 it mints»); el borrador y el registro guardado lo comparten. `useRecord`
+  genera ese id (`newEntityId`, 32 hex, el mismo formato y orden que `new_entity_id`) una vez por
+  registro nuevo, cuando la entidad declara `edit` y su clave es `id`: `keep()` guarda el
+  borrador de un registro que todavía no existe, `save()` lo guarda por la misma ruta del `Edit`
+  y el hook pasa a ser ese registro. Un reintento nombra el mismo registro, nunca un segundo. Los
+  `values` de un registro nuevo no llevan lo que escribe el framework (`id`, sellos), que el
+  `Edit` rechaza. **Sin `edit` no se manda id**: el DTO de un `create` es de la aplicación y
+  podría no tenerlo (no se inventa un contrato); tampoco cuando la clave es otro campo (el número
+  de una factura, que pone el servidor). Una línea nueva sigue viajando sin id.
+
+### Sigue abierto, con dueño
+
+- **Modal o ventana para abrir un relacionado** — el modal de composer se mueve por el título
+  pero no se redimensiona; la ventana sí. El README de composer dice que un many2one abre en
+  ventana y la guía de web-ui dice modal (anotado en «Composer 1.4 y web-ui 1.0»). Hoy el
+  primero de `targetsFor` sigue siendo el modal; decidirlo es de las dos guías, no de acá.
+- **sincpro_framework — `PreviewEntity.id`** es «el registro guardado que se edita; `None` para
+  uno nuevo»: un registro nuevo con borrador guardado se previsualiza con `id: null`.
+
 ## Decisiones abiertas
 
 - **Transportes**: REST hoy; JSON-RPC sale casi gratis (`rpcSource` de criteria). gRPC desde

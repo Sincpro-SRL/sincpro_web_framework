@@ -1,8 +1,10 @@
 import {
   dirtyOf,
+  entity,
   EntityPicker,
   explain,
   FrameworkProvider,
+  isEntityId,
   RecordField,
   type RecordReading,
   Refused,
@@ -16,7 +18,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { type Call, restServer } from "./support/rest";
 import { servidorVentas } from "./support/servidor";
-import { clientes, type Factura, facturas } from "./support/ventas";
+import { type Cliente, clientes, type Factura, facturas } from "./support/ventas";
 
 const meta: Meta = {
   title: "Casos de uso/17 · Crear un registro",
@@ -224,5 +226,112 @@ export const ReintentarNoDuplica: Story = {
         .filter((line) => line.startsWith("POST /v1/facturas ·"));
     await waitFor(() => expect(posts()).toHaveLength(2));
     await expect(posts()[0]).toBe(posts()[1]);
+  },
+};
+
+/** The customers served by sincpro_framework's `Edit`: one route, by action — and a new one is
+ *  created under the id the CLIENT mints. */
+const clientesPorEdit = entity<Cliente>("ventas:cliente", {
+  list: "/clientes",
+  edit: "PUT /clientes/{id}/edit",
+});
+
+/** Each `Edit` that travelled: its action, the id in its path and the id in its body. */
+function Ediciones({ calls }: { calls: readonly Call[] }) {
+  const said = calls
+    .filter((call) => call.method === "PUT")
+    .map((call) => {
+      const body = call.body as { action?: string; id?: string; values?: object };
+      const enRuta = decodeURIComponent(call.url).split("/clientes/")[1]?.split("/")[0];
+      const sinId = body.values !== undefined && !("id" in body.values);
+      return `${body.action}:${enRuta}:${body.id}:${sinId ? "values-sin-id" : "values-con-id"}`;
+    });
+  return <p aria-label="Ediciones">{said.join(" ")}</p>;
+}
+
+function NuevoCliente() {
+  const cliente = useRecord(clientesPorEdit, "");
+  const { edit } = cliente;
+  if (cliente.status === "loading") return <Skeleton rows={3} label="Cargando" />;
+  if (cliente.status === "failed")
+    return <Refused error={cliente.error} onRetry={cliente.reload} />;
+  const fallo = edit.failure === null ? null : explain(edit.failure);
+  return (
+    <Record identity={{ title: cliente.isNew ? "Nuevo cliente" : cliente.record.name }}>
+      <Record.Rail>
+        <Record.Actions>
+          {edit.keep === undefined ? null : (
+            <Button size="sm" role="ghost" onClick={() => void edit.keep?.()}>
+              Guardar borrador
+            </Button>
+          )}
+          <Button size="sm" role="primary" onClick={() => void edit.save()}>
+            Guardar
+          </Button>
+        </Record.Actions>
+      </Record.Rail>
+      <Record.Paper layout="stacked">
+        {fallo === null ? null : (
+          <Callout tone="bad" title={fallo.heading}>
+            {fallo.sentence}
+          </Callout>
+        )}
+        <div className="grid max-w-xl gap-3 p-4">
+          <RecordField record={cliente} name="name" />
+          <RecordField record={cliente} name="city" />
+          <p aria-label="Código">{cliente.isNew ? "—" : cliente.id}</p>
+          {edit.draft === null ? null : (
+            <p>Borrador en el servidor · versión {edit.draft.version}</p>
+          )}
+        </div>
+      </Record.Paper>
+    </Record>
+  );
+}
+
+export const NaceConElIdQueGeneraElFront: Story = {
+  render: () => (
+    <Escena>
+      {(calls) => (
+        <>
+          <NuevoCliente />
+          <Ediciones calls={calls} />
+          <Cable calls={calls} />
+        </>
+      )}
+    </Escena>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("heading", { name: "Nuevo cliente" });
+    await userEvent.type(
+      canvas.getByRole("textbox", { name: /^Nombre/ }),
+      "Ferretería Andina",
+    );
+    // A new record keeps a draft on the server — under the key the front minted for it.
+    await userEvent.click(canvas.getByRole("button", { name: "Guardar borrador" }));
+    await expect(
+      await canvas.findByText("Borrador en el servidor · versión 1"),
+    ).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Guardar" }));
+    // Stored, and the same screen IS that customer now, read back by its key.
+    await expect(
+      await canvas.findByRole("heading", { name: "Ferretería Andina" }),
+    ).toBeVisible();
+    const id = canvas.getByLabelText("Código").textContent ?? "";
+    // A UUID v7 as sincpro_framework writes it: 32 hex, version 7.
+    await expect(isEntityId(id)).toBe(true);
+    // The draft and the stored record share it: the path and the body name the same one, and
+    // the values never carry a field the framework writes.
+    await expect(canvas.getByLabelText("Ediciones")).toHaveTextContent(
+      `save_draft:${id}:${id}:values-sin-id save:${id}:${id}:values-sin-id`,
+    );
+    await expect(canvas.getByLabelText("Lo que viajó")).toHaveTextContent(
+      `GET /v1/clientes/${id}`,
+    );
+    // No `create` route was needed: an entity that speaks `Edit` creates through it.
+    await expect(canvas.getByLabelText("Lo que viajó")).not.toHaveTextContent(
+      "POST /v1/clientes",
+    );
   },
 };

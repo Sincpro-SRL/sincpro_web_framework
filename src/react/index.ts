@@ -9,6 +9,11 @@ export {
   useFramework,
 } from "@sincpro/web-framework/react/context";
 export {
+  type ListScope,
+  ListScopeProvider,
+  useListScope,
+} from "@sincpro/web-framework/react/scope";
+export {
   type CommandState,
   type Rehearsal,
   useCommand,

@@ -41,6 +41,8 @@ export {
   pathFor,
   PICK_PARAM,
   QUERY_PARAM,
+  SCOPE_PARAM,
+  scopeOfRef,
   startingValuesOf,
   TRAIL_PARAM,
   WITH_PARAM,
@@ -49,6 +51,7 @@ export {
 } from "@sincpro/web-framework/core/entity";
 export { type FormLayout, formOf } from "@sincpro/web-framework/core/form";
 export { type HistoryEntry, historyOf } from "@sincpro/web-framework/core/history";
+export { isEntityId, newEntityId } from "@sincpro/web-framework/core/ids";
 export {
   addingOf,
   type AddingRule,

@@ -14,7 +14,8 @@ import { CLIENTES, type Factura, FACTURAS, VENTAS } from "./ventas";
  * memory: a save checks the version it was read at (409 when someone saved first), a Command
  * may be run dry (`dry_run: true` answers what it would do), a `Preview` says what the record
  * becomes, a draft is kept per record with its own version, and every change leaves a business
- * event in `/ventas-events` with its label.
+ * event in `/ventas-events` with its label. The customers speak sincpro_framework's `Edit`, a
+ * new one created under the id the client minted.
  *
  * Each call to `servidorVentas()` starts from fresh copies: one story's writes never leak into
  * another's.
@@ -52,6 +53,7 @@ const refuse = (route: string, status: number, problem: Record<string, unknown>)
 
 export function servidorVentas() {
   const facturas: Factura[] = structuredClone(FACTURAS);
+  const clientes: AnyRecord[] = structuredClone(CLIENTES);
   const eventos: AnyRecord[] = facturas.map((f) => ({
     id: `ev-${f.number}-0`,
     created_at: f.created_at,
@@ -222,9 +224,58 @@ export function servidorVentas() {
     return { number: f.number, version: f.version };
   }
 
+  /**
+   * sincpro_framework's `Edit` over the customers (`PUT /clientes/{id}/edit`): the record named
+   * by `id` — the stored one, or a NEW one created under the id the client minted. The values
+   * carry what a person writes: a field the framework writes (`id`) is refused, as
+   * `apply_values` refuses it; the path and the body name the same record.
+   */
+  function editarCliente(route: string, id: string, sent: AnyRecord): unknown {
+    const values = (sent["values"] ?? {}) as AnyRecord;
+    const invalid = (pointer: string, detail: string) =>
+      refuse(route, 422, {
+        kind: "invalid",
+        reason: "INVALID_VALUE",
+        errors: [{ pointer, detail }],
+      });
+    if (sent["id"] !== id)
+      throw invalid("#/id", "El cuerpo y la ruta nombran otro registro.");
+    if ("id" in values) throw invalid("#/values/id", "Cliente.id lo escribe el framework.");
+    const kept = drafts.get(id);
+    if (sent["action"] === "discard") {
+      drafts.delete(id);
+      return { cliente: clientes.find((c) => c["id"] === id) ?? null, draft: null };
+    }
+    if ((kept?.version ?? 0) !== sent["version"])
+      throw refuse(route, 409, {
+        kind: "conflict",
+        reason: "DRAFT_CONFLICT",
+        detail: "Otra pestaña guardó el borrador antes.",
+      });
+    const stored = clientes.find((c) => c["id"] === id);
+    if (sent["action"] === "save") {
+      const whole = { ...kept?.values, ...values };
+      if (typeof whole["name"] !== "string" || whole["name"].trim() === "")
+        throw invalid("#/values/name", "El cliente necesita un nombre.");
+      drafts.delete(id);
+      if (stored !== undefined) Object.assign(stored, whole);
+      else clientes.push({ active: true, ...whole, id });
+      return { cliente: { ...clientes.find((c) => c["id"] === id) }, draft: null };
+    }
+    const next: Draft = { values, version: (kept?.version ?? 0) + 1, origin_version: 0 };
+    drafts.set(id, next);
+    return {
+      cliente: { ...stored, ...values, id },
+      draft: { version: next.version, origin_version: next.origin_version },
+    };
+  }
+
   function handle(method: Method, route: string, body: unknown): unknown {
     const sent = (body ?? {}) as AnyRecord;
     const [, , number, action] = route.split("/");
+
+    if (method === "PUT" && route.startsWith("/clientes/") && action === "edit")
+      return editarCliente(route, decodeURIComponent(number ?? ""), sent);
 
     if (method === "POST" && route === "/facturas/preview") {
       const values = sent["values"] as AnyRecord;
@@ -347,6 +398,7 @@ export function servidorVentas() {
   return {
     tables: {
       ...VENTAS,
+      "/clientes": { meta: VENTAS["/clientes"].meta, rows: clientes },
       "/facturas": { meta: VENTAS["/facturas"].meta, rows: facturas },
       "/ventas-events": { meta: eventoMeta, rows: eventos },
     },

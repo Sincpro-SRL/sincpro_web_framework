@@ -2,10 +2,16 @@
 
 import { type AnyRecord, matching, type Meta } from "@sincpro/criteria";
 import type { SearchHit, ViewProps, ViewSpec, WorkspaceApi } from "@sincpro/web-composer";
-import { type Entity, listRoute, NEW_PARAM } from "@sincpro/web-framework/core/entity";
+import {
+  type Entity,
+  listRoute,
+  NEW_PARAM,
+  scopeOfRef,
+} from "@sincpro/web-framework/core/entity";
 import type { ListDefinition } from "@sincpro/web-framework/core/list";
 import { lookupOf } from "@sincpro/web-framework/core/lookup";
 import type { Transport } from "@sincpro/web-framework/core/transport";
+import { ListScopeProvider } from "@sincpro/web-framework/react/scope";
 import { useListing } from "@sincpro/web-framework/react/useListing";
 import { EntityList } from "@sincpro/web-framework/web/list/EntityList";
 import { presentationOf } from "@sincpro/web-framework/web/list/presentation";
@@ -86,9 +92,9 @@ function InWorkspace({ api, children }: { api: WorkspaceApi; children: ReactNode
       open: (ref, to) => openIn(api, ref, to),
       targets,
       narrow: api.surface !== "page",
-      choose: (entity, answer, query) =>
+      choose: (entity, answer, query, scope) =>
         api.pick(
-          entity.chooserRef(query),
+          entity.chooserRef(query, scope),
           (ref) => ref.id === undefined || answer(ref.id),
           answering,
         ),
@@ -127,11 +133,18 @@ export function entityView<T extends AnyRecord>(
     return function EntityView(props: ViewProps) {
       const record =
         props.resource.id !== undefined || props.resource.params?.[NEW_PARAM] !== undefined;
-      return (
-        <InWorkspace api={props.api}>
-          {record ? <One {...props} /> : <List {...props} />}
-        </InWorkspace>
-      );
+      // A chooser opened by a picker offers only what the picker may choose: its cut travels in
+      // the reference, and the list — the application's own too — reads under it.
+      const cut = record ? undefined : scopeOfRef(props.resource);
+      const list =
+        cut === undefined ? (
+          <List {...props} />
+        ) : (
+          <ListScopeProvider value={{ key: entity.key, where: cut }}>
+            <List {...props} />
+          </ListScopeProvider>
+        );
+      return <InWorkspace api={props.api}>{record ? <One {...props} /> : list}</InWorkspace>;
     };
   }
   // Built once: a second open of the view must be the same component, or it would remount. A

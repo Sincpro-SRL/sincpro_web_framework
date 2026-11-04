@@ -4,13 +4,11 @@ import type { AnyRecord } from "@sincpro/criteria";
 import type { Entity } from "@sincpro/web-framework/core/entity";
 import { instantOf, timeZoneNow, wallTimeOf } from "@sincpro/web-framework/core/zone";
 import { EntityPicker } from "@sincpro/web-framework/web/record/EntityPicker";
-import { useRecordOpening } from "@sincpro/web-framework/web/record/opening";
 import {
   Checkbox,
   DatePicker,
   DateTimePicker,
   NumberInput,
-  type OpenTarget,
   Select,
   TagsField,
   TextInput,
@@ -113,10 +111,10 @@ export function controlFor(
  * A many2one's control: the picker of the entity it points at — the server's literal search,
  * the first ten, «Buscar más…» — opening the chosen one where the view says.
  *
- * Context: shared by a record's field and a line. Inside a line (`ownChooser`: its row or its
- * dialog) «Buscar más…» is the picker's own chooser, never the workspace's: the workspace opens
- * it outside the line — a row commits when the focus leaves it, and the answer would land on a
- * line no longer being written; over the line's dialog it would be a modal over a modal.
+ * Context: shared by a record's field and a line. Where it opens is `EntityPicker`'s — the
+ * workspace's when there is one. Inside a line the lines editor gives an opening without the
+ * workspace's chooser (`RecordLinesEditor`), so «Buscar más…» is the picker's own there;
+ * `ownChooser` asks for it anywhere else.
  */
 export function RelationPicker({
   target,
@@ -134,7 +132,8 @@ export function RelationPicker({
   /** No `Field` names it (a cell): it carries `label` itself — as `FieldControl.standalone`. */
   standalone?: boolean;
 }) {
-  const opening = useRecordOpening();
+  // Opening the chosen record and «Buscar más…» are the workspace's when there is one: the
+  // picker reads it (`RecordOpening`); a line keeps its own chooser.
   return (
     <EntityPicker
       entity={target}
@@ -142,19 +141,8 @@ export function RelationPicker({
       onChange={onChange}
       // «Buscar más…» is an option of the picker already: no second button beside it.
       browse={false}
+      ownChooser={ownChooser}
       {...(standalone ? { "aria-label": label } : {})}
-      {...(opening === null
-        ? {}
-        : {
-            onOpen: (chosen: string, to: OpenTarget) => opening.open(target.ref(chosen), to),
-            openTargets: opening.targets,
-            ...(ownChooser || opening.choose === undefined
-              ? {}
-              : {
-                  onBrowseAll: (query: string) =>
-                    opening.choose?.(target, (id) => onChange(id), query),
-                }),
-          })}
     />
   );
 }
