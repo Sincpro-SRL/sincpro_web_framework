@@ -2,11 +2,13 @@
 
 import type { AnyRecord } from "@sincpro/criteria";
 import type { Entity } from "@sincpro/web-framework/core/entity";
+import { instantOf, timeZoneNow, wallTimeOf } from "@sincpro/web-framework/core/zone";
 import { EntityPicker } from "@sincpro/web-framework/web/record/EntityPicker";
 import { useRecordOpening } from "@sincpro/web-framework/web/record/opening";
 import {
   Checkbox,
   DatePicker,
+  DateTimePicker,
   NumberInput,
   type OpenTarget,
   Select,
@@ -28,7 +30,8 @@ export type FieldControl = {
 };
 
 /**
- * The control a field's TYPE asks for — a choice, a number, a date, a yes/no, a list of words,
+ * The control a field's TYPE asks for — a choice, a number, a date, a date and time, a yes/no, a
+ * list of words,
  * a text.
  * Shared by a record's field (`RecordField`) and a line's cell and dialog (`RecordLinesEditor`):
  * one rule for what a value is edited with.
@@ -63,6 +66,17 @@ export function controlFor(
           {...named}
         />
       );
+    case "datetime": {
+      // An instant from the server, typed on the wall clock of the installed zone.
+      const zone = timeZoneNow();
+      return (
+        <DateTimePicker
+          value={typeof value === "string" && value !== "" ? wallTimeOf(value, zone) : null}
+          onChange={(wall) => set(wall === null ? null : instantOf(wall, zone))}
+          {...named}
+        />
+      );
+    }
     case "date":
       return (
         <DatePicker

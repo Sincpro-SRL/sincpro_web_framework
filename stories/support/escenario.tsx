@@ -27,6 +27,7 @@ export function Escenario({
   observe,
   metas,
   entities,
+  timeZone,
   children,
 }: {
   tables: Readonly<Record<string, { meta: Meta; rows: readonly AnyRecord[] }>>;
@@ -39,6 +40,8 @@ export function Escenario({
   metas?: Readonly<Record<string, Meta>>;
   /** The application's entities: what a relation of a model resolves to. */
   entities?: readonly Entity[];
+  /** Where the business is: every date and time on its wall clock. */
+  timeZone?: string;
   children: ReactNode;
 }) {
   const transport = useMemo(
@@ -58,6 +61,7 @@ export function Escenario({
       locale="es"
       {...(metas ? { metas } : {})}
       {...(entities ? { entities } : {})}
+      {...(timeZone ? { timeZone } : {})}
     >
       <div className="min-h-dvh bg-ground p-6">
         <div className="@container overflow-clip rounded-box border border-line-strong bg-surface">
