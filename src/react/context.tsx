@@ -6,7 +6,8 @@ import { type MetaStore, metaStore } from "@sincpro/web-framework/core/metas";
 import { entityFor } from "@sincpro/web-framework/core/relation";
 import type { Trail } from "@sincpro/web-framework/core/trail";
 import type { Transport } from "@sincpro/web-framework/core/transport";
-import { createContext, type ReactNode, useContext, useMemo, useState } from "react";
+import { installTimeZone } from "@sincpro/web-framework/core/zone";
+import { createContext, type ReactNode, useContext, useMemo, useRef, useState } from "react";
 
 /**
  * Who answers, in which language a screen reads, and which model definitions are already
@@ -41,6 +42,7 @@ export function FrameworkProvider({
   locale,
   metas: seed,
   entities = NO_ENTITIES,
+  timeZone,
   children,
 }: {
   transport: Transport;
@@ -51,8 +53,19 @@ export function FrameworkProvider({
   /** The entities of the application: a form draws a many2one as a picker of the one its
    *  model points at (`relation: "Cliente"`) without being told. */
   entities?: readonly Entity[];
+  /** Where the business is (IANA: `"America/La_Paz"`) — the application's, or the company's
+   *  the user works in: every date and time reads and is typed on its wall clock. Without it,
+   *  the browser's. */
+  timeZone?: string;
   children: ReactNode;
 }) {
+  // Installed before the children draw, and again when it changes (another company): the
+  // formatters read it, so it cannot wait for an effect.
+  const zoned = useRef<string | undefined | null>(null);
+  if (zoned.current !== timeZone) {
+    installTimeZone(timeZone);
+    zoned.current = timeZone;
+  }
   // One store for the provider's life: a new seed object on a re-render must not forget what
   // the screens already learned.
   const [metas] = useState(() => metaStore(seed));

@@ -191,6 +191,10 @@ Rules for any agent (or person) changing this package. Read the README for the i
 - **Every level has its way in** (`RecordField as` / `lines` / `list`, `EntityList cells` /
   `faces`, `RecordLinesEditor look`): a new default piece ships with the prop that replaces it.
   A screen's face goes in as web-ui's `List.Present` written straight into `List` — a slot.
+- **A `datetime` is an instant; a `date` is a day.** The instant is read and typed on the wall
+  clock of the zone the app installs (`FrameworkProvider timeZone`, `installTimeZone`) — never
+  the browser's when one was given; a day is never converted. A test that installs a zone puts
+  it back (`afterEach(() => installTimeZone(undefined))`).
 - **A custom record view passes `resource` to `useRecord`, not `resource.id`**: a new record
   opened with `newRef(values)` («Agregar» on a one2many) starts with those values only that way.
 - **`useHistory`, not `useActivity`**: web-ui already exports `useActivity` (the panel's open

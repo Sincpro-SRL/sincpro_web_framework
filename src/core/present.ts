@@ -7,6 +7,7 @@ import {
 } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { relatedOf } from "@sincpro/web-framework/core/related";
+import { timeZoneNow } from "@sincpro/web-framework/core/zone";
 
 /**
  * How a field is SHOWN, decided once from the model and nowhere else.
@@ -104,12 +105,16 @@ function decimals(text: string): number {
 const formatters = new Map<string, Intl.DateTimeFormat | Intl.NumberFormat>();
 
 function dateFormat(locale: string | undefined, withTime: boolean): Intl.DateTimeFormat {
-  const key = `d|${locale ?? ""}|${withTime}`;
+  // An instant reads on the wall clock of the installed zone; a calendar day has no zone.
+  const zone = withTime ? timeZoneNow() : "";
+  const key = `d|${locale ?? ""}|${withTime}|${zone}`;
   let format = formatters.get(key) as Intl.DateTimeFormat | undefined;
   if (format === undefined) {
     format = new Intl.DateTimeFormat(
       locale,
-      withTime ? { dateStyle: "medium", timeStyle: "short" } : { dateStyle: "medium" },
+      withTime
+        ? { dateStyle: "medium", timeStyle: "short", timeZone: zone }
+        : { dateStyle: "medium" },
     );
     formatters.set(key, format);
   }

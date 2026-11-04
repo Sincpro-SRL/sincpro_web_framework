@@ -95,6 +95,7 @@ const CELL_TYPES: ReadonlySet<string> = new Set([
   "integer",
   "number",
   "date",
+  "datetime",
   "boolean",
   "text[]",
 ]);
@@ -116,8 +117,7 @@ export function lineFields(definition: Meta | null): string[] {
  *
  * Context: a cell holds a control as wide as its column. A many2one is a picker only when the
  * application declared the entity it points at — otherwise its key is an id nobody types.
- * A date and time, an embedded value or anything the table has no control for needs the
- * dialog's room.
+ * An embedded value or anything the table has no control for needs the dialog's room.
  */
 export function writtenInCell(definition: Meta, field: string, declared: Declared): boolean {
   const relation = relationFieldOf(definition, field);
