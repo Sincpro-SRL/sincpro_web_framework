@@ -14,7 +14,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          'Lo que la consola de forge seguía escribiendo a mano al migrar (los huecos 1, 2 y 11 del ROADMAP). **Un campo que puede quedar vacío** lo ofrece como elección (`EntityPicker none`): «Ninguno» o la palabra de la pantalla («Sin tenant»), que contesta `""`. **Los ya elegidos no se ofrecen** (`exclude`): compartir un proyecto no ofrece los tenants que ya lo tienen, y los deja afuera el SERVIDOR (`not in`). **Un Command con dos claves en la ruta** (`POST /projects/{id}/shares/{tenant_id}/revoke`) toma la segunda del cuerpo, como la lee sincpro_framework. Y **un botón que todavía no aplica** se apaga (`CommandButton disabled`): compartir sin destino elegido.',
+          'Lo que la consola de forge seguía escribiendo a mano al migrar (los huecos 1, 2 y 11 del ROADMAP). **Un campo que puede quedar vacío** lo ofrece como elección (`EntityPicker none`): «Ninguno» o la palabra de la pantalla («Sin tenant»), que contesta `""`. **Los ya elegidos no se ofrecen** (`exclude`): compartir un proyecto no ofrece los tenants que ya lo tienen, y los deja afuera el SERVIDOR (`not in`). **Un Command con dos claves en la ruta** (`POST /projects/{id}/shares/{tenant_id}/revoke`) toma la segunda del cuerpo, como la lee sincpro_framework. Y **un botón que todavía no aplica** se apaga (`CommandButton disabled`): compartir sin destino elegido.\n\nAcá los pickers están **fuera de un workspace**, así que «Buscar más…» es su selector propio. Dentro de una aplicación con composer —como la consola de forge— el mismo picker abre en el workspace y su selector lleva el `exclude`: historia 39.',
       },
     },
   },

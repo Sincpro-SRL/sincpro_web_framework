@@ -10,6 +10,7 @@ import { useListing } from "@sincpro/web-framework/react/useListing";
 import { excluding, useLookup } from "@sincpro/web-framework/react/useLookup";
 import { EntityList } from "@sincpro/web-framework/web/list/EntityList";
 import { over, presentationOf } from "@sincpro/web-framework/web/list/presentation";
+import { chooserScopeOf, useRecordOpening } from "@sincpro/web-framework/web/record/opening";
 import { Dialog, IconButton, type OpenTarget, Picker } from "@sincpro/web-ui";
 import { TextSearch } from "lucide-react";
 import { useState } from "react";
@@ -26,9 +27,13 @@ import { useState } from "react";
  * searched, ordered and paged by the server, where clicking a row answers the field. An entity
  * without a search template is filtered where it is.
  *
- * Inside a workspace, «open» and the chooser can be the composer's instead (`api.open`,
- * `api.pick`): pass `onOpen` / `onBrowseAll` and they replace the defaults — `chooserIn(api,
- * entity, onChange)` is that `onBrowseAll`.
+ * Inside a workspace, «open» and the chooser ARE the workspace's (`RecordOpening`, which
+ * `entityView` gives every view): the chosen record opens where the workspace puts it, and
+ * «Buscar más…» is the entity's own list opened to choose — carrying the picker's cut, so it
+ * offers only what the picker would. A picker written by hand used to open web-ui's `Dialog`
+ * there unless the screen remembered to pass `onBrowseAll`. The built-in chooser is for a
+ * picker outside any workspace, or where the workspace's must not be used (`ownChooser`).
+ * `onOpen` / `onBrowseAll` still replace either.
  *
  * `criteria` narrows what may be chosen — the contacts of the chosen customer — in the picker
  * and in its chooser alike; the server applies it, and a new one starts the choices over. A
@@ -57,6 +62,7 @@ export function EntityPicker<T extends AnyRecord>({
   onOpen,
   openTargets,
   onBrowseAll,
+  ownChooser = false,
   criteria,
   columns,
   browse = true,
@@ -86,17 +92,21 @@ export function EntityPicker<T extends AnyRecord>({
   /** Open the chosen record where the person asked — in composer,
    *  `(id, to) => openIn(api, entity.ref(id), to)`. */
   onOpen?: (id: string, to: OpenTarget) => void;
-  /** Where it may open, the default first (a modal; from inside a modal, beside). */
+  /** Where it may open, the default first. Inside a workspace, the workspace's. */
   openTargets?: readonly OpenTarget[];
-  /** Replace the built-in chooser — in composer, `api.pick(entity.chooserRef(), …)`. It gets
-   *  what was typed, so the list opens on the same search. */
+  /** Replace the chooser — the workspace's, or the built-in one. It gets what was typed, so
+   *  the list opens on the same search. */
   onBrowseAll?: (query: string) => void;
+  /** The built-in chooser even inside a workspace: where an answer arriving later would land
+   *  somewhere else — a line that committed when the focus left it. */
+  ownChooser?: boolean;
   placeholder?: string;
   disabled?: boolean;
   "aria-label"?: string;
 }) {
   const base = isList(entity) ? entity.entity : entity;
   const { metas } = useFramework();
+  const opening = useRecordOpening();
   const lookup = useLookup(entity, {
     ...(criteria === undefined ? {} : { criteria }),
     ...(value === undefined ? {} : { value }),
@@ -111,7 +121,18 @@ export function EntityPicker<T extends AnyRecord>({
       : [{ id: "", name: none === true ? frameworkCopy().picker.none : none }];
   const look = presentationOf(entity).option;
   const [choosing, setChoosing] = useState(false);
-  const browseAll: (query: string) => void = onBrowseAll ?? (() => setChoosing(true));
+  const opens =
+    onOpen ??
+    (opening === null
+      ? undefined
+      : (id: string, to: OpenTarget) => opening.open(base.ref(id), to));
+  const targets = openTargets ?? opening?.targets;
+  const choose = ownChooser ? undefined : opening?.choose;
+  const browseAll: (query: string) => void =
+    onBrowseAll ??
+    (choose === undefined
+      ? () => setChoosing(true)
+      : (query) => choose(base, (id) => onChange(id), query, chooserScopeOf(entity, scope)));
   const picker = (
     <Picker
       items={[
@@ -149,8 +170,8 @@ export function EntityPicker<T extends AnyRecord>({
       // «Loading» only before there is anything: refining keeps the ten on screen.
       loading={lookup.loading && lookup.options.length === 0}
       // No «load more»: ten, and past them the server's search or the chooser.
-      {...(onOpen === undefined || value === "" ? {} : { onOpen })}
-      {...(openTargets === undefined ? {} : { openTargets })}
+      {...(opens === undefined || value === "" ? {} : { onOpen: opens })}
+      {...(targets === undefined ? {} : { openTargets: targets })}
       onBrowseAll={browseAll}
       {...(placeholder === undefined ? {} : { placeholder })}
       {...(disabled === undefined ? {} : { disabled })}

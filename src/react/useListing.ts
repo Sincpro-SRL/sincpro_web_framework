@@ -18,6 +18,7 @@ import { useReading } from "@sincpro/criteria-react";
 import { type Entity, listRoute } from "@sincpro/web-framework/core/entity";
 import { isList, type ListDefinition, scopeOf } from "@sincpro/web-framework/core/list";
 import { useFramework } from "@sincpro/web-framework/react/context";
+import { useListScope } from "@sincpro/web-framework/react/scope";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /**
@@ -131,15 +132,20 @@ export function useListing<T extends AnyRecord>(
   // A named list is its entity under a fixed scope: the scope ANDs under the caller's own.
   const definition = isList(given) ? given : undefined;
   const entity = definition?.entity ?? (given as Entity<T>);
+  // The screen's cut for this entity (a chooser's, `ListScopeProvider`) ANDs like a scope.
+  const cut = useListScope(entity.key);
+  const scopes = [
+    ...(definition === undefined ? [] : [scopeOf(definition)]),
+    ...(cut === undefined ? [] : [{ where: cut } as Criteria<T>]),
+  ];
   const options: ListingOptions<T> =
-    definition === undefined
+    scopes.length === 0
       ? own
       : {
           ...own,
-          criteria:
-            own.criteria === undefined
-              ? scopeOf(definition)
-              : merge<T>(scopeOf(definition), own.criteria),
+          criteria: [...scopes, ...(own.criteria === undefined ? [] : [own.criteria])].reduce(
+            (all, one) => merge<T>(all, one),
+          ),
         };
   const route = listRoute(entity.list, options.params);
   const source = useMemo(

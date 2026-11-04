@@ -4,9 +4,12 @@ import type { AnyRecord, Criteria } from "@sincpro/criteria";
 import type { Entity } from "@sincpro/web-framework/core/entity";
 import { isList, type ListDefinition } from "@sincpro/web-framework/core/list";
 import type { LookupOption } from "@sincpro/web-framework/core/lookup";
-import { useLookup } from "@sincpro/web-framework/react/useLookup";
+import { useFramework } from "@sincpro/web-framework/react/context";
+import { excluding, useLookup } from "@sincpro/web-framework/react/useLookup";
 import { presentationOf } from "@sincpro/web-framework/web/list/presentation";
+import { chooserScopeOf, useRecordOpening } from "@sincpro/web-framework/web/record/opening";
 import { type OpenTarget, type TagOption, TagsField } from "@sincpro/web-ui";
+import { useRef } from "react";
 
 /**
  * A many2many: put SEVERAL records of an entity on this one — the followers of an invoice,
@@ -19,9 +22,11 @@ import { type OpenTarget, type TagOption, TagsField } from "@sincpro/web-ui";
  * once by their keys. A person or a company (`entity(…, { summary: { person: true } })`) is
  * chosen by their face.
  *
- * Opening a chip is the composer's (`onOpen` — a preview by default: a chip is a glance at one
- * of many), and «Buscar más…» is the list that adds (`onBrowseAll`, `api.pick` with the list in
- * its choosing mode). Without a workspace a chip is a value.
+ * Inside a workspace, opening a chip and «Buscar más…» are the workspace's (`RecordOpening`),
+ * as for a many2one: a chip opens where the workspace puts it, and «Buscar más…» is the
+ * entity's list opened to choose, offering neither what `criteria` leaves out nor the chips
+ * already on — the record answered there is added. `onOpen` / `onBrowseAll` replace either.
+ * Without a workspace a chip is a value.
  *
  *     <EntityTags entity={people} value={followers} onChange={setFollowers} />
  */
@@ -53,11 +58,36 @@ export function EntityTags<T extends AnyRecord>({
   disabled?: boolean;
   "aria-label"?: string;
 }) {
+  const { metas } = useFramework();
+  const opening = useRecordOpening();
+  const base = isList(entity) ? entity.entity : entity;
+  // «Buscar más…» answers after the chooser closes: it adds to the chips on screen THEN.
+  const now = useRef(value);
+  now.current = value;
+  const opens =
+    onOpen ??
+    (opening === null
+      ? undefined
+      : (id: string, to: OpenTarget) => opening.open(base.ref(id), to));
+  const choose = opening?.choose;
+  const browseAll =
+    onBrowseAll ??
+    (choose === undefined
+      ? undefined
+      : (query: string) =>
+          choose(
+            base,
+            (id) => {
+              if (!now.current.includes(id)) onChange([...now.current, id]);
+            },
+            query,
+            chooserScopeOf(entity, excluding(criteria, value, metas.get(base.key))),
+          ));
   const lookup = useLookup(entity, {
     ...(criteria === undefined ? {} : { criteria }),
     values: value,
   });
-  const person = (isList(entity) ? entity.entity : entity).summary.person === true;
+  const person = base.summary.person === true;
   const look = presentationOf(entity).option;
   // A chip says a name and shows a face; the list under it also the datum that tells two apart
   // (web-ui 1.5 `TagOption.meta`, never on the chip). Of the entity's look of a choice, those
@@ -85,9 +115,9 @@ export function EntityTags<T extends AnyRecord>({
       onChange={onChange}
       options={options}
       {...(lookup.searchable ? { onSearch: lookup.search } : {})}
-      {...(onOpen === undefined ? {} : { onOpen })}
+      {...(opens === undefined ? {} : { onOpen: opens })}
       {...(openTarget === undefined ? {} : { openTarget })}
-      {...(onBrowseAll === undefined ? {} : { onBrowseAll })}
+      {...(browseAll === undefined ? {} : { onBrowseAll: browseAll })}
       {...(placeholder === undefined ? {} : { placeholder })}
       {...(disabled === undefined ? {} : { disabled })}
       {...(ariaLabel === undefined ? {} : { "aria-label": ariaLabel })}

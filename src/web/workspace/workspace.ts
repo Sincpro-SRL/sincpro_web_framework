@@ -65,8 +65,12 @@ function newTitle(meta: Meta | null, locale: string | undefined): string {
 }
 
 /**
- * «Browse everything» of an `EntityPicker` as the composer's chooser: the entity's own list
- * opens in a window and the row clicked there answers the field.
+ * «Browse everything» as the composer's chooser: the entity's own list opens in a window and
+ * the row clicked there answers the field.
+ *
+ * Context: an `EntityPicker` inside an `entityView` already does this by itself (its
+ * `RecordOpening`), carrying its cut. This is for a screen that wires a chooser by hand — a
+ * button of its own, another `pick` option — and it carries no cut.
  *
  *     <EntityPicker entity={customers} onChange={set} onBrowseAll={chooserIn(api, customers, set)} />
  */

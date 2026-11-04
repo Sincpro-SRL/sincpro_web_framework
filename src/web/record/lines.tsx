@@ -27,6 +27,10 @@ import {
   RelationPicker,
 } from "@sincpro/web-framework/web/record/control";
 import {
+  RecordOpeningProvider,
+  useRecordOpening,
+} from "@sincpro/web-framework/web/record/opening";
+import {
   Field,
   type LineEditorState,
   type LineItemColumn,
@@ -151,7 +155,6 @@ function LineValue({
         target={target}
         value={key === null || key === undefined ? "" : String(key)}
         label={label}
-        ownChooser
         standalone={inCell}
         onChange={(id, chosen) =>
           write({ [relation.key]: id, [relation.relation]: chosen ?? null })
@@ -217,6 +220,7 @@ export function RecordLinesEditor<T extends AnyRecord>({
 }) {
   const { meta, locale, edit } = record;
   const { entities, metas } = useFramework();
+  const opening = useRecordOpening();
   const definition: Meta | null = meta?.fields[name]?.definition ?? null;
   const identity = definition?.identity || "id";
   const fields = lineFields(definition);
@@ -299,7 +303,7 @@ export function RecordLinesEditor<T extends AnyRecord>({
     })),
   ];
 
-  return (
+  const table = (
     <LineItems<AnyRecord>
       lines={lines}
       columns={columns}
@@ -390,4 +394,11 @@ export function RecordLinesEditor<T extends AnyRecord>({
       }}
     />
   );
+  // Inside a line «Buscar más…» is the picker's own chooser, never the workspace's — the
+  // screen's own controls included: the workspace opens it outside the line, a row commits when
+  // the focus leaves it, and the answer would land on a line no longer being written (over the
+  // line's dialog, a modal over a modal). Opening a chosen record is still the workspace's.
+  if (opening === null || opening.choose === undefined) return table;
+  const { choose: _, ...inLine } = opening;
+  return <RecordOpeningProvider value={inLine}>{table}</RecordOpeningProvider>;
 }

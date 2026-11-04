@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 
-import { entity, pathFor } from "@sincpro/web-framework";
+import type { Expression } from "@sincpro/criteria";
+import { entity, pathFor, SCOPE_PARAM, scopeOfRef } from "@sincpro/web-framework";
 import { test } from "vitest";
 
 const projects = entity("forge:project", {
@@ -32,4 +33,19 @@ test("a create fills its route's keys from what it sends; a route with only {id}
     "/tenants/acme/projects",
   );
   assert.equal(pathFor(projects.commands["move"]!, "p1"), "/projects/p1/move");
+});
+
+const customers = entity("ventas:cliente", { list: "/clientes" });
+
+test("a chooser carries the picker's cut, and reads it back as the expression it was", () => {
+  const cut: Expression = { field: "id", operator: "not in", value: ["C-001", "C-004"] };
+  const ref = customers.chooserRef("Glo", cut);
+  assert.equal(ref.params?.[SCOPE_PARAM], JSON.stringify(cut));
+  assert.deepEqual(scopeOfRef(ref), cut);
+  assert.equal(scopeOfRef(customers.chooserRef("Glo")), undefined);
+});
+
+test("a cut typed in an address bar that does not read is no cut, never an error", () => {
+  assert.equal(scopeOfRef({ params: { [SCOPE_PARAM]: "{not json" } }), undefined);
+  assert.equal(scopeOfRef({ params: { [SCOPE_PARAM]: '{"name":"Globex"}' } }), undefined);
 });

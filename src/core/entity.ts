@@ -1,4 +1,4 @@
-import type { AnyRecord } from "@sincpro/criteria";
+import { type AnyRecord, type Expression, readExpression } from "@sincpro/criteria";
 import type { SummaryFields } from "@sincpro/web-framework/core/summary";
 import type { Method } from "@sincpro/web-framework/core/transport";
 
@@ -35,8 +35,9 @@ export type Entity<T extends AnyRecord = AnyRecord> = {
    *  from its customer starts with that customer (`startingValuesOf`). */
   newRef: (values?: AnyRecord) => EntityRef;
   /** Its list opened to CHOOSE one: a row answers whoever asked (composer's `api.pick`). With
-   *  `query`, the list opens on that literal search — what was typed in the picker. */
-  chooserRef: (query?: string) => EntityRef;
+   *  `query`, the list opens on that literal search — what was typed in the picker; with
+   *  `scope`, it offers only what the picker may choose (`scopeOfRef`). */
+  chooserRef: (query?: string, scope?: Expression) => EntityRef;
   /** The route of its list. */
   list: string;
   /** The route of one record. */
@@ -89,6 +90,9 @@ export const TRAIL_PARAM = "from";
 /** What a new record starts with, as JSON: one param keeps each value's type (a number stays
  *  a number), where a param per field would turn all of them into text. */
 export const WITH_PARAM = "with";
+/** What a chooser may offer at all, as JSON: the picker's cut — its criteria, the keys it
+ *  excludes, its named list's scope — that the list it opens ANDs under everything. */
+export const SCOPE_PARAM = "scope";
 
 /**
  * What a new record's reference says it starts with (`newRef(values)`), or nothing.
@@ -106,6 +110,26 @@ export function startingValuesOf(ref: Pick<EntityRef, "params">): AnyRecord {
       : {};
   } catch {
     return {};
+  }
+}
+
+/**
+ * The cut a chooser's reference carries (`chooserRef(query, scope)`), or nothing.
+ *
+ * Context: a picker that may offer only some records — the contacts of the chosen customer, the
+ * tenants a project is not shared with yet — opened the workspace's chooser on the WHOLE
+ * entity, and offered the rest. The cut travels in the reference, so it survives a reload; read
+ * from an address bar it is untyped, so it is read the way criteria reads a filter from outside
+ * (`readExpression`), and one that does not read is no cut, never an error. It narrows what is
+ * OFFERED; the server still decides what may be stored.
+ */
+export function scopeOfRef(ref: Pick<EntityRef, "params">): Expression | undefined {
+  const written = ref.params?.[SCOPE_PARAM];
+  if (written === undefined) return undefined;
+  try {
+    return readExpression(JSON.parse(written));
+  } catch {
+    return undefined;
   }
 }
 
@@ -200,7 +224,7 @@ export function entity<T extends AnyRecord = AnyRecord>(
           : { [WITH_PARAM]: JSON.stringify(values) }),
       },
     }),
-    chooserRef: (query) => ({
+    chooserRef: (query, scope) => ({
       domain,
       kind,
       params: {
@@ -208,6 +232,7 @@ export function entity<T extends AnyRecord = AnyRecord>(
         ...(query === undefined || query.trim() === ""
           ? {}
           : { [QUERY_PARAM]: query.trim() }),
+        ...(scope === undefined ? {} : { [SCOPE_PARAM]: JSON.stringify(scope) }),
       },
     }),
     list: routes.list,
