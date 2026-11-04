@@ -29,7 +29,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          'Las líneas de un agregado se editan **dentro** del registro (`RecordField name="lines"` dibuja el `LineItems` de web-ui) y viajan como sincpro_framework las escribe: la **lista completa y en orden**, en el mismo comando que la factura y con su versión. Una línea leída lleva su id; una **nueva va sin id** —el servidor rechaza uno que no conoce y pone el suyo—, así que su clave en pantalla se guarda aparte y se reconcilia por posición. Agregar, quitar, deshacer y reordenar son de la pantalla: por el cable viaja sólo la lista que resulta. **Dónde se escribe una línea** es una sola decisión: en la **tabla** —«Agregar una línea» es su última fila y una fila se escribe donde está; el lápiz abre la línea entera en su diálogo— siempre que cada campo que se escribe quepa en una celda (un producto many2one es el picker de su entidad); en el **diálogo** si alguno no cabe (un many2one de una entidad que la aplicación no declaró, una fecha con hora) o si la pantalla lo pide (`adding="editor"`): una fila que no se puede terminar donde se abrió es una trampa. El **preview** recalcula los subtotales y dice el estado de cada celda (`states.lines.items[i]`) y sus advertencias (`warnings`, con `path`); un **422** que apunta a `#/values/lines/1/quantity` se dice en esa celda, debajo de su valor. Una factura que trajo **sólo una página** de sus líneas no se edita: escribirla entera borraría las que no trajo.',
+          'Las líneas de un agregado se editan **dentro** del registro (`RecordField name="lines"` dibuja el `LineItems` de web-ui) y viajan como sincpro_framework las escribe: la **lista completa y en orden**, en el mismo comando que la factura y con su versión. Una línea leída lleva su id; una **nueva va sin id** —el servidor rechaza uno que no conoce y pone el suyo—, así que su clave en pantalla se guarda aparte y se reconcilia por posición. Agregar, quitar, deshacer y reordenar son de la pantalla: por el cable viaja sólo la lista que resulta. **Dónde se escribe una línea** es una sola decisión: en la **tabla** —«Agregar una línea» es su última fila y una fila se escribe donde está; el lápiz abre la línea entera en su diálogo— siempre que cada campo que se escribe quepa en una celda (un producto many2one es el picker de su entidad); en el **diálogo** si alguno no cabe (un many2one de una entidad que la aplicación no declaró, una fecha con hora) o si la pantalla lo pide (`lines={{ adding: "editor" }}`): una fila que no se puede terminar donde se abrió es una trampa. El **preview** recalcula los subtotales y dice el estado de cada celda (`states.lines.items[i]`) y sus advertencias (`warnings`, con `path`); un **422** que apunta a `#/values/lines/1/quantity` se dice en esa celda, debajo de su valor. Una factura que trajo **sólo una página** de sus líneas no se edita: escribirla entera borraría las que no trajo.',
       },
     },
   },
@@ -88,7 +88,7 @@ function Formulario({
           <RecordField
             record={factura}
             name="lines"
-            {...(adding === undefined ? {} : { adding })}
+            {...(adding === undefined ? {} : { lines: { adding } })}
           />
           <RecordField record={factura} name="amount_total" />
         </div>

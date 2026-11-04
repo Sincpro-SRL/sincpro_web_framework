@@ -811,6 +811,40 @@ Orden de trabajo: 1 → 2 → 4 → 5 → 3 (planilla; calendario y pivote del s
   «Efectivo»). Historia `35 · Cruzar un conjunto por dos campos` (falla si no pregunta). El total
   general no se dibuja: nadie lo contestó y no se suman celdas.
 
+## A tu manera: cada nivel se reemplaza (2026-11-04)
+
+Lo que el modelo dibuja es un default. Hasta acá, un registro y una lista se podían rehacer pieza
+por pieza (`RecordField as`, `EntityList cells`, `rowActions`, `presented`), pero **las líneas
+no**: sus columnas, celdas, controles y diálogo eran fijos. Ahora cada nivel tiene su punto de
+entrada, y lo que no se pasa sigue siendo del modelo:
+
+| Nivel                                      | Cómo se reemplaza                                                              | Historia |
+| ------------------------------------------ | ------------------------------------------------------------------------------ | -------- |
+| Un campo                                   | `RecordField as` (widget propio)                                               | 12       |
+| Las columnas de las líneas                 | `RecordField lines={{ columns }}` (el diálogo sigue teniendo todos los campos) | 36       |
+| La celda de una línea                      | `lines.cells[campo]`                                                           | 36       |
+| El control de un campo de la línea         | `lines.controls[campo]` — en la celda y en el diálogo; recibe la línea entera  | 36       |
+| Columnas que no son campos                 | `lines.extra` — la entrega de una línea, con un botón que abre un modal        | 36       |
+| El diálogo de la línea                     | `lines.editor`                                                                 | —        |
+| La celda de una lista de registros         | `EntityList cells`                                                             | 17, 18   |
+| Una cara entera de la lista                | `EntityList faces` (`List.Present` de web-ui: el mismo conjunto que las demás) | 36       |
+| La lista relacionada dentro de un registro | `RecordField list={{ … }}` (todo lo que toma `EntityList`)                     | 36       |
+| Las líneas, sin `RecordField`              | `RecordLinesEditor look={…}` (exportado)                                       | —        |
+| Abrir algo desde una pieza propia          | `useRecordOpening()` (exportado): peek, modal, costado, ventana                | —        |
+
+La regla de dónde se escribe una línea no se rompe: un campo con control propio **cabe** en la
+celda, y un campo **obligatorio** que la pantalla dejó fuera de las columnas manda la línea al
+diálogo (`addingOf`, con `shown` y `own`; tests en `tests/lines.test.ts`). `adding` pasó a
+`lines.adding`. Cada play de la historia 36 falla sin su pieza (probado: controles ignorados,
+caras sin dibujar, `list` sin pasar).
+
+### Pedido a web-ui que sale de esto
+
+- **`LineItems` / `EditableTable` — una fila con su detalle**: «línea de factura → su picking, su
+  facturación» como sub-fila desplegable (`rowDetail(línea)`) y un menú de acciones por línea
+  (`rowActions`, como `List`). Hoy se arma con `lines.extra` (un botón que abre un modal o un
+  vistazo); el detalle debajo de la fila no tiene dónde ir.
+
 ## web-ui 1.7 (2026-11-04)
 
 **Ordenar por varios campos, también en la tabla.** `sort` es `SortState[]` y `onSortChange`
@@ -818,6 +852,11 @@ recibe la lista (rotura de 1.7). `EntityList` le pasa `listing.order` entero y e
 vuelve, entero: ⇧-clic en un encabezado suma un campo, el menú de orden los reordena, y es la
 misma lista que arma el constructor. Historia `20 · VariosDesdeLosEncabezados` (falla si se queda
 con un solo campo). criteria sigue en 0.3.1 (ya era la versión).
+
+**1.7.1 y 1.7.2** (los pedidos de esta ronda): las tablas cortan el contexto del `Field`, una
+columna con `text` dibuja el texto, un control dentro de un `Field` lo nombra el `Field` (su
+`aria-label` se ignora: `09 · DesdeUnaListaConDominio` lo buscaba por un `aria-label` dentro de un
+`Field` y se ajustó), y Esc en el panel de la barra cierra sólo el panel.
 
 **Controles con formato** (contraseña, tarjeta, correo, teléfono, web, duración, máscara, código,
 color; `NumberInput format/units/rounding`; `Numeric format/signed`). El framework no los elige
@@ -884,13 +923,24 @@ Encontrado:
   ya leída. Sin ninguno de los dos, un producto de una línea no es «declarado» y la línea va al
   diálogo hasta que la meta llegue. `productos` declara `aggregate: "Producto"`.
 
+- **«Agrupar por» en el selector «Buscar más…»** estaba (la barra entera) pero nada lo probaba:
+  `09 · AgruparEnElSelector` agrupa por ciudad, abre un grupo y elige desde ahí (falla si la barra
+  no recibe los grupos).
+- **Una fecha con hora se edita como texto** (`controlFor`): web-ui ya tiene `DateTimePicker`, pero
+  pide la hora LOCAL (`"YYYY-MM-DDTHH:MM"`) y el servidor manda UTC. Usarlo es decidir la zona
+  horaria del que llama («Contexto del llamado», abierto): no se adivina acá.
+
 ### Pedidos a web-ui que salen de esto
 
-- **`EditableTable` / `LineItems`** — aislar el contexto de `Field` para las celdas: una tabla
-  dentro de un `Field` le pasa el mismo `id` y `aria-labelledby` a todos sus controles.
-- **`LineItems`** — una columna con `text` y sin `cell` dibuja el `value` crudo: que dibuje `text`.
-- **Controles dentro de un `Field` con `aria-label`** — el nombre sale doble; que el `Field` gane
-  (o que se documente).
+- ~~**Escape en el panel de la barra (filtros, agrupar) dentro de un `Dialog` cierra el
+  `Dialog`**~~ (resuelto en web-ui 1.7.2): `09 · AgruparEnElSelector` cierra el panel con Esc y
+  comprueba que el selector sigue (falla con 1.7.1).
+
+- ~~**`EditableTable` / `LineItems`**~~ (web-ui 1.7.1: `FieldBoundary`) —
+  aislar el contexto de `Field` para las celdas.
+- ~~**`LineItems`**~~ (1.7.1) — una columna con `text` y sin `cell` dibujaba el `value` crudo.
+- ~~**Controles dentro de un `Field` con `aria-label`**~~ (1.7.1: `controlName`) — el nombre salía
+  doble.
 
 ## Decisiones abiertas
 

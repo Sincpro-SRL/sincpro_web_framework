@@ -50,6 +50,7 @@ export { type FormLayout, formOf } from "@sincpro/web-framework/core/form";
 export { type HistoryEntry, historyOf } from "@sincpro/web-framework/core/history";
 export {
   addingOf,
+  type AddingRule,
   blankLine,
   type Declared,
   editableLines,

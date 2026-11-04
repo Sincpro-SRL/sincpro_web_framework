@@ -125,21 +125,35 @@ export function writtenInCell(definition: Meta, field: string, declared: Declare
   return CELL_TYPES.has(definition.fields[field]?.type ?? "");
 }
 
+/** What decides where a line is written, besides its model. */
+export type AddingRule = {
+  /** Whether the application declared the entity a relation points at. */
+  declared: Declared;
+  /** The screen's choice: «editor» always holds, «inline» only where it works. */
+  asked?: LineAdding;
+  /** The fields drawn as columns, when the screen chose them. Without it, every line field. */
+  shown?: readonly string[];
+  /** The fields the screen writes with a control of its own: they fit a cell whatever their
+   *  type — the screen said how. */
+  own?: ReadonlySet<string>;
+};
+
 /**
- * How «Agregar una línea» adds: in the table when every field a person may write fits a cell,
- * in the dialog otherwise — a row that cannot be finished where it was opened is a trap.
- * `asked` is the screen's: «editor» always holds, «inline» only where it works.
+ * How «Agregar una línea» adds: in the table when every column a person may write fits a cell
+ * and nothing required is left out of the columns; in the dialog otherwise — a row that cannot
+ * be finished where it was opened is a trap.
  */
-export function addingOf(
-  definition: Meta | null,
-  declared: Declared,
-  asked?: LineAdding,
-): LineAdding {
-  if (asked === "editor" || definition === null) return "editor";
-  const fits = lineFields(definition).every(
-    (field) =>
-      definition.fields[field]?.readonly === true ||
-      writtenInCell(definition, field, declared),
-  );
-  return fits ? "inline" : "editor";
+export function addingOf(definition: Meta | null, rule: AddingRule): LineAdding {
+  if (rule.asked === "editor" || definition === null) return "editor";
+  const fields = lineFields(definition);
+  const shown = new Set(rule.shown ?? fields);
+  const writable = (field: string) => definition.fields[field]?.readonly !== true;
+  const fits = (field: string) =>
+    rule.own?.has(field) === true || writtenInCell(definition, field, rule.declared);
+  const ok = fields
+    .filter(writable)
+    .every((field) =>
+      shown.has(field) ? fits(field) : definition.fields[field]?.required !== true,
+    );
+  return ok ? "inline" : "editor";
 }

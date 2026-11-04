@@ -21,9 +21,68 @@ import {
 } from "@sincpro/web-framework/core/relation";
 import { useEntityFor, useFramework } from "@sincpro/web-framework/react/context";
 import type { RecordReading } from "@sincpro/web-framework/react/useRecord";
-import { controlFor, RelationPicker } from "@sincpro/web-framework/web/record/control";
-import { Field, type LineItemColumn, LineItems, ReadValue } from "@sincpro/web-ui";
-import { useRef } from "react";
+import {
+  controlFor,
+  type FieldControl,
+  RelationPicker,
+} from "@sincpro/web-framework/web/record/control";
+import {
+  Field,
+  type LineEditorState,
+  type LineItemColumn,
+  LineItems,
+  ReadValue,
+} from "@sincpro/web-ui";
+import { type ReactNode, useRef } from "react";
+
+/** What a control of the screen's own receives for a field of a line: the field's value and
+ *  how to change it, as any field control, plus the whole line — a widget may write several
+ *  fields at once (a product and its price). */
+export type LineControl = FieldControl & {
+  line: AnyRecord;
+  setLine: (next: AnyRecord) => void;
+};
+
+/** A column that is not a field of the line — its delivery, its buttons: read only. */
+export type LineColumn = {
+  /** Must not be the name of a field of the line. */
+  id: string;
+  header: string;
+  cell: (line: AnyRecord) => ReactNode;
+  /** What the lines' search reads in it. */
+  text?: (line: AnyRecord) => string;
+  numeric?: boolean;
+};
+
+/**
+ * How the lines look and are written, when the screen wants it its way — every piece optional,
+ * every one falling back to the model's.
+ *
+ * Context: «defaults, never cages». The model decides the columns and their controls; a screen
+ * can choose and order the columns, draw a cell its way, write a field with a widget of its
+ * own (in the cell and in the dialog), add columns that are not fields (a line's picking with a
+ * button that opens it), or write the whole dialog. What it does not get to do is break where
+ * a line is written: a field with its own control fits a cell, and a required field left out of
+ * the columns sends the line to the dialog (`addingOf`).
+ */
+export type LinesLook = {
+  /** Where a line is written: the table when it can be (the default), or the dialog. */
+  adding?: LineAdding;
+  /** The fields drawn as columns, in order. The dialog still holds every field. */
+  columns?: readonly string[];
+  /** A field's cell drawn the screen's way, while it reads. */
+  cells?: Readonly<Partial<Record<string, (line: AnyRecord) => ReactNode>>>;
+  /** A field written with the screen's own widget — in its cell and in the dialog. */
+  controls?: Readonly<Partial<Record<string, (control: LineControl) => ReactNode>>>;
+  /** Columns that are not fields, after the fields. */
+  extra?: readonly LineColumn[];
+  /** The whole line's dialog, the screen's way. */
+  editor?: (
+    draft: AnyRecord,
+    set: (next: AnyRecord) => void,
+    state: LineEditorState,
+  ) => ReactNode;
+};
 
 /** How a field of a line reads: a many2one's key by the name of what it points at. */
 function textIn(
@@ -57,6 +116,7 @@ function LineValue({
   invalid,
   locale,
   inCell,
+  own,
 }: {
   definition: Meta | null;
   field: string;
@@ -67,10 +127,23 @@ function LineValue({
   locale: string | undefined;
   /** In a cell, where no `Field` names the control. */
   inCell: boolean;
+  /** The screen's own widget for this field, if it gave one. */
+  own?: ((control: LineControl) => ReactNode) | undefined;
 }) {
   const relation = relationFieldOf(definition, field);
   const target = useEntityFor(relation?.target);
   const write = (changes: AnyRecord) => set(sameLine(line, { ...line, ...changes }));
+  if (own !== undefined)
+    return own({
+      value: line[field],
+      set: (next) => write({ [field]: next }),
+      readonly: false,
+      invalid,
+      label,
+      standalone: inCell,
+      line,
+      setLine: (next) => set(sameLine(line, next)),
+    });
   if (relation !== undefined && !relation.many && target !== undefined) {
     const key = line[relation.key];
     return (
@@ -119,8 +192,9 @@ function LineValue({
  *
  * WHERE a line is written is one decision (`addingOf`): in the TABLE — «Agregar una línea» is
  * its last row, a row is written where it is, the pencil opens the whole line in its dialog —
- * whenever every field a person writes fits a cell; in the DIALOG otherwise, or when the screen
- * asks (`adding="editor"`), and then the cells only read. A row that cannot be finished where
+ * whenever every column a person writes fits a cell; in the DIALOG otherwise, or when the
+ * screen asks (`look.adding="editor"`), and then the cells only read. The screen may draw it
+ * its way (`LinesLook`) without breaking that rule. A row that cannot be finished where
  * it was opened is a trap, so «inline» is never forced. On a narrow box web-ui draws the lines
  * as cards that open the dialog.
  *
@@ -132,22 +206,31 @@ export function RecordLinesEditor<T extends AnyRecord>({
   record,
   name,
   lines,
-  adding: asked,
+  look = {},
 }: {
   record: RecordReading<T>;
   name: string;
   /** The list as on screen (`editableLines(edit.values[name])`), never a page. */
   lines: readonly AnyRecord[];
-  /** Where a line is written: the table when it can be (the default), or the dialog. */
-  adding?: LineAdding;
+  /** The screen's way, piece by piece. */
+  look?: LinesLook;
 }) {
   const { meta, locale, edit } = record;
   const { entities, metas } = useFramework();
   const definition: Meta | null = meta?.fields[name]?.definition ?? null;
   const identity = definition?.identity || "id";
   const fields = lineFields(definition);
+  const shown =
+    look.columns === undefined ? fields : look.columns.filter((one) => fields.includes(one));
+  const controls = look.controls ?? {};
+  const own = new Set(Object.keys(controls));
   const declared: Declared = (target) => entityFor(entities, target, metas.get) !== undefined;
-  const adding = addingOf(definition, declared, asked);
+  const adding = addingOf(definition, {
+    declared,
+    shown,
+    own,
+    ...(look.adding === undefined ? {} : { asked: look.adding }),
+  });
   const writing = !edit.state(name).readonly;
   // Once per render, not per cell: 2 000 lines × 8 fields asked the model 16 000 times.
   const relations = new Map(
@@ -166,8 +249,8 @@ export function RecordLinesEditor<T extends AnyRecord>({
   const write = (change: (lines: readonly AnyRecord[]) => readonly AnyRecord[]) =>
     edit.set(name, change(now.current));
 
-  const drawn = new Set(fields);
-  const columns: LineItemColumn<AnyRecord>[] = fields.map((field) => {
+  const drawn = new Set(shown);
+  const fieldColumns: LineItemColumn<AnyRecord>[] = shown.map((field) => {
     const view = viewOf(definition, field, locale);
     const relation = relations.get(field);
     const inCell =
@@ -175,13 +258,14 @@ export function RecordLinesEditor<T extends AnyRecord>({
       adding === "inline" &&
       definition !== null &&
       definition.fields[field]?.readonly !== true &&
-      writtenInCell(definition, field, declared);
+      (own.has(field) || writtenInCell(definition, field, declared));
+    const ownCell = look.cells?.[field];
     return {
       id: field,
       header: view.label,
       value: (line) => line[field] as never,
       // Drawn as read: «Cemento 50 kg», not «CEM-50»; «1.552,00», not «1552.00».
-      cell: (line) => textIn(definition, field, relation, line, locale),
+      cell: ownCell ?? ((line) => textIn(definition, field, relation, line, locale)),
       text: (line) => textIn(definition, field, relation, line, locale),
       numeric: view.type === "number" || view.type === "integer",
       ...(inCell
@@ -196,12 +280,24 @@ export function RecordLinesEditor<T extends AnyRecord>({
                 invalid={false}
                 locale={locale}
                 inCell
+                own={controls[field]}
               />
             ),
           }
         : {}),
     };
   });
+  const columns: LineItemColumn<AnyRecord>[] = [
+    ...fieldColumns,
+    ...(look.extra ?? []).map((one) => ({
+      id: one.id,
+      header: one.header,
+      value: () => null as never,
+      cell: one.cell,
+      ...(one.text === undefined ? {} : { text: one.text }),
+      ...(one.numeric === undefined ? {} : { numeric: one.numeric }),
+    })),
+  ];
 
   return (
     <LineItems<AnyRecord>
@@ -250,7 +346,8 @@ export function RecordLinesEditor<T extends AnyRecord>({
         );
         return warned === undefined ? null : { tone: "warn", label: warned.message };
       }}
-      editor={(draft, set) => {
+      editor={(draft, set, state) => {
+        if (look.editor !== undefined) return look.editor(draft, set, state);
         const index = indexOf(draft);
         return (
           <div className="grid gap-3">
@@ -282,6 +379,7 @@ export function RecordLinesEditor<T extends AnyRecord>({
                       invalid={error !== undefined}
                       locale={locale}
                       inCell={false}
+                      own={controls[field]}
                     />
                   )}
                 </Field>

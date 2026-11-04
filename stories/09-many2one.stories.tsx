@@ -204,17 +204,17 @@ export const BuscarEnTodosConUnaTabla: Story = {
   },
 };
 
-export const DesdeUnaListaConDominio: Story = {
+export const AgruparEnElSelector: Story = {
   render: function Render() {
     const [cliente, setCliente] = useState("");
     return (
       <div className="max-w-md p-6">
         <Field label="Cliente">
           <EntityPicker
-            entity={clientesActivos}
+            entity={clientes}
+            columns={["name", "tax_id", "city"]}
             value={cliente}
             onChange={setCliente}
-            aria-label="Cliente activo"
           />
         </Field>
       </div>
@@ -230,8 +230,52 @@ export const DesdeUnaListaConDominio: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await canvas.findByRole("button", { name: "Buscar en todos" }));
+    const chooser = within(await page.findByRole("dialog", { name: "Clientes" }));
+    await waitFor(() =>
+      expect(chooser.getByRole("columnheader", { name: /Ciudad/ })).toBeVisible(),
+    );
+    // «Group by» is in the chooser's bar too: the server counts the groups of the whole set.
+    const panel = () => chooser.getByRole("button", { name: "Filtrar, agrupar y favoritos" });
+    await userEvent.click(panel());
+    await userEvent.click(
+      await page.findByRole("button", { name: "Ciudad", pressed: false }),
+    );
+    // Escape closes the panel and only the panel: the chooser stays (web-ui 1.7.2).
+    await userEvent.keyboard("{Escape}");
+    await expect(page.getByRole("dialog", { name: "Clientes" })).toBeInTheDocument();
+    const santaCruz = await chooser.findByRole("button", { name: /Santa Cruz.*2/ });
+    // A group's rows are read when it opens — and a row there still answers the field.
+    await userEvent.click(santaCruz);
+    await userEvent.click(await chooser.findByText("Importadora del Oriente"));
+    await expect(await canvas.findByDisplayValue("Importadora del Oriente")).toBeVisible();
+    await waitFor(() => expect(page.queryByRole("dialog")).toBeNull());
+  },
+};
+
+export const DesdeUnaListaConDominio: Story = {
+  render: function Render() {
+    const [cliente, setCliente] = useState("");
+    return (
+      <div className="max-w-md p-6">
+        <Field label="Cliente">
+          <EntityPicker entity={clientesActivos} value={cliente} onChange={setCliente} />
+        </Field>
+      </div>
+    );
+  },
+  decorators: [
+    (Story) => (
+      <Escenario tables={VENTAS}>
+        <Story />
+      </Escenario>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
     // Only the active ones are offered: the list's cut, applied by the server.
-    await userEvent.click(await canvas.findByRole("combobox", { name: /Cliente activo/ }));
+    await userEvent.click(await canvas.findByRole("combobox", { name: /^Cliente/ }));
     await page.findByRole("option", { name: /Globex Bolivia/ });
     await expect(page.queryByRole("option", { name: new RegExp(INACTIVO.name) })).toBeNull();
     await userEvent.keyboard("{Escape}");
