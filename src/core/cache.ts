@@ -1,4 +1,5 @@
 import type { Criteria, Page } from "@sincpro/criteria";
+import type { Entity } from "@sincpro/web-framework/core/entity";
 import type {
   Method,
   One,
@@ -20,12 +21,17 @@ import type {
  * different filters, orders or pages never share an answer. A read that fails is not kept.
  * Only completed answers are remembered: a request aborted half-way is simply not cached.
  *
+ * A write forgets every collection its route NAMES, not only the first: «leave a tenant»
+ * (`POST /users/{email}/tenants/{tenant}/leave`) changes the tenant's members as much as the
+ * user. And an entity's business events live on a route of their own (`/project-events`): with
+ * `entities`, a write under an entity's list also forgets its history.
+ *
  *     const transport = cachedTransport(restTransport({ base: "/v1" }), { ttl: 30_000 });
  *     transport.invalidate("/facturas");   // forget an entity by hand (a push from the server)
  */
 export type CachedTransport = Transport & {
-  /** Forget every answer whose route starts with this path: `"/facturas"` forgets the list,
-   *  every page and filter of it, and every record under it. */
+  /** Forget every answer whose route lies under this path: `"/facturas"` forgets the list,
+   *  every page and filter of it, and every record under it — not `"/facturas-events"`. */
   invalidate: (path?: string) => void;
 };
 
@@ -34,15 +40,31 @@ export type CacheOptions = {
   ttl?: number;
   /** The clock — for tests. */
   now?: () => number;
+  /** The application's entities: a write to one also forgets its history route. */
+  entities?: readonly Entity[];
 };
 
 type Entry = { at: number; answer: unknown };
 
-/** The entity a route belongs to: its first segment, `"/facturas/F-1/confirm"` → `"/facturas"`. */
-function rootOf(route: string): string {
-  const path = route.split("?")[0] ?? route;
-  const [, first = ""] = path.split("/");
-  return `/${first}`;
+function pathOf(route: string): string {
+  return route.split("?")[0] ?? route;
+}
+
+/** `route` is `path` or lies under it: `"/facturas"` holds `"/facturas/F-1"`, never `"/facturas-events"`. */
+function under(route: string, path: string): boolean {
+  const own = pathOf(route);
+  return own === path || own.startsWith(path.endsWith("/") ? path : `${path}/`);
+}
+
+/** What a write may have changed: every segment of its route as a collection, and the history
+ *  of each entity it writes under. A segment that is a key (`/F-1`) forgets nothing. */
+function touchedBy(route: string, entities: readonly Entity[]): string[] {
+  const path = pathOf(route);
+  const segments = path.split("/").filter((one) => one !== "");
+  const history = entities
+    .filter((one) => one.history !== undefined && under(path, pathOf(one.list)))
+    .map((one) => pathOf(one.history?.route ?? ""));
+  return [...segments.map((one) => `/${one}`), ...history];
 }
 
 export function cachedTransport(
@@ -61,10 +83,15 @@ export function cachedTransport(
     return answer;
   }
 
+  const entities = options.entities ?? [];
+
   const invalidate = (path?: string) => {
     if (path === undefined) return entries.clear();
-    for (const key of [...entries.keys()])
-      if (key.slice(key.indexOf(" ") + 1).startsWith(path)) entries.delete(key);
+    for (const key of [...entries.keys()]) {
+      // `list <route> <criteria>` / `one <route>`: the route is the second word.
+      const route = key.split(" ", 2)[1] ?? "";
+      if (under(route, path)) entries.delete(key);
+    }
   };
 
   return {
@@ -89,7 +116,7 @@ export function cachedTransport(
         return await transport.send<T>(method, route, body, signal, sending);
       } finally {
         // Even a refused write may have changed something (a 409 says someone else did).
-        if (!preview) invalidate(rootOf(route));
+        if (!preview) for (const path of touchedBy(route, entities)) invalidate(path);
       }
     },
     invalidate,

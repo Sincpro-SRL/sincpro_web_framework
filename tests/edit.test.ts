@@ -169,6 +169,15 @@ test("a history reads the event's own label and says the rest with the events' w
   });
 });
 
+test("a fact without a label reads as a change, never as its id", () => {
+  const [entry] = historyOf(
+    [{ id: "01a18fc5-9e", created_at: "2026-10-31T12:00:00Z", entity_id: "F-1" }],
+    eventoMeta,
+    "es",
+  );
+  assert.equal(entry?.label, "Change recorded");
+});
+
 test("a Command runs dry first, then for real; a stale save is a 409", async () => {
   const servidor = servidorVentas();
   const transport = memoryTransport(servidor.tables, { handle: servidor.handle });

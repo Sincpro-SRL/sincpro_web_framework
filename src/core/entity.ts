@@ -51,6 +51,10 @@ export type Entity<T extends AnyRecord = AnyRecord> = {
   preview?: WriteRoute;
   /** Where this caller keeps an edit between requests — sincpro_framework's `Drafts`. */
   draft?: WriteRoute;
+  /** sincpro_framework's `Edit`: ONE route that keeps the draft, saves and discards, by its
+   *  `action`. Declared, a save sends the record whole as the form holds it — not the fields
+   *  that changed under `save` — and it is also where the draft is kept. */
+  edit?: WriteRoute;
   /** Its business events: the context's events route, and the `entity_type` they carry. */
   history?: { route: string; type: string };
   /** Which fields are its description, state, picture… when they are not the conventional
@@ -119,6 +123,8 @@ export type EntityRoutes = {
   save?: string;
   preview?: string;
   draft?: string;
+  /** `"PUT /invoices/{id}/edit"`: the use case that answers sincpro_framework's `Edit`. */
+  edit?: string;
   history?: { route: string; type: string };
   /** `{ image: "logo", state: "estado_pago", person: true }` — not a route, but declared once
    *  with the rest of what a screen should not have to know. */
@@ -137,9 +143,37 @@ export function writeRoute(text: string): WriteRoute {
   return { method: method as Method, path };
 }
 
-/** The path with the record's key in place of `{id}`. */
-export function pathFor(route: WriteRoute, id?: string): string {
-  return id === undefined ? route.path : route.path.replace("{id}", encodeURIComponent(id));
+const PATH_KEY = /\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
+
+/**
+ * The path with the record's key in place of `{id}`, and every other `{name}` taken from the
+ * body's field of that name: `POST /projects/{id}/shares/{tenant_id}/revoke` with
+ * `{ tenant_id: "acme" }`.
+ *
+ * Context: sincpro_framework reads a path parameter as a field of the use case's DTO (its
+ * wire merges `{...body, ...path_params}`), so the body already names every key a route
+ * needs — a second argument for them would say the same thing twice. A key the body lacks is
+ * the screen's bug, said before anything is sent. Without an `id`, `{id}` stays: a create or a
+ * preview of a new record has none.
+ */
+export function pathFor(route: WriteRoute, id?: string, body?: AnyRecord): string {
+  return route.path.replace(PATH_KEY, (whole, name: string) => {
+    if (name === "id") return id === undefined ? whole : encodeURIComponent(id);
+    const value = body?.[name];
+    if (value === undefined || value === null || value === "")
+      throw new Error(`"${route.method} ${route.path}" needs "${name}" in the body`);
+    return encodeURIComponent(String(value));
+  });
+}
+
+/** A list's route with its own parameters: `{ tenant_id: "acme" }` → `/projects?tenant_id=acme`.
+ *  An empty value is no parameter — a filter left blank. */
+export function listRoute(list: string, params?: Readonly<Record<string, string>>): string {
+  const query = new URLSearchParams(
+    Object.entries(params ?? {}).filter(([, value]) => value !== ""),
+  ).toString();
+  if (query === "") return list;
+  return `${list}${list.includes("?") ? "&" : "?"}${query}`;
 }
 
 export function entity<T extends AnyRecord = AnyRecord>(
@@ -185,6 +219,7 @@ export function entity<T extends AnyRecord = AnyRecord>(
     ...(routes.save === undefined ? {} : { save: writeRoute(routes.save) }),
     ...(routes.preview === undefined ? {} : { preview: writeRoute(routes.preview) }),
     ...(routes.draft === undefined ? {} : { draft: writeRoute(routes.draft) }),
+    ...(routes.edit === undefined ? {} : { edit: writeRoute(routes.edit) }),
     ...(routes.history === undefined ? {} : { history: routes.history }),
     summary: routes.summary ?? {},
     ...(routes.aggregate === undefined ? {} : { aggregate: routes.aggregate }),

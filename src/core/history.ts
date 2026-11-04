@@ -1,4 +1,5 @@
 import { type AnyRecord, labelOf, type Meta } from "@sincpro/criteria";
+import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 
 /**
  * A record's history as people read it — its business events, newest first.
@@ -44,7 +45,10 @@ export function historyOf(
     const word =
       typeof label === "string"
         ? label
-        : ((locale ? label?.[locale] : undefined) ?? label?.["default"] ?? String(row["id"]));
+        : // A fact without a label is still a change; its id is not a word anyone reads.
+          ((locale ? label?.[locale] : undefined) ??
+          label?.["default"] ??
+          frameworkCopy().summary.recorded);
     const parts = Object.entries(row)
       .filter(([key]) => !ENVELOPE.has(key))
       .map(([key, value]) => [key, said(value)] as const)

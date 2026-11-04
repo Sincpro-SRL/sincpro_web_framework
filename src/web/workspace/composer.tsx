@@ -2,7 +2,7 @@
 
 import { type AnyRecord, matching, type Meta } from "@sincpro/criteria";
 import type { SearchHit, ViewProps, ViewSpec, WorkspaceApi } from "@sincpro/web-composer";
-import { type Entity, NEW_PARAM } from "@sincpro/web-framework/core/entity";
+import { type Entity, listRoute, NEW_PARAM } from "@sincpro/web-framework/core/entity";
 import type { ListDefinition } from "@sincpro/web-framework/core/list";
 import { lookupOf } from "@sincpro/web-framework/core/lookup";
 import type { Transport } from "@sincpro/web-framework/core/transport";
@@ -34,7 +34,16 @@ import { type ComponentType, type ReactNode, useMemo } from "react";
  *
  * ⌘K asks the server with `matching` — 8 records, identity and display — the same question a
  * many2one asks. The model definition is asked for once, on the first search, unless `meta`
- * is handed over.
+ * is handed over. A list whose route answers a SCOPE by its params (forge's `/projects`
+ * without `tenant_id` is the projects with NO tenant) is searched in the one ⌘K should see:
+ * `search: { params }`.
+ *
+ * The screens can come in a chunk of their own (`load`): the composer asks for a view's
+ * component when it first opens, so the application's bundle does not carry every screen of
+ * every entity — `entityView` keeps that, where handing it the components had lost it.
+ *
+ *     entityView(invoices, { transport, name: "Facturas",
+ *       load: () => import("./invoice_views").then((m) => ({ list: m.Invoices, record: m.Invoice })) })
  */
 export type EntityViewOptions = {
   transport: Transport;
@@ -50,6 +59,14 @@ export type EntityViewOptions = {
   /** Known before any search: no request asks for it. */
   meta?: Meta;
   actions?: ViewSpec["actions"];
+  /** ⌘K's question: the list route's params that say which records it searches. */
+  search?: { params?: Readonly<Record<string, string>> };
+  /** The screens, loaded when the view first opens — a dynamic `import()`. What it does not
+   *  bring is `list` / `record`, or the defaults. */
+  load?: () => Promise<{
+    list?: ComponentType<ViewProps>;
+    record?: ComponentType<ViewProps>;
+  }>;
 };
 
 /**
@@ -100,19 +117,26 @@ export function entityView<T extends AnyRecord>(
   entity: Entity<T>,
   options: EntityViewOptions,
 ): ViewSpec {
-  const List = options.list ?? listOf(entity);
-  const One = options.record ?? recordOf(entity);
   let meta: Meta | null = options.meta ?? null;
+  const route = listRoute(entity.list, options.search?.params);
 
-  function EntityView(props: ViewProps) {
-    const record =
-      props.resource.id !== undefined || props.resource.params?.[NEW_PARAM] !== undefined;
-    return (
-      <InWorkspace api={props.api}>
-        {record ? <One {...props} /> : <List {...props} />}
-      </InWorkspace>
-    );
+  async function screens(): Promise<ComponentType<ViewProps>> {
+    const loaded = options.load === undefined ? {} : await options.load();
+    const List = loaded.list ?? options.list ?? listOf(entity);
+    const One = loaded.record ?? options.record ?? recordOf(entity);
+    return function EntityView(props: ViewProps) {
+      const record =
+        props.resource.id !== undefined || props.resource.params?.[NEW_PARAM] !== undefined;
+      return (
+        <InWorkspace api={props.api}>
+          {record ? <One {...props} /> : <List {...props} />}
+        </InWorkspace>
+      );
+    };
   }
+  // Built once: a second open of the view must be the same component, or it would remount. A
+  // chunk that failed to arrive is asked again next time.
+  let view: Promise<ComponentType<ViewProps>> | null = null;
 
   return {
     domain: entity.domain,
@@ -124,9 +148,9 @@ export function entityView<T extends AnyRecord>(
     search: async (query): Promise<readonly SearchHit[]> => {
       if (query.trim() === "") return [];
       if (meta === null)
-        meta = (await options.transport.list(entity.list, { pagination: { limit: 1 } })).meta;
+        meta = (await options.transport.list(route, { pagination: { limit: 1 } })).meta;
       if (meta?.search == null) return [];
-      const page = await options.transport.list<AnyRecord>(entity.list, {
+      const page = await options.transport.list<AnyRecord>(route, {
         ...matching(meta, query),
         meta: false,
       });
@@ -143,7 +167,13 @@ export function entityView<T extends AnyRecord>(
         };
       });
     },
-    load: async () => EntityView,
+    load: () => {
+      view ??= screens().catch((failure: unknown) => {
+        view = null;
+        throw failure;
+      });
+      return view;
+    },
   };
 }
 

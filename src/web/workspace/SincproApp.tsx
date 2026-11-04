@@ -9,6 +9,7 @@ import {
   SPANISH_COMPOSER_COPY,
   useWorkspace,
   type ViewSpec,
+  type WorkspaceStore,
 } from "@sincpro/web-composer";
 import { createRegistry } from "@sincpro/web-composer/domain";
 import { cachedTransport, type CacheOptions } from "@sincpro/web-framework/core/cache";
@@ -31,8 +32,13 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
  * Context: forge's `main.tsx` + `console.tsx` installed three copy tables, a toast provider, a
  * context of its own and a composer by hand. This is that, once. It is a convenience, not the
  * only door: everything it mounts is exported, and an app with its own shell mounts them itself.
- * What it does NOT own: the session (the app builds the transport with its headers) and the
- * application bar (the app draws its own, around this or beside it).
+ * What it does NOT own: the session (the app builds the transport with its headers) and what the
+ * application bar says. The bar is the app's (`bar`), drawn above the workspace inside every
+ * provider; a menu in it opens views through the workspace the app holds (`workspace`, from
+ * composer's `useWorkspace()`) — a workspace owned in here could not be reached from outside.
+ *
+ *     const workspace = useWorkspace();
+ *     <SincproApp workspace={workspace} bar={<Menu onOpen={(ref) => workspace.push(ref)} />} … />
  */
 export function SincproApp({
   transport,
@@ -44,6 +50,8 @@ export function SincproApp({
   empty,
   skin = webUiSkin,
   cache = {},
+  workspace: given,
+  bar,
 }: {
   transport: Transport;
   /** The entities as composer views — `entityView(…)` — and any other view of the app. */
@@ -66,6 +74,12 @@ export function SincproApp({
    * `false` asks the server every time.
    */
   cache?: CacheOptions | false;
+  /** The workspace, when the app needs to reach it (a menu of its bar): composer's
+   *  `useWorkspace()`. Without it, the app keeps one of its own. */
+  workspace?: WorkspaceStore;
+  /** The application's bar, above the workspace and inside the providers: its menus may read
+   *  the framework (`useFramework`) and open views through `workspace`. */
+  bar?: ReactNode;
 }) {
   // Installed once, before anything draws: the three tables are module state of their packages.
   useState(() => {
@@ -77,12 +91,19 @@ export function SincproApp({
     return null;
   });
   const cached = useMemo(
-    () => (cache === false ? transport : cachedTransport(transport, cache)),
+    () =>
+      cache === false
+        ? transport
+        : cachedTransport(transport, {
+            ...(entities === undefined ? {} : { entities }),
+            ...cache,
+          }),
     // The options are read once: a cache that changes shape mid-session forgets everything.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [transport],
   );
-  const workspace = useWorkspace();
+  const own = useWorkspace();
+  const workspace = given ?? own;
   const registry = useMemo(() => createRegistry(views), [views]);
   useEffect(() => {
     if (start !== undefined) workspace.push(start);
@@ -99,12 +120,15 @@ export function SincproApp({
     >
       <ToastProvider>
         <div className="flex h-dvh min-h-0 flex-col bg-ground">
-          <Composer
-            workspace={workspace}
-            registry={registry}
-            skin={skin}
-            {...(empty === undefined ? {} : { empty })}
-          />
+          {bar}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Composer
+              workspace={workspace}
+              registry={registry}
+              skin={skin}
+              {...(empty === undefined ? {} : { empty })}
+            />
+          </div>
         </div>
       </ToastProvider>
     </FrameworkProvider>

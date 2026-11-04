@@ -115,18 +115,18 @@ Lo que no se pudo reemplazar, con su dueño:
 
 | #   | Hueco                                                                                                                                                                                                                                                                                                                             | Dueño                            |
 | --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| 1   | `commands` sólo llena `{id}`: `POST /projects/{id}/shares/{tenant}/revoke` y `POST /users/{email}/tenants/{tenant}/leave` van por `transport.send`                                                                                                                                                                                | web-framework                    |
-| 2   | `EntityPicker` sin opción «ninguno» (forge escribe «sin tenant» como `""`) ni `exclude` (compartir oculta los tenants que ya lo tienen): `TenantSelect` sigue en forge, ahora sobre `useListing` + `lookupOf`. Agregar un usuario a un tenant sí usa `EntityPicker`                                                               | web-framework                    |
-| 3   | `entityView` cubre lista y registro, no alta: `new-project`, `new-tenant` y `new-user` son `ViewSpec` a mano                                                                                                                                                                                                                      | web-framework                    |
+| 1   | ~~`commands` sólo llena `{id}`~~: **resuelto** — cualquier otra `{clave}` de la ruta sale del campo del cuerpo con ese nombre (`pathFor`), como lo lee sincpro_framework. `POST /projects/{id}/shares/{tenant_id}/revoke` va por `CommandButton`                                                                                  | web-framework                    |
+| 2   | ~~`EntityPicker` sin opción «ninguno» ni `exclude`~~: **resuelto** — `none` (la elección de nada, que contesta `""`) y `exclude` (las claves que el servidor deja afuera, `not in`; también en `useLookup`). `TenantSelect` ya puede irse de forge                                                                                | web-framework                    |
+| 3   | ~~`entityView` cubre lista y registro, no alta~~: **resuelto** con `create` y `newRef()` (ver «Ciclo de vida y operación»)                                                                                                                                                                                                        | web-framework                    |
 | 4   | Permisos: `caller === "admin"` decide vistas y páginas; `useHistory` pide el historial aunque quien mira no pueda leerlo (forge contesta 403 y la vista lo omite: un request perdido por registro). Permisos y grupos son de negocio, fuera del framework (`PURPOSE.md`)                                                          | forge                            |
 | 5   | Labels: `project` y parte de `auth` ya los declaran (backend sin commitear), pero `id`, `created_at` y las `choice_labels` de `Role` («member») no. La UI no los tapa                                                                                                                                                             | backend de forge                 |
-| 6   | `<SincproApp>` es dueño de su workspace y no dibuja barra: los menús de la barra de la app no pueden hacer `workspace.start(ref)`, y su raíz `h-dvh` no deja lugar a una barra alrededor. forge monta las piezas (`FrameworkProvider` + `Composer` con `webUiSkin` + las tres tablas de textos)                                   | web-framework                    |
-| 7   | `cachedTransport` olvida sólo la primera parte de la ruta escrita: compartir (`/projects/…`) deja viejo `/project-events` 30 s, y unirse a un tenant (`/users/…`) deja viejos los miembros de `/tenants/{id}`. forge no monta la caché                                                                                            | web-framework                    |
-| 8   | La búsqueda ⌘K de `entityView` usa `entity.list` sin `params`: en forge `/projects` sin `tenant_id` son los proyectos SIN tenant, así que ⌘K nunca encuentra un proyecto de un tenant. O `entityView` acepta un scope, o forge lista todos para el admin                                                                          | web-framework + backend de forge |
-| 9   | `historyOf` lee un hecho sin `label` como su id (`01a18fc5…`); la consola decía «Cambio registrado». Falta esa palabra en `frameworkCopy`                                                                                                                                                                                         | web-framework                    |
-| 10  | `EntityList`/`RecordLines` no exponen acciones por fila (el `List` de web-ui ya tiene `rowActions`): las membresías de un usuario («Quitar») siguen como tabla a mano, con `relatedOf` + `textOf`                                                                                                                                 | web-framework                    |
-| 11  | `CommandButton` no tiene `disabled`: «Mover» (sin cambio de tenant) y «Compartir» (sin tenant elegido) usan `useCommand` + `Button`                                                                                                                                                                                               | web-framework                    |
-| 12  | `entityView` recibe los componentes, no un `load`: las vistas dejaron de ser chunks perezosos y el bundle de forge quedó en uno de 1,5 MB                                                                                                                                                                                         | web-framework                    |
+| 6   | ~~`<SincproApp>` es dueño de su workspace y no dibuja barra~~: **resuelto** — `workspace` (el `useWorkspace()` de la app) y `bar`, arriba del workspace y dentro de los proveedores                                                                                                                                               | web-framework                    |
+| 7   | ~~`cachedTransport` olvida sólo la primera parte de la ruta~~: **resuelto** — una escritura olvida cada colección que su ruta nombra y, con `entities`, el historial de la entidad (`SincproApp` se las pasa). `/facturas` ya no olvida `/facturas-events`                                                                        | web-framework                    |
+| 8   | ~~La búsqueda ⌘K de `entityView` usa `entity.list` sin `params`~~: **resuelto** — `search: { params }` dice dónde busca. Que el admin vea todos sigue siendo de forge                                                                                                                                                             | web-framework + backend de forge |
+| 9   | ~~`historyOf` lee un hecho sin `label` como su id~~: **resuelto** — «Cambio registrado» (`summary.recorded`)                                                                                                                                                                                                                      | web-framework                    |
+| 10  | ~~`EntityList`/`RecordLines` no exponen acciones por fila~~: **resuelto** con `EntityList commands` / `rowActions` y `useRowCommands` (historia 23)                                                                                                                                                                               | web-framework                    |
+| 11  | ~~`CommandButton` no tiene `disabled`~~: **resuelto** — `disabled`; el servidor sigue decidiendo                                                                                                                                                                                                                                  | web-framework                    |
+| 12  | ~~`entityView` recibe los componentes, no un `load`~~: **resuelto** — `load: () => import(…)` trae las pantallas cuando la vista se abre por primera vez, una sola vez                                                                                                                                                            | web-framework                    |
 | 13  | ~~La vista «filas» de `EntityList` arma la fila sólo con display + campos~~: **resuelto** con `presented(entidad, { row })` — las etiquetas («compartido», «inactivo») van en `row.tags` (ver «Cómo se ve un registro»)                                                                                                           | web-framework                    |
 | 14  | `webUiSkin` le daba al composer los íconos de lucide a 24 px (su default) dentro de controles de 22 px: el vistazo/al lado/ventana de un link y el marco del panel se veían más grandes que el nombre. **Arreglado en `skin.tsx`** (16 px, como los glifos del composer), falta release; forge usa `DEFAULT_ICONS` mientras tanto | web-framework                    |
 | 15  | El composer dibuja un ícono de la piel como `<Icon />` sin tamaño ni clase, y su CSS no acota el `svg` de `.sc-control`: cualquier piel con íconos de otro tamaño desborda. Acotarlo en `.sc-control svg` lo hace robusto                                                                                                         | composer                         |
@@ -941,6 +941,81 @@ Encontrado:
 - ~~**`LineItems`**~~ (1.7.1) — una columna con `text` y sin `cell` dibujaba el `value` crudo.
 - ~~**Controles dentro de un `Field` con `aria-label`**~~ (1.7.1: `controlName`) — el nombre salía
   doble.
+
+## web-ui 1.8 y 1.9 (2026-11-04)
+
+- **`Record placement`** — `EntityRecord` dice dónde está montado: `card` en un modal (ya es una
+  tarjeta), `page` en la página y los paneles; el vistazo es compacto y nunca lleva hoja. Antes
+  web-ui lo adivinaba por el riel (migas, paginador, acciones), y el riel cambia con el registro
+  en pantalla: el paginador se va al empezar a escribir, las acciones llegan después de cargar.
+  La hoja aparecía o se iba, todo lo de adentro se volvía a montar y el campo perdía el foco.
+  Composer no tiene una superficie «ventana» propia (`page | panel | peek | modal`), así que
+  no hay un caso aparte para ella.
+- **Las caras pesadas se cargan al usarse** (calendario, gantt, el editor JSON de los
+  constructores). El framework no las importa directo. Medido con `make storybook` (minificado,
+  sin gzip): los chunks de una lista, `List` + `EntityList`, pasaron de 1 130 + 551 KB con
+  1.7.2 a 385 + 129 KB; `RecordCalendar` (299 KB), `RecordGantt` (271 KB) y `JsonEditor`
+  (422 KB) quedan aparte y sólo se bajan cuando se muestran.
+- **El riel oscuro** con sólo la etapa ya no cambia con la primera letra: llega solo.
+- **1.9: `Record.Audit`** habla como el formulario (una etiqueta y su valor, la persona como
+  `UserChip`). El autor es opcional: `EntityRecord` lo pasa sólo cuando el registro lo dice, en
+  vez del «—» que pedía la 1.8. La fecha va como la escribe el framework en el resto de los
+  hechos del registro.
+
+## Los huecos de la consola de forge, cerrados (2026-11-04)
+
+Los de la tabla de «La consola de forge migrada» que eran de este paquete, con su historia:
+`37 · Lo que forge todavía hacía a mano` (elegir «ninguno», no ofrecer los ya compartidos, un
+Command con dos claves y un botón apagado), `11 · ConLaBarraDeLaAplicacion` y los tests de
+`cache`, `entity`, `view` y `edit`.
+
+- **Dos claves en la ruta** — `pathFor(ruta, id, cuerpo)`: `{id}` es la clave del registro y
+  cualquier otra `{nombre}` es el campo del cuerpo con ese nombre. sincpro_framework lee un
+  parámetro de ruta como campo del DTO (`{...body, ...path_params}`), así que el cuerpo ya lo
+  nombra. Una clave que falta es un error de la pantalla, dicho antes de mandar nada. También
+  vale para un alta anidada (`POST /tenants/{tenant_id}/projects`).
+- **«Ninguno» y `exclude`** — el `Picker` de web-ui no sabe vaciar una elección, así que
+  «ninguno» es la primera opción mientras no se escribe nada. `exclude` lo aplica el servidor;
+  necesita el campo clave de la meta, así que sin meta conocida la primera página llega sin
+  excluir y la lectura empieza de nuevo cuando llega (el primer intento leía la meta del store
+  en el mismo render en que se guardaba y nunca volvía a preguntar: la historia lo agarró).
+- **La caché** — olvidaba por prefijo de texto: `/facturas` borraba `/facturas-events`. Ahora
+  por ruta entera o debajo, y cada segmento de la ruta escrita es una colección olvidada.
+- **⌘K con alcance y vistas perezosas** — `entityView` acepta `search: { params }` y `load`. La
+  promesa de `load` se guarda: la segunda apertura es el mismo componente (si no, se
+  remontaría); si el chunk no llegó, se pide de nuevo.
+
+- **Guardar hablando `Edit`** — `entity(…, { edit: "PUT /facturas/{id}/edit" })`: la ruta del
+  `Edit` de sincpro_framework (`EntityEdits`) sirve para las tres cosas, según su `action`.
+  `keep()` manda `save_draft`; `save()` manda `save`, con el registro entero como lo tiene el
+  formulario, los campos cambiados, la versión del borrador leída y la versión guardada de la
+  que partió; `discard()` manda `discard`, que borra también el borrador del servidor (antes
+  sólo se olvidaba acá y volvía con la siguiente lectura). Sin `edit`, guardar sigue mandando
+  los campos cambiados con la versión a `save`. El servidor de las historias habla las tres
+  acciones (`12 · GuardarHablandoEdit`, `DescartarBorraElBorradorDelServidor`).
+- **Una clave que se escribe al crear** (el slug de un tenant) — `creationOf` decide qué es de
+  sólo lectura igual que el formulario (`fieldStateOf`: `readonly`, `readonly_when` sobre el
+  registro nuevo y los `states` del preview). Antes miraba sólo el `readonly` fijo y descartaba
+  lo que el formulario había dejado escribir. Del lado del backend, una clave así se publica con
+  `readonly_when` (sólo lectura cuando el registro ya existe), no con `readonly` fijo.
+
+### Sigue abierto, con dueño
+
+- **Datos en vivo** (`useLive`: suscribirse a los hechos de una entidad y volver a leer) — falta
+  el contrato: sincpro_framework
+  [#201](https://github.com/Sincpro-SRL/sincpro_framework/issues/201) (eventos por SSE) sigue
+  abierto. El lado del cliente ya tiene dónde enchufarlo: `cachedTransport.invalidate` y
+  `reload()` de cada lectura.
+- **Un campo «referencia a otra entidad»** que dibuje la persona o el enlace solo — espera la
+  meta de [#230](https://github.com/Sincpro-SRL/sincpro_framework/issues/230) (abierto). Hoy se
+  declara a mano con `summary: { person: true }`.
+- **web-ui `Picker`** — sin forma de vaciar una elección; «ninguno» la suple como opción.
+- **Acciones por fila en las líneas de un agregado** (`RecordLines`) — no van: las líneas viajan
+  enteras con su registro y no tienen Commands propios (agregar, quitar, deshacer y reordenar son
+  de la pantalla). Un one2many que es OTRA entidad (`RelatedList`) ya las tiene: es un
+  `EntityList` y acepta `commands` / `rowActions`. Una acción de pantalla sobre una línea
+  necesitaría que el `LineItems` de web-ui la dibuje.
+- Los huecos 4 y 5 (forge), 15 (composer) y 16 (web-ui) no se tocaron.
 
 ## Decisiones abiertas
 

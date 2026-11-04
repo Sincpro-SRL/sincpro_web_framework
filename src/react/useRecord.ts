@@ -42,6 +42,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
  *     in between, the server answers 409 and the screen says so instead of overwriting.
  *   - **drafts** — an edit kept between requests (sincpro_framework's `Drafts`) comes back with
  *     the record and is shown as restored; `keep()` stores the current one.
+ *   - **`Edit`** — an entity that declares `edit` speaks sincpro_framework's `Edit` on it for all
+ *     three: `keep()` is `save_draft`, `save()` is `save` — the record whole, the fields changed,
+ *     the draft version read and the stored version it started from — and `discard()` is
+ *     `discard`, which drops the draft on the server too. Without it, a save sends the changed
+ *     fields and the version to `save`.
  *   - **creating** — with no id it is a record that does not exist yet: it starts from the
  *     defaults the model publishes, previews like any other, and `save()` sends it to the
  *     entity's `create` route with an `Idempotency-Key` (a retry never creates two). When the
@@ -87,8 +92,8 @@ export type Editing = {
   draft: Draft | null;
   save: () => Promise<boolean>;
   discard: () => void;
-  /** Store the current edit as a draft — only when the entity declares where, and the record
-   *  exists: a draft is kept against a record. */
+  /** Store the current edit as a draft — only when the entity declares where (`draft` or
+   *  `edit`), and the record exists: a draft is kept against a record. */
   keep?: () => Promise<void>;
   /** What the last create answered, when it did not say the new record's identity. */
   created: unknown;
@@ -313,6 +318,18 @@ export function useRecord<T extends AnyRecord>(
     else setFailure(error);
   };
 
+  // sincpro_framework's `Edit`: the record as the form holds it, whole; the fields changed; the
+  // draft version read (`0`: none) — another tab that kept first wins —, and the stored version
+  // the edit started from. Without an `action` it is the server's default, `save_draft`.
+  const editOf = (action?: "save_draft" | "save" | "discard"): AnyRecord => ({
+    id,
+    values,
+    changed: Object.keys(changed),
+    version: draft?.version ?? 0,
+    ...(typeof version === "number" ? { origin_version: version } : {}),
+    ...(action === undefined ? {} : { action }),
+  });
+
   const edit: Editing = {
     values,
     changed,
@@ -347,16 +364,19 @@ export function useRecord<T extends AnyRecord>(
     draft,
     save: async () => {
       if (isNew) return create();
-      const route = entity.save;
+      const route = entity.edit ?? entity.save;
       if (route === undefined) throw new Error(`${entity.key} declares no save route`);
       cancelPreview();
       setSaving(true);
       setFailure(null);
       try {
-        await transport.send(route.method, pathFor(route, id), {
-          ...changed,
-          ...(version === undefined ? {} : { version }),
-        });
+        await transport.send(
+          route.method,
+          pathFor(route, id),
+          entity.edit === undefined
+            ? { ...changed, ...(version === undefined ? {} : { version }) }
+            : editOf("save"),
+        );
         setDraft(null);
         reload();
         return true;
@@ -369,24 +389,29 @@ export function useRecord<T extends AnyRecord>(
         if (mounted.current) setSaving(false);
       }
     },
-    discard: forget,
+    discard: () => {
+      forget();
+      // The draft lives on the server: discarding only here would bring it back on the next read.
+      const route = entity.edit;
+      if (route === undefined || isNew || draft === null) return;
+      setDraft(null);
+      transport
+        .send(route.method, pathFor(route, id), editOf("discard"))
+        .then(() => mounted.current && reload())
+        .catch((error: unknown) => mounted.current && refused(error));
+    },
     created,
-    ...(entity.draft === undefined || isNew
+    ...((entity.edit ?? entity.draft) === undefined || isNew
       ? {}
       : {
           keep: async () => {
-            const route = entity.draft!;
-            // sincpro_framework's `Edit`: the record as the form holds it, whole; the fields
-            // changed; the draft version read (`0`: none) — another tab that kept first wins —,
-            // and the stored version the edit started from.
+            const route = (entity.edit ?? entity.draft)!;
             try {
-              const kept = await transport.send<Edited>(route.method, pathFor(route, id), {
-                id,
-                values,
-                changed: Object.keys(changed),
-                version: draft?.version ?? 0,
-                ...(typeof version === "number" ? { origin_version: version } : {}),
-              });
+              const kept = await transport.send<Edited>(
+                route.method,
+                pathFor(route, id),
+                entity.edit === undefined ? editOf() : editOf("save_draft"),
+              );
               const now = kept.draft;
               if (now)
                 setDraft({
@@ -410,12 +435,12 @@ export function useRecord<T extends AnyRecord>(
     setSaving(true);
     setFailure(null);
     setCreated(null);
-    const body = creationOf(state.meta, values);
+    const body = creationOf(state.meta, values, fromServer);
     const idempotencyKey = creating.current.keyFor(body);
     try {
       const answer = await transport.send<unknown>(
         route.method,
-        pathFor(route),
+        pathFor(route, undefined, body),
         body,
         undefined,
         { idempotencyKey },

@@ -5,8 +5,9 @@ import { nameOf } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import type { Entity } from "@sincpro/web-framework/core/entity";
 import { isList, type ListDefinition } from "@sincpro/web-framework/core/list";
+import { useFramework } from "@sincpro/web-framework/react/context";
 import { useListing } from "@sincpro/web-framework/react/useListing";
-import { useLookup } from "@sincpro/web-framework/react/useLookup";
+import { excluding, useLookup } from "@sincpro/web-framework/react/useLookup";
 import { EntityList } from "@sincpro/web-framework/web/list/EntityList";
 import { over, presentationOf } from "@sincpro/web-framework/web/list/presentation";
 import { Dialog, IconButton, type OpenTarget, Picker } from "@sincpro/web-ui";
@@ -39,8 +40,15 @@ import { useState } from "react";
  * way to the server's literal search. The chooser is a table — the columns the list declares,
  * or `columns` — searched by the entity's literal search on the server.
  *
+ * A field that may stay empty offers that as a choice (`none`): «Ninguno», or the screen's own
+ * word («Sin tenant»), answered as `""`. web-ui's `Picker` has no way to clear a choice, so it
+ * is the first option, while nothing is typed. `exclude` leaves keys out of the choices — the
+ * tenants a project is already shared with —, in the picker and its chooser, and the SERVER
+ * leaves them out (`useLookup exclude`).
+ *
  *     <EntityPicker entity={customers} value={id} onChange={set} />
  *     <EntityPicker entity={activeCustomers} columns={["name", "tax_id", "city"]} … />
+ *     <EntityPicker entity={tenants} none="Sin tenant" exclude={sharedWith} … />
  */
 export function EntityPicker<T extends AnyRecord>({
   entity,
@@ -52,6 +60,8 @@ export function EntityPicker<T extends AnyRecord>({
   criteria,
   columns,
   browse = true,
+  none,
+  exclude,
   placeholder,
   disabled,
   "aria-label": ariaLabel,
@@ -64,9 +74,14 @@ export function EntityPicker<T extends AnyRecord>({
   browse?: boolean;
   /** Which records may be chosen at all: applied by the server under what is typed. */
   criteria?: Criteria<T>;
+  /** The field may stay empty: a first choice that answers `""` — `true` says «Ninguno», a
+   *  text is the screen's own word for it. */
+  none?: boolean | string;
+  /** Keys never offered — those already chosen elsewhere. Left out by the server. */
+  exclude?: readonly string[];
   value?: string;
-  /** The key chosen, and its record when the choice brought it — what a line keeps beside the
-   *  key so its cell names the choice without asking again. */
+  /** The key chosen (`""` for `none`), and its record when the choice brought it — what a line
+   *  keeps beside the key so its cell names the choice without asking again. */
   onChange: (id: string, chosen?: T) => void;
   /** Open the chosen record where the person asked — in composer,
    *  `(id, to) => openIn(api, entity.ref(id), to)`. */
@@ -80,29 +95,43 @@ export function EntityPicker<T extends AnyRecord>({
   disabled?: boolean;
   "aria-label"?: string;
 }) {
+  const base = isList(entity) ? entity.entity : entity;
+  const { metas } = useFramework();
   const lookup = useLookup(entity, {
     ...(criteria === undefined ? {} : { criteria }),
     ...(value === undefined ? {} : { value }),
+    ...(exclude === undefined ? {} : { exclude }),
   });
-  const person = (isList(entity) ? entity.entity : entity).summary.person === true;
+  // The chooser opens after the picker read the definition: it excludes from its first page.
+  const scope = excluding(criteria, exclude, metas.get(base.key));
+  const person = base.summary.person === true;
+  const nothing =
+    none === undefined || none === false || lookup.text !== ""
+      ? []
+      : [{ id: "", name: none === true ? frameworkCopy().picker.none : none }];
   const look = presentationOf(entity).option;
   const [choosing, setChoosing] = useState(false);
   const browseAll: (query: string) => void = onBrowseAll ?? (() => setChoosing(true));
   const picker = (
     <Picker
-      items={lookup.options.map((one) =>
-        over(
-          {
-            id: one.id,
-            name: one.label,
-            ...(one.detail === undefined ? {} : { meta: one.detail, haystack: one.detail }),
-            // A person or a company is chosen by their face: the photo, or their initials.
-            ...(person ? { avatar: one.image ?? true } : {}),
-          },
-          // The entity's own look of a choice, over the default (`presented`).
-          look === undefined || one.record === undefined ? undefined : look(one.record as T),
+      items={[
+        ...nothing,
+        ...lookup.options.map((one) =>
+          over(
+            {
+              id: one.id,
+              name: one.label,
+              ...(one.detail === undefined ? {} : { meta: one.detail, haystack: one.detail }),
+              // A person or a company is chosen by their face: the photo, or their initials.
+              ...(person ? { avatar: one.image ?? true } : {}),
+            },
+            // The entity's own look of a choice, over the default (`presented`).
+            look === undefined || one.record === undefined
+              ? undefined
+              : look(one.record as T),
+          ),
         ),
-      )}
+      ]}
       {...(value === undefined ? {} : { value })}
       {...(lookup.chosen === undefined
         ? {}
@@ -120,7 +149,7 @@ export function EntityPicker<T extends AnyRecord>({
       // «Loading» only before there is anything: refining keeps the ten on screen.
       loading={lookup.loading && lookup.options.length === 0}
       // No «load more»: ten, and past them the server's search or the chooser.
-      {...(onOpen === undefined ? {} : { onOpen })}
+      {...(onOpen === undefined || value === "" ? {} : { onOpen })}
       {...(openTargets === undefined ? {} : { openTargets })}
       onBrowseAll={browseAll}
       {...(placeholder === undefined ? {} : { placeholder })}
@@ -147,7 +176,7 @@ export function EntityPicker<T extends AnyRecord>({
         <Chooser
           entity={entity}
           {...(columns === undefined ? {} : { columns })}
-          {...(criteria === undefined ? {} : { criteria })}
+          {...(scope === undefined ? {} : { criteria: scope })}
           onChoose={(id, row) => {
             onChange(id, row);
             setChoosing(false);

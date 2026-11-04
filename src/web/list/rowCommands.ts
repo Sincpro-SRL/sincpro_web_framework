@@ -72,7 +72,7 @@ export function useRowCommands<T extends AnyRecord>(
       setRunning((now) => new Set(now).add(gesture));
       setError(null);
       try {
-        await transport.send(route.method, pathFor(route, id), body, undefined, {
+        await transport.send(route.method, pathFor(route, id, body), body, undefined, {
           idempotencyKey: retry.keyFor(body),
         });
         retry.settle(null);

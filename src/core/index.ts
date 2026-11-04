@@ -36,6 +36,7 @@ export {
   entity,
   type EntityRef,
   type EntityRoutes,
+  listRoute,
   NEW_PARAM,
   pathFor,
   PICK_PARAM,
