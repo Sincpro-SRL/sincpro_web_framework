@@ -121,6 +121,44 @@ test("the definition of a model is read once from the discovery document, not fr
   );
 });
 
+test("a value a record holds, named once and pointed at, keeps its definition (sincpro_framework #244)", async () => {
+  const issue = {
+    type: "object",
+    title: "Issue",
+    properties: {
+      id: { type: "string", "x-sincpro": { type: "text" } },
+      snapshot: {
+        $ref: "#/components/schemas/ProjectSnapshot",
+        "x-sincpro": { type: "embedded", widget: "embedded" },
+      },
+    },
+    "x-sincpro": { entity: "Issue", identity: "id", version: "v1" },
+  };
+  const snapshot = {
+    type: "object",
+    title: "ProjectSnapshot",
+    properties: { host: { type: "string", "x-sincpro": { type: "text" } } },
+    "x-sincpro": { entity: "ProjectSnapshot" },
+  };
+  const document = {
+    paths: { "/v1/issues": { get: { "x-sincpro-entities": ["Issue"] } } },
+    components: { schemas: { Issue: issue, ProjectSnapshot: snapshot } },
+  };
+  const transport = restTransport({
+    base: "/v1",
+    fetch: (async (url: string) =>
+      url === "/openapi.json"
+        ? new Response(JSON.stringify(document))
+        : new Response(
+            JSON.stringify({ issues: [], cursor: null, model_version: "v1" }),
+          )) as typeof fetch,
+  });
+
+  const page = await transport.list("/issues", {});
+  // With @sincpro/criteria 1.0.0 the pointed value had no definition: a form drew it blank.
+  assert.equal(page.meta?.fields["snapshot"]?.definition?.fields["host"]?.type, "text");
+});
+
 test("an answer of another version reads the document again, revalidated by its tag", async () => {
   const calls: Call[] = [];
   const served = { document: 0 };

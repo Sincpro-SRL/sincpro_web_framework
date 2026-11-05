@@ -9,6 +9,11 @@ export {
   type CacheOptions,
 } from "@sincpro/web-framework/core/cache";
 export {
+  type ClientContract,
+  entityKeyOf,
+  metasOf,
+} from "@sincpro/web-framework/core/contract";
+export {
   ENGLISH_FRAMEWORK_COPY,
   type FrameworkCopy,
   frameworkCopy,
@@ -35,6 +40,9 @@ export {
   type ServerFieldState,
 } from "@sincpro/web-framework/core/edit";
 export {
+  bodyFor,
+  type CommandBodies,
+  type CommandRoute,
   type Entity,
   entity,
   type EntityRef,

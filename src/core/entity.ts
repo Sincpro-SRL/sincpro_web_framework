@@ -3,6 +3,15 @@ import type { SummaryFields } from "@sincpro/web-framework/core/summary";
 import type { Method } from "@sincpro/web-framework/core/transport";
 
 /**
+ * What each Command of an entity is sent with, by its name: `{ send: { message: string } }`.
+ *
+ * Context: the default is any name and any body — every entity declared before Commands had
+ * types keeps compiling. A typed entity is still one of these (`Entity<T, C>` is assignable to
+ * `Entity<T>`), so every piece that takes an entity takes it.
+ */
+export type CommandBodies = Readonly<Record<string, AnyRecord>>;
+
+/**
  * Everything a screen needs to know about where an entity lives on the server, declared once.
  *
  * Context: a screen should not know a URL. It names the entity, and the entity says where its
@@ -21,8 +30,16 @@ import type { Method } from "@sincpro/web-framework/core/transport";
  *       commands: { confirm: "POST /invoices/{id}/confirm", cancel: "POST /invoices/{id}/cancel" },
  *       history: { route: "/billing-events", type: "Invoice" },
  *     });
+ *
+ * Its Commands may be typed too — what each one is sent with, by name (`CommandBodies`) — and
+ * then `useCommand` and `CommandButton` take only those names and those bodies:
+ *
+ *     entity<Issue, { send: { message: string }; stop: Record<string, never> }>(…)
  */
-export type Entity<T extends AnyRecord = AnyRecord> = {
+export type Entity<
+  T extends AnyRecord = AnyRecord,
+  C extends CommandBodies = CommandBodies,
+> = {
   /** `domain:kind`, e.g. `"billing:invoice"`. */
   key: string;
   domain: string;
@@ -43,7 +60,7 @@ export type Entity<T extends AnyRecord = AnyRecord> = {
   /** The route of one record. */
   one: (id: string) => string;
   /** Its Commands, by name. */
-  commands: Readonly<Record<string, WriteRoute>>;
+  commands: Readonly<Record<keyof C & string, WriteRoute>>;
   /** How a new record is created: the list's own route, usually. */
   create?: WriteRoute;
   /** How an edit is saved: the record's own route with `{id}`. */
@@ -66,6 +83,8 @@ export type Entity<T extends AnyRecord = AnyRecord> = {
   aggregate?: string;
   /** Only carries the record type; never read. */
   readonly _record?: T;
+  /** Only carries what each Command is sent with; never read. */
+  readonly _commands?: C;
 };
 
 /** A composer `ResourceRef`, structurally: `core/` does not import the composer. */
@@ -133,15 +152,30 @@ export function scopeOfRef(ref: Pick<EntityRef, "params">): Expression | undefin
   }
 }
 
-/** A write: its method and its path, `{id}` where the record's key goes. */
-export type WriteRoute = { method: Method; path: string };
+/**
+ * A write: its method and its path, `{id}` where the record's key goes. A Command may also say
+ * which field of its body names the record it runs on (`target`: `issue_id`), and then the
+ * record's id is written there when it is sent (`bodyFor`).
+ */
+export type WriteRoute = { method: Method; path: string; target?: string };
 
-export type EntityRoutes = {
+/**
+ * A Command's route: `"POST /invoices/{id}/confirm"`, or, when its body names the record —
+ * sincpro_framework's `targets`, what a generated entity declares —, the route and that field:
+ * `{ route: "POST /issues", target: "project_id" }`.
+ */
+export type CommandRoute = string | { route: string; target: string };
+
+/** Each Command's route, by name. Typed Commands MUST each have their route — a name a screen
+ *  may run with nowhere to send it is caught here, not on the click. */
+type CommandRoutes<C extends CommandBodies> = string extends keyof C
+  ? { commands?: Readonly<Record<string, CommandRoute>> }
+  : { commands: Readonly<Record<keyof C & string, CommandRoute>> };
+
+export type EntityRoutes<C extends CommandBodies = CommandBodies> = CommandRoutes<C> & {
   list: string;
   /** With `{id}` where the key goes. Without it, `<list>/<id>` — sincpro_framework's convention. */
   one?: string;
-  /** `"POST /invoices/{id}/confirm"`, by name. */
-  commands?: Readonly<Record<string, string>>;
   /** `"POST /invoices"`: where a new record goes. */
   create?: string;
   save?: string;
@@ -190,6 +224,34 @@ export function pathFor(route: WriteRoute, id?: string, body?: AnyRecord): strin
   });
 }
 
+/**
+ * What a Command of a record is sent with: the body as given, and — when its route says which
+ * field names the record (`target`) — the record's id in that field.
+ *
+ *     bodyFor({ method: "POST", path: "/issues", target: "project_id" }, "p1", { title: "x" })
+ *       ->  { title: "x", project_id: "p1" }
+ *
+ * Context: sincpro_framework says, per operation, which input field holds the key of each
+ * entity it runs on (`targets`). A path that carries it (`/issues/{issue_id}/messages`) and a
+ * body that carries it (`POST /issues` with `project_id`) are the same thing to the server — a
+ * path parameter is read as a field of the DTO — so it goes in the body, and `pathFor` takes it
+ * from there. Without an id (a Command that creates) the body is sent as it is.
+ */
+export function bodyFor(
+  route: WriteRoute,
+  id: string | undefined,
+  body: AnyRecord,
+): AnyRecord {
+  if (route.target === undefined || id === undefined || id === "") return body;
+  return { ...body, [route.target]: id };
+}
+
+/** A Command's route as declared: a `"METHOD /path"`, or that and the field naming its record. */
+function commandRoute(declared: CommandRoute): WriteRoute {
+  if (typeof declared === "string") return writeRoute(declared);
+  return { ...writeRoute(declared.route), target: declared.target };
+}
+
 /** A list's route with its own parameters: `{ tenant_id: "acme" }` → `/projects?tenant_id=acme`.
  *  An empty value is no parameter — a filter left blank. */
 export function listRoute(list: string, params?: Readonly<Record<string, string>>): string {
@@ -200,10 +262,10 @@ export function listRoute(list: string, params?: Readonly<Record<string, string>
   return `${list}${list.includes("?") ? "&" : "?"}${query}`;
 }
 
-export function entity<T extends AnyRecord = AnyRecord>(
-  key: string,
-  routes: EntityRoutes,
-): Entity<T> {
+export function entity<
+  T extends AnyRecord = AnyRecord,
+  C extends CommandBodies = CommandBodies,
+>(key: string, routes: EntityRoutes<C>): Entity<T, C> {
   if (!/^[^:\s]+:[^:\s]+$/.test(key))
     throw new Error(`entity key "${key}" is not domain:kind`);
   const list = routes.list.split("?")[0] ?? routes.list;
@@ -237,9 +299,13 @@ export function entity<T extends AnyRecord = AnyRecord>(
     }),
     list: routes.list,
     one: (id) => template.replace("{id}", encodeURIComponent(id)),
+    // Built from exactly the names `routes.commands` was typed with.
     commands: Object.fromEntries(
-      Object.entries(routes.commands ?? {}).map(([name, text]) => [name, writeRoute(text)]),
-    ),
+      Object.entries<CommandRoute>(routes.commands ?? {}).map(([name, declared]) => [
+        name,
+        commandRoute(declared),
+      ]),
+    ) as Record<keyof C & string, WriteRoute>,
     ...(routes.create === undefined ? {} : { create: writeRoute(routes.create) }),
     ...(routes.save === undefined ? {} : { save: writeRoute(routes.save) }),
     ...(routes.preview === undefined ? {} : { preview: writeRoute(routes.preview) }),

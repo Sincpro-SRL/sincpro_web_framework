@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 
 import type { Expression } from "@sincpro/criteria";
-import { entity, pathFor, SCOPE_PARAM, scopeOfRef } from "@sincpro/web-framework";
+import { bodyFor, entity, pathFor, SCOPE_PARAM, scopeOfRef } from "@sincpro/web-framework";
 import { test } from "vitest";
 
 const projects = entity("forge:project", {
@@ -9,8 +9,32 @@ const projects = entity("forge:project", {
   commands: {
     revoke: "POST /projects/{id}/shares/{tenant_id}/revoke",
     move: "POST /projects/{id}/move",
+    openIssue: { route: "POST /issues", target: "project_id" },
+    send: { route: "POST /issues/{issue_id}/messages", target: "issue_id" },
   },
   create: "POST /tenants/{tenant_id}/projects",
+});
+
+test("a Command whose body names its record gets the record's id there", () => {
+  const open = projects.commands["openIssue"]!;
+  assert.deepEqual(open, { method: "POST", path: "/issues", target: "project_id" });
+  assert.deepEqual(bodyFor(open, "p1", { title: "Falla el login" }), {
+    title: "Falla el login",
+    project_id: "p1",
+  });
+});
+
+test("the record's field in the path is filled from the body, as the server reads it", () => {
+  const send = projects.commands["send"]!;
+  const body = bodyFor(send, "i 7", { message: "y el reporte" });
+  assert.equal(pathFor(send, "i 7", body), "/issues/i%207/messages");
+});
+
+test("without a target, or without an id, the body goes as it was given", () => {
+  const move = projects.commands["move"]!;
+  assert.deepEqual(bodyFor(move, "p1", { tenant_id: "acme" }), { tenant_id: "acme" });
+  const open = projects.commands["openIssue"]!;
+  assert.deepEqual(bodyFor(open, undefined, { project_id: "p2" }), { project_id: "p2" });
 });
 
 test("a route with two keys takes the second from the body, as the server reads it", () => {
