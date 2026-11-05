@@ -57,7 +57,7 @@ function searchedFields(meta: Meta): string[] {
       else walk(value);
     }
   };
-  walk(meta.search?.["where"]);
+  walk(meta.search?.["selection"]);
   return found;
 }
 

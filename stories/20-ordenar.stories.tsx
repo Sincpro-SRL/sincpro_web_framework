@@ -156,7 +156,9 @@ export const PorVariosCampos: Story = {
     // The builder filters (state = paid) and orders by as many fields as asked: state, then
     // total — one gesture, both must stand.
     let dialog = await builder();
-    await userEvent.selectOptions(dialog.getByLabelText("Campo"), "state");
+    // web-ui 1.11: the field is a path picker (it walks relations) — open it, pick «Estado».
+    await userEvent.click(dialog.getByRole("button", { name: /^Campo/ }));
+    await userEvent.click(await page.findByRole("option", { name: /^Estado/ }));
     const valor = dialog
       .getByLabelText("Comparación")
       .closest("[role=dialog]")!
@@ -177,7 +179,7 @@ export const PorVariosCampos: Story = {
     await waitFor(() =>
       expect(pedidos.at(-1)?.order).toEqual([{ field: "state" }, { field: "amount_total" }]),
     );
-    await expect(JSON.stringify(pedidos.at(-1)?.where)).toContain("paid");
+    await expect(JSON.stringify(pedidos.at(-1)?.selection)).toContain("paid");
     const primera = () =>
       canvasElement.querySelector("tbody tr:not([aria-hidden]) td")?.textContent ?? "";
     await waitFor(() => expect(primera()).toContain(pagadasPorEstadoYTotal[0]!.number));

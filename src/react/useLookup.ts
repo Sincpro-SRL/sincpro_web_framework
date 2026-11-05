@@ -54,7 +54,7 @@ export function excluding<T extends AnyRecord>(
 ): Criteria<T> | undefined {
   if (exclude === undefined || exclude.length === 0 || meta == null) return criteria;
   const out = {
-    where: {
+    selection: {
       field: meta.get_id || meta.identity || "id",
       operator: "not in",
       value: [...exclude],
@@ -124,12 +124,11 @@ export function useLookup<T extends AnyRecord>(
       .list<AnyRecord>(
         route,
         {
-          where:
+          selection:
             keys.length === 1
               ? { field: key, operator: "=", value: keys[0] ?? "" }
               : { field: key, operator: "in", value: keys },
           pagination: { limit: keys.length },
-          meta: false,
         },
         aborter.signal,
       )

@@ -3,11 +3,10 @@ import type { Meta } from "@sincpro/criteria";
 /**
  * The model definitions already known, by entity key (`"billing:invoice"`).
  *
- * Context: sincpro_framework sends `entity_meta_data` with every answer that does not say
- * `meta: false`, and it is not small — forge's `Project` weighs ~97 KB even with zero rows.
- * A reading already asks for it only on its first page; this keeps it ACROSS readings, so the
- * second list of the same entity, the record opened from it and the select that points at it
- * ask with `meta: false` and draw their labels before the rows arrive.
+ * Context: sincpro_framework publishes each model once, in the discovery document the
+ * transport reads (`core/discovery`); an answer carries only its version. This keeps the
+ * definitions ACROSS readings, so the second list of the same entity, the record opened from it
+ * and the select that points at it draw their labels before the rows arrive.
  *
  * Seeded, it is the preload: definitions written at build time (a snapshot of the server's,
  * or `defineMeta`) reach the first screen with no request at all.

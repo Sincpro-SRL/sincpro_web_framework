@@ -48,7 +48,7 @@ export const LaMetaDelServidorYLaCompletada: Story = {
   render: () => (
     <div className="grid grid-cols-2 gap-6 bg-ground p-6">
       <section aria-label="Con la meta del servidor">
-        <Record identity={{ title: "Meta del servidor", subtitle: "entity_meta_data" }}>
+        <Record identity={{ title: "Meta del servidor", subtitle: "su descripción" }}>
           <Record.Paper layout="horizontal">
             <Record.Facts fields={factsOf(SPEC, servidor, CAMPOS)} />
           </Record.Paper>

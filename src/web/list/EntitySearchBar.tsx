@@ -76,7 +76,7 @@ export function EntitySearchBar<T extends AnyRecord>({
   useEffect(() => {
     if (seeded.current || seed === undefined || seed === "" || meta?.search == null) return;
     seeded.current = true;
-    const where = matching(meta, seed).where as BuiltFilter | undefined;
+    const where = matching(meta, seed).selection as BuiltFilter | undefined;
     if (where === undefined) return;
     const chip = filterCriteria(where, fillCopy(ui.search.literalChip, { text: seed }));
     setPut([chip]);
@@ -130,7 +130,7 @@ export function EntitySearchBar<T extends AnyRecord>({
           ? {}
           : {
               literal: (text: string) =>
-                (matching(meta, text).where as BuiltFilter | undefined) ?? null,
+                (matching(meta, text).selection as BuiltFilter | undefined) ?? null,
             })}
       />
       {building ? (

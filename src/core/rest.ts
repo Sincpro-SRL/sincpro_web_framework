@@ -1,6 +1,11 @@
 import { type Criteria, type Dropped, type Meta, readProblem } from "@sincpro/criteria";
 import { RestError, restSource } from "@sincpro/criteria/rest";
 import {
+  definitionOf,
+  type DiscoveryDocument,
+  modelAt,
+} from "@sincpro/web-framework/core/discovery";
+import {
   type Draft,
   type Method,
   type One,
@@ -18,6 +23,11 @@ import {
  * one record (`one()`), a write (`send()`, with its `Idempotency-Key`), and its refusals as a
  * `TransportError`, the one error every screen explains.
  *
+ * The definition of each model — what a list, a form and a select are built from — is read
+ * from the bounded context's discovery document (`document`, `/openapi.json` by default), once,
+ * and read again only when an answer says another version of its model (`model_version`); the
+ * document is revalidated with its `ETag`, so an unchanged one costs a `304`.
+ *
  *     const transport = restTransport({
  *       base: "/v1",
  *       headers: () => ({ Authorization: `Bearer ${session.secret}` }),
@@ -30,10 +40,13 @@ export type RestOptions = {
   headers?: Record<string, string> | (() => Record<string, string>);
   /** Defaults to the global `fetch`. Inject one for tests. */
   fetch?: typeof fetch;
+  /** Where the bounded context's discovery document is: `"/openapi.json"` by default, at the
+   *  origin of `base`. `null`: none is read, and the definitions come only from `metas`. */
+  document?: string | null;
 };
 
 /** The keys of an answer that are not the record: what is left is the record's own field. */
-const ENVELOPE = new Set(["cursor", "count", "entity_meta_data", "dropped", "draft"]);
+const ENVELOPE = new Set(["cursor", "count", "model_version", "dropped", "draft", "missing"]);
 
 export function urlOf<T>(base: string, route: string, criteria?: Criteria<T>): string {
   const url = `${base}${route}`;
@@ -42,12 +55,67 @@ export function urlOf<T>(base: string, route: string, criteria?: Criteria<T>): s
   return `${url}${joiner}criteria=${encodeURIComponent(JSON.stringify(criteria))}`;
 }
 
+/** The path a route is asked at, without its query: what a document path is matched with. */
+function pathOf(url: string): string {
+  const path = url.split("?")[0] ?? url;
+  return /^https?:\/\//.test(path) ? new URL(path).pathname : path;
+}
+
+/** Where the document is: `document` as given when absolute, else at the origin of `base`. */
+function documentUrl(base: string, document: string): string {
+  if (/^https?:\/\//.test(document) || !/^https?:\/\//.test(base)) return document;
+  return new URL(document, base).toString();
+}
+
 export function restTransport(options: RestOptions = {}): Transport {
   const base = options.base ?? "";
   const doFetch = options.fetch ?? ((input, init) => fetch(input, init));
 
   const own = () =>
     typeof options.headers === "function" ? options.headers() : (options.headers ?? {});
+
+  // The discovery document, read once; asked again — with its ETag — when an answer says a
+  // version of its model the document did not.
+  const located = options.document === null ? null : (options.document ?? "/openapi.json");
+  let held: Promise<DiscoveryDocument | null> | undefined;
+  let tag: string | null = null;
+
+  function documentRead(fresh: boolean): Promise<DiscoveryDocument | null> {
+    if (located === null) return Promise.resolve(null);
+    if (held !== undefined && !fresh) return held;
+    const before = held;
+    held = (async () => {
+      try {
+        const response = await doFetch(documentUrl(base, located), {
+          headers: { ...own(), ...(tag === null ? {} : { "If-None-Match": tag }) },
+        });
+        if (response.status === 304 && before !== undefined) return await before;
+        if (!response.ok) return null;
+        tag = response.headers.get("etag");
+        return (await response.json()) as DiscoveryDocument;
+      } catch {
+        return null;
+      }
+    })();
+    return held;
+  }
+
+  /** The definition of the model `url` answers; read again when `version` is not the one held. */
+  async function definitionAt(
+    url: string,
+    method: string,
+    version: string | null | undefined,
+  ): Promise<Meta | null> {
+    const published = await documentRead(false);
+    if (published === null) return null;
+    const name = modelAt(published, pathOf(url), method);
+    if (name === undefined) return null;
+    const known = definitionOf(published, name);
+    if (known === undefined || !version || known.version === version)
+      return known?.meta ?? null;
+    const again = await documentRead(true);
+    return (again === null ? undefined : definitionOf(again, name))?.meta ?? known.meta;
+  }
 
   async function get(
     route: string,
@@ -77,7 +145,11 @@ export function restTransport(options: RestOptions = {}): Transport {
     async list(route, criteria, signal) {
       const source = restSource<never>(`${base}${route}`, { headers: own, fetch: doFetch });
       try {
-        return await source.read(criteria as never, signal);
+        const page = await source.read(criteria as never, signal);
+        return {
+          ...page,
+          meta: page.meta ?? (await definitionAt(`${base}${route}`, "get", page.version)),
+        };
       } catch (error) {
         if (error instanceof RestError)
           throw new TransportError(route, error.status, error.problem, undefined);
@@ -101,7 +173,11 @@ export function restTransport(options: RestOptions = {}): Transport {
         );
       return {
         record: answer[key] as T,
-        meta: (answer["entity_meta_data"] as Meta | undefined) ?? null,
+        meta: await definitionAt(
+          urlOf(base, route),
+          "get",
+          answer["model_version"] as string | undefined,
+        ),
         dropped: (answer["dropped"] as Dropped[] | undefined) ?? [],
         draft: (answer["draft"] as Draft | undefined) ?? null,
       };

@@ -107,7 +107,6 @@ export function useGroups<T extends AnyRecord>(
     if (waiting) return () => aborter.abort();
     const criteria: Criteria<T> = {
       ...(JSON.parse(question) as Criteria<T>),
-      meta: false,
       grouping: {
         group_by: levels.map((level) => ({ ...level })) as never,
         ...(sums === "" ? {} : { measures: measuresOf(sums.split(",")) }),
@@ -135,7 +134,7 @@ export function useGroups<T extends AnyRecord>(
       if (reading.current.has(key)) return;
       reading.current.add(key);
       const { grouping: _grouping, pagination: _pagination, ...own } = bucket.criteria;
-      const first: Criteria<T> = { ...own, meta: false, pagination: { limit: pageSize } };
+      const first: Criteria<T> = { ...own, pagination: { limit: pageSize } };
       void transport.list<T>(route, after === null ? first : resumingFrom(first, after)).then(
         (page) => {
           reading.current.delete(key);

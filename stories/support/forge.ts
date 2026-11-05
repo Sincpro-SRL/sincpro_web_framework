@@ -2,8 +2,8 @@ import type { Meta } from "@sincpro/criteria";
 import { entity } from "@sincpro/web-framework";
 
 /**
- * forge's `Tenant` EXACTLY as sincpro_framework 3.27 publishes it — `entity_meta_data` copied
- * from `GET /v1/tenants` of a running forge (the bulky `detail` and `resolvers` left out).
+ * forge's `Tenant` EXACTLY as sincpro_framework 3.27 described it — copied from `GET /v1/tenants`
+ * of a running forge (the bulky `detail` and `resolvers` left out).
  *
  * Context: it is here to keep us honest. forge declares no labels, so every word a screen shows
  * is the field's own name («display_name»): what "render from the metadata" gives TODAY for a
@@ -16,7 +16,7 @@ export const tenantMeta: Meta = {
   get_id: "id",
   display: "display_name",
   search: {
-    where: {
+    selection: {
       field: "display_name",
       value: {
         $: "param",

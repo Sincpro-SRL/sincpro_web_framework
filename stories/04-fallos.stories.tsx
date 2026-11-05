@@ -80,7 +80,7 @@ export const UnaCondicionIgnorada: Story = {
   render: function Render() {
     // A reading saved against an older schema: the field it names is gone. Typed criteria
     // would refuse it at compile time, which is exactly why one from a URL is not typed.
-    const saved = { where: { field: "vendedor", operator: "=", value: "ana" } };
+    const saved = { selection: { field: "vendedor", operator: "=", value: "ana" } };
     const listing = useListing(facturas, { criteria: saved as unknown as Criteria<Factura> });
     return <EntityList listing={listing} columns={["number", "customer", "amount_total"]} />;
   },

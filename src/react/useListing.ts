@@ -136,7 +136,7 @@ export function useListing<T extends AnyRecord>(
   const cut = useListScope(entity.key);
   const scopes = [
     ...(definition === undefined ? [] : [scopeOf(definition)]),
-    ...(cut === undefined ? [] : [{ where: cut } as Criteria<T>]),
+    ...(cut === undefined ? [] : [{ selection: cut } as Criteria<T>]),
   ];
   const options: ListingOptions<T> =
     scopes.length === 0
@@ -153,8 +153,8 @@ export function useListing<T extends AnyRecord>(
     [transport, route],
   );
 
-  // Decided once, at mount: a definition already known means the server is not asked for it
-  // again. Deciding it later would change the criteria and restart the reading.
+  // A definition already known draws the columns before the first page arrives; the one the
+  // transport reads from the discovery document comes with it.
   const [preloaded] = useState(() => metas.get(entity.key));
   const paging = options.paging ?? "pages";
   const size = options.pageSize ?? options.criteria?.pagination?.limit ?? 50;
@@ -163,7 +163,7 @@ export function useListing<T extends AnyRecord>(
     ...options.criteria,
     pagination: { ...options.criteria?.pagination, limit: size },
   };
-  const base: Criteria<T> = preloaded ? { ...asked, meta: false } : asked;
+  const base: Criteria<T> = asked;
   const reading = useReading(source, base);
   // `pages` mode: the cursor that opens each page walked so far — page 0 opens with none.
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
@@ -187,8 +187,8 @@ export function useListing<T extends AnyRecord>(
   const narrowed = (next: Narrowing<T>): Criteria<T> => {
     let criteria: Criteria<T> = base;
     const found = searchOver<T>(meta, next.text);
-    if (found !== undefined) criteria = merge<T>(criteria, { where: found });
-    if (next.where !== undefined) criteria = merge<T>(criteria, { where: next.where });
+    if (found !== undefined) criteria = merge<T>(criteria, { selection: found });
+    if (next.where !== undefined) criteria = merge<T>(criteria, { selection: next.where });
     if (next.order.length > 0) criteria = merge<T>(criteria, { order: [...next.order] });
     return criteria;
   };

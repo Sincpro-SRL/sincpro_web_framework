@@ -26,7 +26,7 @@ const PAGE = {
   projects: [{ id: "odoo-acme" }],
   cursor: null,
   count: { value: 1, exact: true },
-  entity_meta_data: null,
+  model_version: "v1",
   dropped: [],
 };
 
@@ -43,7 +43,7 @@ test("the criteria travels as plain JSON — what the framework's REST entrypoin
   const transport = restTransport({ fetch: server(200, PAGE, calls) });
   await transport.list("/projects", plain(criteria().where(["id", "=", "x"])));
   const sent = new URL(calls[0]?.url ?? "", "http://x").searchParams.get("criteria") ?? "";
-  assert.deepEqual(JSON.parse(sent).where, { field: "id", operator: "=", value: "x" });
+  assert.deepEqual(JSON.parse(sent).selection, { field: "id", operator: "=", value: "x" });
 });
 
 test("the records come out of the field named after them", async () => {
@@ -53,7 +53,7 @@ test("the records come out of the field named after them", async () => {
 });
 
 test("one record is the answer's own field; the envelope is left out", async () => {
-  const answer = { tenant: { id: "acme" }, entity_meta_data: null, dropped: [], draft: null };
+  const answer = { tenant: { id: "acme" }, model_version: "v1", dropped: [], draft: null };
   const transport = restTransport({ fetch: server(200, answer, []) });
   const one = await transport.one(entity("auth:tenant", { list: "/tenants" }).one("acme"));
   assert.deepEqual(one.record, { id: "acme" });
@@ -70,9 +70,67 @@ test("headers are asked for on every call: a token that rotates", async () => {
   token = "b";
   await transport.list("/projects", {});
   assert.deepEqual(
-    calls.map((c) => c.headers["Authorization"]),
+    calls.filter((c) => c.url.startsWith("/projects")).map((c) => c.headers["Authorization"]),
     ["Bearer a", "Bearer b"],
   );
+});
+
+/** A service with one model, `Project`, published in its discovery document. */
+function described(version: string, calls: Call[], served: { document: number }) {
+  const contract = {
+    type: "object",
+    title: "Project",
+    properties: {
+      id: { type: "string", "x-sincpro": { type: "text", sortable: true, ops: ["="] } },
+      name: { type: "string", title: "Name", "x-sincpro": { type: "text", widget: "text" } },
+    },
+    required: ["name"],
+    "x-sincpro": { entity: "Project", identity: "id", version },
+  };
+  const document = {
+    paths: { "/v1/projects": { get: { "x-sincpro-entities": ["Project"] } } },
+    components: { schemas: { Project: contract } },
+  };
+  return (async (url: string, init?: RequestInit) => {
+    const headers = (init?.headers ?? {}) as Record<string, string>;
+    calls.push({ url, headers });
+    if (url === "/openapi.json") {
+      served.document += 1;
+      if (headers["If-None-Match"] === `"${version}"`)
+        return new Response(null, { status: 304 });
+      return new Response(JSON.stringify(document), { headers: { ETag: `"${version}"` } });
+    }
+    return new Response(JSON.stringify({ ...PAGE, model_version: "v2" }));
+  }) as typeof fetch;
+}
+
+test("the definition of a model is read once from the discovery document, not from answers", async () => {
+  const served = { document: 0 };
+  const transport = restTransport({ base: "/v1", fetch: described("v2", [], served) });
+
+  const first = await transport.list("/projects", {});
+  const second = await transport.list("/projects", {});
+
+  assert.equal(first.meta?.aggregate, "Project");
+  assert.equal(first.meta?.fields["name"]?.required, true);
+  assert.equal(second.meta?.aggregate, "Project");
+  assert.equal(
+    served.document,
+    1,
+    "read once while the version it holds is the answered one",
+  );
+});
+
+test("an answer of another version reads the document again, revalidated by its tag", async () => {
+  const calls: Call[] = [];
+  const served = { document: 0 };
+  const transport = restTransport({ base: "/v1", fetch: described("v1", calls, served) });
+
+  await transport.list("/projects", {});
+
+  assert.equal(served.document, 2, "the answer said v2; the document held v1");
+  const again = calls.filter((c) => c.url === "/openapi.json")[1];
+  assert.equal(again?.headers["If-None-Match"], '"v1"');
 });
 
 test("a refusal carries the server's problem, and reads as its guidance", async () => {

@@ -4,6 +4,7 @@ import {
   type FieldError,
   matches,
   type Meta,
+  valueOf,
 } from "@sincpro/criteria";
 
 /**
@@ -22,21 +23,66 @@ export type FieldState = { readonly: boolean; required: boolean; visible: boolea
 
 /**
  * What a server preview said about a field. A list of records — an invoice's lines — carries
- * each one's own in `items`, in the order the form sent them (sincpro_framework's
- * `FieldState.items`).
+ * each one's own in `items`, by the line: its identity, or its position for a line that has
+ * none (sincpro_framework's `FieldState.items`).
  */
 export type ServerFieldState = Partial<FieldState> & {
-  items?: readonly Readonly<Record<string, ServerFieldState>>[];
+  items?: Readonly<Record<string, Readonly<Record<string, ServerFieldState>>>>;
 };
 export type FieldStates = Readonly<Record<string, ServerFieldState>>;
 
 /** What the server's preview warned about, pointing where it belongs (`path`: the field, or a
- *  line's cell — `["lines", 1, "price"]`). It refuses nothing. sincpro_framework's warning. */
+ *  line's cell — `["lines", "0192…", "price"]`, the line by its identity, by its position when
+ *  it has none). It refuses nothing. sincpro_framework's warning. */
 export type Advice = {
   message: string;
   field?: string | null;
   path?: readonly (string | number)[];
+  /** The rule that said it (`Sale.delivery_when_confirmed`), when one did. */
+  rule?: string | null;
+  /** A rule the save enforces (`@check`): the save will be refused while it holds. */
+  blocks_save?: boolean;
 };
+
+/**
+ * What a change of `name` moves, computed here when every field it reaches says how
+ * (`computes`, the formula the server published): each in the order the server runs them, a
+ * computation of a computation reading the one before. `undefined` when one of them does not
+ * say — the server's preview answers it — or the change reaches nothing.
+ *
+ *     computedLocally(saleMeta, { subtotal: "25.30", discount: "1.5" }, "discount")
+ *       ->  { total: "22.105" }
+ */
+export function computedLocally(
+  meta: Meta | null | undefined,
+  values: AnyRecord,
+  name: string,
+): AnyRecord | undefined {
+  const reached = meta?.fields[name]?.affects ?? [];
+  if (meta == null || reached.length === 0) return undefined;
+  const working: AnyRecord = { ...values };
+  const moved: AnyRecord = {};
+  for (const one of reached) {
+    const formula = meta.fields[one]?.computes;
+    if (formula === undefined || formula === null) return undefined;
+    working[one] = valueOf(formula, working);
+    moved[one] = working[one];
+  }
+  return moved;
+}
+
+/**
+ * Whether a change of `name` needs the server's preview: when the model says what each change
+ * reaches (`affects`, `judged_by` — sincpro_framework publishes them in the contract), only a
+ * field that reaches something does; a model that says nothing of it is always asked.
+ */
+export function needsPreview(meta: Meta | null | undefined, name: string): boolean {
+  const fields = Object.values(meta?.fields ?? {});
+  const says = fields.some((one) => one.affects !== undefined || one.judged_by !== undefined);
+  if (!says) return true;
+  const field = meta?.fields[name];
+  return (field?.affects?.length ?? 0) > 0 || (field?.judged_by?.length ?? 0) > 0;
+}
 
 function holds(values: AnyRecord, condition: unknown, meta: Meta): boolean {
   if (condition === null || condition === undefined) return false;
@@ -66,12 +112,38 @@ export function fieldStateOf(
   return { ...own, ...server };
 }
 
-/** Each line's states of a list of records, as the server said them — by position. */
+/**
+ * The states the server said of one line of a list of records: under the line's identity —
+ * the same line wherever it moved — or under its position when it has none.
+ */
 export function lineStatesOf(
   fromServer: FieldStates | undefined,
   name: string,
-): readonly FieldStates[] {
-  return fromServer?.[name]?.items ?? [];
+  line: AnyRecord | undefined,
+  index: number,
+  identity: string,
+): FieldStates | undefined {
+  const items = fromServer?.[name]?.items ?? {};
+  const own = line?.[identity];
+  const named =
+    own === undefined || own === null || own === "" ? undefined : items[String(own)];
+  return named ?? items[String(index)];
+}
+
+/**
+ * Where the server names a line in a path, most specific first: `lines/0192…` by its identity,
+ * `lines/2` by its position — an error, a warning and a state are looked for under each.
+ */
+export function linePlacesOf(
+  name: string,
+  line: AnyRecord,
+  index: number,
+  identity: string,
+): string[] {
+  const own = line[identity];
+  return own === undefined || own === null || own === ""
+    ? [`${name}/${index}`]
+    : [`${name}/${String(own)}`, `${name}/${index}`];
 }
 
 /** The fields whose value differs from the record's — what a save or a draft sends. */

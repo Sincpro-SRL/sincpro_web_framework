@@ -76,7 +76,7 @@ export const ElSelectorBuscaEnElServidor: Story = {
     await expect(await canvas.findByText("elegido: M-0123455")).toBeVisible();
     await expect(
       delSelector.asked.some((one) =>
-        JSON.stringify(one.where ?? {}).includes("Ajuste 123455"),
+        JSON.stringify(one.selection ?? {}).includes("Ajuste 123455"),
       ),
     ).toBe(true);
     // Back to the first ten, and the field still says which one was chosen.
@@ -108,7 +108,7 @@ export const LaBarraBuscaLiteral: Story = {
     await expect(await canvas.findByText(/Buscar «Globex»/)).toBeVisible();
     await waitFor(() => expect(canvas.queryByText("Clínica San Gabriel")).toBeNull());
     await expect(canvas.getAllByText("Globex Bolivia").length).toBeGreaterThan(0);
-    const last = JSON.stringify(deLaBarra.asked.at(-1)?.where ?? {});
+    const last = JSON.stringify(deLaBarra.asked.at(-1)?.selection ?? {});
     await expect(last).toContain("customer_name");
     await expect(last).toContain("number");
   },
@@ -140,8 +140,8 @@ export const LaCajaBuscaConEnter: Story = {
     await expect(deLaCaja.asked.length).toBe(before);
     await userEvent.keyboard("{Enter}");
     await waitFor(() => expect(canvas.queryByText("Clínica San Gabriel")).toBeNull());
-    await expect(JSON.stringify(deLaCaja.asked.at(-1)?.where ?? {}).includes("Globex")).toBe(
-      true,
-    );
+    await expect(
+      JSON.stringify(deLaCaja.asked.at(-1)?.selection ?? {}).includes("Globex"),
+    ).toBe(true);
   },
 };

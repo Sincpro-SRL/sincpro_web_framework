@@ -4,6 +4,7 @@ import type { AnyRecord, Meta } from "@sincpro/criteria";
 import {
   type Advice,
   changesOf,
+  computedLocally,
   creationOf,
   defaultsOf,
   errorsByField,
@@ -12,6 +13,7 @@ import {
   type FieldStates,
   lineStatesOf,
   missingOf,
+  needsPreview,
 } from "@sincpro/web-framework/core/edit";
 import {
   type Entity,
@@ -79,7 +81,8 @@ export type Editing = {
   set: (name: string, value: unknown) => void;
   state: (name: string) => FieldState;
   /** A cell of a list of records — line `index` of `name`, its `field`: the line model's hints
-   *  over that line, refined by what the server's preview said of it (`items[index]`). */
+   *  over that line, refined by what the server's preview said of it (`items`, by the line's
+   *  identity, by its position when it has none). */
   cell: (name: string, index: number, field: string) => FieldState;
   /** The server's word on what did not validate, by where it points (`pathOf`): `discount`,
    *  `lines/1/qty`. Read a field's — its lines' included — with `errorAt`. */
@@ -284,7 +287,17 @@ export function useRecord<T extends AnyRecord>(
 
   const ask = (next: AnyRecord, name: string) => {
     const preview = entity.preview;
-    if (preview === undefined) return;
+    const field = name.split(".")[0] ?? name;
+    // What the server wrote down is computed here, as it would: a change whose every reach has
+    // a formula needs the server only for a rule that judges it.
+    const local = Array.isArray(next[field])
+      ? undefined
+      : computedLocally(state.meta, { ...record, ...next }, field);
+    if (local !== undefined) setComputed((now) => ({ ...now, ...local }));
+    const judged = (state.meta?.fields[field]?.judged_by?.length ?? 0) > 0;
+    // A change that reaches nothing — no computation, no rule — has nothing to ask the server.
+    if (preview === undefined || !needsPreview(state.meta, field)) return;
+    if (local !== undefined && !judged) return;
     cancelPreview();
     pause.current = setTimeout(() => {
       // A key of the route (`{tenant_id}`) is a field of the record on screen. One it lacks is
@@ -380,7 +393,7 @@ export function useRecord<T extends AnyRecord>(
         definition,
         field,
         line ?? {},
-        lineStatesOf(fromServer, name)[index],
+        lineStatesOf(fromServer, name, line, index, definition?.identity || "id"),
       );
     },
     errors: failure instanceof TransportError ? errorsByField(failure.problem?.errors) : {},

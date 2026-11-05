@@ -163,10 +163,7 @@ export function entityView<T extends AnyRecord>(
       if (meta === null)
         meta = (await options.transport.list(route, { pagination: { limit: 1 } })).meta;
       if (meta?.search == null) return [];
-      const page = await options.transport.list<AnyRecord>(route, {
-        ...matching(meta, query),
-        meta: false,
-      });
+      const page = await options.transport.list<AnyRecord>(route, matching(meta, query));
       // ⌘K writes text: of the entity's look of a choice, its name and its meta.
       const look = presentationOf(entity).option;
       return lookupOf(meta, page.rows, entity.summary).map((one) => {

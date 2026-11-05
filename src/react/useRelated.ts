@@ -32,9 +32,9 @@ export function useRelated<P extends AnyRecord, T extends AnyRecord>(
   const value = record.record === null ? null : (record.record as AnyRecord)[own];
   const scope: Criteria<T> = {
     ...options.criteria,
-    where: {
+    selection: {
       all: [
-        ...(options.criteria?.where ? [options.criteria.where] : []),
+        ...(options.criteria?.selection ? [options.criteria.selection] : []),
         { field: key, operator: "=", value: value as never },
       ],
     } as never,

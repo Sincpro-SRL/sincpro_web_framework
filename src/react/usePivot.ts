@@ -71,7 +71,6 @@ export function usePivot<T extends AnyRecord>(
     const grouped = (levels: readonly GroupLevel[]): Criteria<Bucket<T>> =>
       ({
         ...(JSON.parse(question) as Criteria<T>),
-        meta: false,
         grouping: {
           group_by: levels.map((level) => ({ ...level })),
           ...(sums === "" ? {} : { measures: measuresOf(sums.split(",")) }),

@@ -49,10 +49,7 @@ async function page(
     ...trail.question,
     pagination: { ...trail.question.pagination, limit: trail.size },
   };
-  const answer = await transport.list<AnyRecord>(trail.route, {
-    ...resumingFrom(sized, cursor),
-    meta: false,
-  });
+  const answer = await transport.list<AnyRecord>(trail.route, resumingFrom(sized, cursor));
   return {
     ids: answer.rows.map((row) => String(row[trail.key] ?? "")),
     after: answer.cursor,

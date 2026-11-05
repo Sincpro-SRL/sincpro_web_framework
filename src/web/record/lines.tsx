@@ -1,7 +1,13 @@
 "use client";
 
 import { type AnyRecord, choicesOf, type Meta } from "@sincpro/criteria";
-import { adviceAt, defaultsOf, errorAt, pathOf } from "@sincpro/web-framework/core/edit";
+import {
+  adviceAt,
+  defaultsOf,
+  errorAt,
+  linePlacesOf,
+  pathOf,
+} from "@sincpro/web-framework/core/edit";
 import {
   addingOf,
   blankLine,
@@ -324,31 +330,43 @@ export function RecordLinesEditor<T extends AnyRecord>({
       // server's `items[i]`, the error pointing at it (under its value) and its warning.
       cellState={(line, column) => {
         const index = indexOf(line);
-        const at = `${name}/${index}/${column}`;
+        const places = linePlacesOf(name, line, index, identity).map(
+          (one) => `${one}/${column}`,
+        );
         const state = edit.cell(name, index, column);
-        const error = errorAt(edit.errors, at);
-        const warned = adviceAt(edit.advice, at)[0];
+        const error = places
+          .map((at) => errorAt(edit.errors, at))
+          .find((one) => one !== undefined);
+        const warned = places.flatMap((at) => adviceAt(edit.advice, at))[0];
         return {
           readonly: state.readonly,
           required: state.required,
           hidden: !state.visible,
           ...(error === undefined ? {} : { error }),
-          ...(warned === undefined ? {} : { flag: { tone: "warn", label: warned.message } }),
+          ...(warned === undefined
+            ? {}
+            : { flag: { tone: warned.blocks_save ? "bad" : "warn", label: warned.message } }),
         };
       }}
       // The line's own flag: what points at the line and at no cell drawn — the line as a
       // whole, or a field it has no column for (an id the server does not know).
       flag={(line) => {
-        const at = `${name}/${indexOf(line)}`;
+        const places = linePlacesOf(name, line, indexOf(line), identity);
         const onLine = (key: string) =>
-          key === at ||
-          (key.startsWith(`${at}/`) && !drawn.has(key.slice(at.length + 1).split("/")[0]!));
+          places.some(
+            (at) =>
+              key === at ||
+              (key.startsWith(`${at}/`) &&
+                !drawn.has(key.slice(at.length + 1).split("/")[0]!)),
+          );
         const error = Object.entries(edit.errors).find(([key]) => onLine(key))?.[1];
         if (error !== undefined) return { tone: "bad", label: error };
         const warned = edit.advice.find((one) =>
           onLine(pathOf(one.path ?? [one.field ?? ""])),
         );
-        return warned === undefined ? null : { tone: "warn", label: warned.message };
+        return warned === undefined
+          ? null
+          : { tone: warned.blocks_save ? "bad" : "warn", label: warned.message };
       }}
       editor={(draft, set, state) => {
         if (look.editor !== undefined) return look.editor(draft, set, state);

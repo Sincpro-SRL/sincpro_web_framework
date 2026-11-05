@@ -33,7 +33,7 @@ export function useHistory<T extends AnyRecord>(
     if (history === undefined) return;
     const aborter = new AbortController();
     const criteria: Criteria = {
-      where: {
+      selection: {
         all: [
           { field: "entity_type", operator: "=", value: history.type },
           { field: "entity_id", operator: "=", value: id },
