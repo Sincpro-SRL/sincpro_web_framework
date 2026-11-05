@@ -72,7 +72,7 @@ export const PorEstado: Story = {
     await userEvent.click(pagadas);
     await expect(await canvas.findByText("F-2026-0003")).toBeVisible();
     const leido = pedidos.at(-1)!.criteria;
-    await expect(JSON.stringify(leido.where)).toContain('"paid"');
+    await expect(JSON.stringify(leido.selection)).toContain('"paid"');
     await expect(leido.grouping).toBeUndefined();
   },
 };

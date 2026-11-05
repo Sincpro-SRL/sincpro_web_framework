@@ -43,7 +43,7 @@ const porCobrar = defineList(facturas, {
   id: "por-cobrar",
   title: "Por cobrar",
   description: "publicadas, todavía sin pagar",
-  scope: { where: { field: "state", operator: "=", value: "posted" } },
+  scope: { selection: { field: "state", operator: "=", value: "posted" } },
   columns: ["number", "customer", "due_date", "amount_total"],
   filters: [
     {
@@ -100,13 +100,15 @@ export const UnCorteQueNoSeQuita: Story = {
     await expect(await canvas.findByRole("columnheader", { name: /Vence/ })).toBeVisible();
     // Only what the scope lets through: the 21 posted invoices of 64.
     await expect(await canvas.findByText("1–21")).toBeVisible();
-    await waitFor(() => expect(pedidosCorte.at(-1)?.where).toEqual(porCobrar.scope?.where));
+    await waitFor(() =>
+      expect(pedidosCorte.at(-1)?.selection).toEqual(porCobrar.scope?.selection),
+    );
     // A search ANDs UNDER the scope — it never widens it.
     await buscarCliente(canvasElement, "Globex");
     await waitFor(() =>
-      expect(JSON.stringify(pedidosCorte.at(-1)?.where)).toContain("Globex"),
+      expect(JSON.stringify(pedidosCorte.at(-1)?.selection)).toContain("Globex"),
     );
-    await expect(JSON.stringify(pedidosCorte.at(-1)?.where)).toContain('"posted"');
+    await expect(JSON.stringify(pedidosCorte.at(-1)?.selection)).toContain('"posted"');
     // Only Globex's posted invoices: some, and every one of them Globex's.
     await waitFor(() => {
       const rows = estados(canvasElement);
@@ -160,13 +162,15 @@ export const UnaVistaPropia: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole("heading", { name: "Mis cobros" });
-    await waitFor(() => expect(pedidosPropia.at(-1)?.where).toEqual(porCobrar.scope?.where));
+    await waitFor(() =>
+      expect(pedidosPropia.at(-1)?.selection).toEqual(porCobrar.scope?.selection),
+    );
     await buscarCliente(canvasElement, "Globex");
     // The same question reaches the server: the scope, and under it what was typed.
     await waitFor(() =>
-      expect(JSON.stringify(pedidosPropia.at(-1)?.where)).toContain("Globex"),
+      expect(JSON.stringify(pedidosPropia.at(-1)?.selection)).toContain("Globex"),
     );
-    await expect(JSON.stringify(pedidosPropia.at(-1)?.where)).toContain('"posted"');
+    await expect(JSON.stringify(pedidosPropia.at(-1)?.selection)).toContain('"posted"');
     await waitFor(() =>
       expect(canvas.getAllByText(/^F-2026-\d{4} · /).length).toBeGreaterThan(0),
     );

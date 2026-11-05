@@ -70,7 +70,7 @@ export const AcotadoPorOtroCampo: Story = {
     const [factura, setFactura] = useState("");
     // Which invoices may be chosen: those of the chosen customer. The server applies it.
     const scope = useMemo<Criteria<Factura>>(
-      () => ({ where: { field: "customer_id", operator: "=", value: cliente } }),
+      () => ({ selection: { field: "customer_id", operator: "=", value: cliente } }),
       [cliente],
     );
     return (
@@ -139,7 +139,7 @@ export const AcotadoPorOtroCampo: Story = {
 const clientesActivos = defineList(clientes, {
   id: "activos",
   title: "Clientes activos",
-  scope: { where: { field: "active", operator: "=", value: true } },
+  scope: { selection: { field: "active", operator: "=", value: true } },
   columns: ["name", "tax_id", "city"],
 });
 const INACTIVO = CLIENTES.find((c) => !c.active)!;
@@ -345,7 +345,7 @@ export const UnSelectorPropio: Story = {
     // The typed text filled the entity's literal search template, on the SERVER.
     await waitFor(() =>
       expect(
-        pedidosPropio.some((one) => JSON.stringify(one.where ?? {}).includes("Globex")),
+        pedidosPropio.some((one) => JSON.stringify(one.selection ?? {}).includes("Globex")),
       ).toBe(true),
     );
     await waitFor(() => expect(canvas.queryByText("Clínica San Gabriel")).toBeNull());

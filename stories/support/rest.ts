@@ -6,6 +6,7 @@ import {
   TransportError,
 } from "@sincpro/web-framework";
 
+import { discoveryDocument, VERSION } from "./discovery";
 import type { servidorVentas } from "./servidor";
 
 /**
@@ -17,8 +18,9 @@ import type { servidorVentas } from "./servidor";
  * middle: the stories that use it go through `restTransport` exactly as an app does in
  * production, and only the far end is fake.
  *
- *     GET  /v1/facturas?criteria={…}   → {facturas: […], cursor, count, entity_meta_data, dropped}
- *     GET  /v1/facturas/F-1            → {factura: {…}, entity_meta_data, dropped, draft}
+ *     GET  /openapi.json               → the discovery document: each model's contract
+ *     GET  /v1/facturas?criteria={…}   → {facturas: […], cursor, count, model_version, dropped}
+ *     GET  /v1/facturas/F-1            → {factura: {…}, model_version, dropped, draft}
  *     POST /v1/facturas/F-1/confirm    → the Command's response, as JSON
  *     a refusal                        → its status, `application/problem+json`
  *
@@ -57,6 +59,8 @@ export function restServer(
         ),
       );
 
+    if (path === "/openapi.json") return json(200, discoveryDocument(tables, base));
+
     const table = tables[path];
     if (table !== undefined) {
       const written = query.get("criteria");
@@ -67,7 +71,7 @@ export function restServer(
         [name]: page.rows,
         cursor: page.cursor,
         count: page.count,
-        entity_meta_data: page.meta,
+        model_version: VERSION,
         dropped: page.dropped,
       });
     }
@@ -76,7 +80,7 @@ export function restServer(
     const name = (one.meta?.aggregate ?? "record").toLowerCase();
     return json(200, {
       [name]: one.record,
-      entity_meta_data: one.meta,
+      model_version: VERSION,
       dropped: one.dropped,
       draft: one.draft,
     });

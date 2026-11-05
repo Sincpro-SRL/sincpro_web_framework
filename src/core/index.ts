@@ -19,6 +19,7 @@ export {
   type Advice,
   adviceAt,
   changesOf,
+  computedLocally,
   creationOf,
   defaultsOf,
   errorAt,
@@ -26,8 +27,10 @@ export {
   type FieldState,
   fieldStateOf,
   type FieldStates,
+  linePlacesOf,
   lineStatesOf,
   missingOf,
+  needsPreview,
   pathOf,
   type ServerFieldState,
 } from "@sincpro/web-framework/core/edit";

@@ -71,5 +71,5 @@ export function chooserScopeOf<T extends AnyRecord>(
 ): Expression | undefined {
   const named = isList(entity) ? scopeOf(entity) : undefined;
   const all = named === undefined ? cut : cut === undefined ? named : merge<T>(named, cut);
-  return all?.where as Expression | undefined;
+  return all?.selection as Expression | undefined;
 }

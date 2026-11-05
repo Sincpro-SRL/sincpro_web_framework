@@ -4,19 +4,12 @@ import { field, type FieldOptions } from "@sincpro/web-framework/core/meta";
 /**
  * A model definition read from a JSON Schema — what an OpenAPI document holds.
  *
- * Context: what sincpro_framework's OpenAPI 3.1 describes and what it does not, checked
- * against a running forge:
+ * Context: a model a READ answers is published by sincpro_framework as its contract — JSON
+ * Schema with `x-sincpro` — and read by the transport (`metaFromContract`, `core/discovery`).
+ * What has no `x-sincpro` is a plain JSON Schema: a COMMAND's body, a value object it carries.
  *
- *   - the records a READ answers are invisible: the framework serialises them with its own
- *     envelope, so `GET /projects` and `GET /projects/{id}` answer schema `{}` and no
- *     `Project` schema exists. A list's definition comes from `entity_meta_data`, at runtime
- *     or preloaded (`FrameworkProvider metas`) — not from here;
- *   - the COMMANDS and the value objects are described well, and better than the meta in one
- *     place: inside a value object `entity_meta_data` sends a `Literal` and a `list[str]` as
- *     `unknown`, where the schema says `enum: ["es", "en"]` and `array<string>`.
- *
- * So this reads a component schema into a `Meta` — the form of a Command, a value object — and
- * `completeMeta` fills, from it, what the server's meta left `unknown`.
+ * So this reads such a component schema into a `Meta` — the form of a Command, a value object —
+ * and `completeMeta` fills, from it, what a definition left `unknown`.
  *
  *     const spec = metaFromSchema("ProjectSpecification", doc.components.schemas);
  *     const fixed = completeMeta(project.fields.specification.definition, spec);

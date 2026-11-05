@@ -29,7 +29,9 @@ export default mergeConfig(
             include: ["tests/**/*.test.{ts,tsx}"],
             // The composer imports a directory of @atlaskit/pragmatic-drag-and-drop, which Node's
             // ESM refuses when it is loaded as is; bundled by Vite, it resolves like in the browser.
-            server: { deps: { inline: [/@sincpro\/web-composer/] } },
+            // web-ui imports its components' stylesheets (`canvas.css`), which Node cannot load:
+            // bundled by Vite, a stylesheet is a module like any other.
+            server: { deps: { inline: [/@sincpro\/web-composer/, /@sincpro\/web-ui/] } },
           },
         },
         {

@@ -3,15 +3,20 @@ import assert from "node:assert/strict";
 import {
   adviceAt,
   changesOf,
+  computedLocally,
+  defineMeta,
   entity,
   errorAt,
   errorsByField,
+  field,
   fieldStateOf,
   type FieldStates,
   historyOf,
+  linePlacesOf,
   lineStatesOf,
   memoryTransport,
   missingOf,
+  needsPreview,
   pathFor,
   pathOf,
   restTransport,
@@ -116,11 +121,14 @@ test("a warning lands where an error would, by its path or else its field", () =
   );
 });
 
-test("each line's states are the server's items, by position — never a state of the field", () => {
+test("each line's states are the server's items, by the line — never a state of the field", () => {
   const fromServer: FieldStates = {
     lines: {
       required: true,
-      items: [{ price: { readonly: true } }, { quantity: { required: true } }],
+      items: {
+        "0192a": { price: { readonly: true } },
+        "1": { quantity: { required: true } },
+      },
     },
   };
   assert.deepEqual(fieldStateOf(null, "lines", {}, fromServer), {
@@ -128,12 +136,28 @@ test("each line's states are the server's items, by position — never a state o
     required: true,
     visible: true,
   });
-  assert.deepEqual(lineStatesOf(fromServer, "lines")[0], { price: { readonly: true } });
+  // A line with an identity is named by it, wherever it moved; one with none, by its position.
+  const named = { id: "0192a", price: "10" };
+  assert.deepEqual(lineStatesOf(fromServer, "lines", named, 4, "id"), {
+    price: { readonly: true },
+  });
+  assert.deepEqual(lineStatesOf(fromServer, "lines", { price: "1" }, 1, "id"), {
+    quantity: { required: true },
+  });
   assert.equal(
-    fieldStateOf(null, "price", {}, lineStatesOf(fromServer, "lines")[0]).readonly,
+    fieldStateOf(null, "price", {}, lineStatesOf(fromServer, "lines", named, 4, "id"))
+      .readonly,
     true,
   );
-  assert.deepEqual(lineStatesOf(fromServer, "notes"), []);
+  assert.equal(lineStatesOf(fromServer, "notes", named, 0, "id"), undefined);
+});
+
+test("a line is looked for under its identity first, then under its position", () => {
+  assert.deepEqual(linePlacesOf("lines", { id: "0192a" }, 2, "id"), [
+    "lines/0192a",
+    "lines/2",
+  ]);
+  assert.deepEqual(linePlacesOf("lines", { qty: 1 }, 2, "id"), ["lines/2"]);
 });
 
 test("a write route says how it is sent, and fills the key", () => {
@@ -219,4 +243,66 @@ test("a write travels as JSON with its method", async () => {
   assert.deepEqual(calls, [
     { method: "POST", body: '{"dry_run":true}', type: "application/json" },
   ]);
+});
+
+test("a change asks the server only when the model says it reaches something", () => {
+  const said = defineMeta({
+    aggregate: "Sale",
+    identity: "id",
+    fields: {
+      id: field.text(),
+      lines: field.text(),
+      total: field.text(),
+      note: field.text(),
+    },
+  });
+  said.fields.lines!.affects = ["total"];
+  said.fields.total!.judged_by = ["total_positive"];
+  const silent = defineMeta({
+    aggregate: "Note",
+    identity: "id",
+    fields: { id: field.text(), note: field.text() },
+  });
+
+  assert.equal(needsPreview(said, "lines"), true);
+  assert.equal(needsPreview(said, "total"), true);
+  assert.equal(needsPreview(said, "note"), false, "it reaches nothing");
+  assert.equal(
+    needsPreview(silent, "note"),
+    true,
+    "a model that says nothing is always asked",
+  );
+  assert.equal(needsPreview(null, "note"), true);
+});
+
+test("what a change moves is computed here when every reach has a formula", () => {
+  const sale = defineMeta({
+    aggregate: "Sale",
+    identity: "id",
+    fields: {
+      id: field.text(),
+      subtotal: field.text(),
+      discount: field.text(),
+      total: field.text(),
+      note: field.text(),
+    },
+  });
+  sale.fields.discount!.affects = ["total"];
+  sale.fields.total!.computes = {
+    op: "-",
+    args: [
+      { $: "field", name: "subtotal" },
+      { op: "*", args: [{ $: "field", name: "discount" }, "1.13"] },
+    ],
+  };
+  sale.fields.note!.affects = ["subtotal"];
+
+  assert.deepEqual(
+    computedLocally(sale, { subtotal: "25.30", discount: "1.5" }, "discount"),
+    {
+      total: "23.605",
+    },
+  );
+  assert.equal(computedLocally(sale, {}, "note"), undefined, "subtotal has no formula");
+  assert.equal(computedLocally(sale, {}, "id"), undefined, "it reaches nothing");
 });

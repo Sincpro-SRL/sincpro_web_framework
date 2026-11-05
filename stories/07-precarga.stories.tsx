@@ -13,7 +13,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          "La definición del modelo no es chica — la de `Project` en forge pesa ~97 KB aunque no haya filas — y es la misma en cada pedido. El framework la pide **una vez por entidad**: la segunda lista, el registro que se abre desde ella o el select que apunta a ella piden con `meta: false`. Y si la aplicación la trae de antes (`FrameworkProvider metas`: un snapshot de la del servidor, o `defineMeta`), **ni el primer pedido la pide**.\n\nPor qué no sale de OpenAPI: en sincpro_framework las lecturas responden con esquema `{}` — no existe un esquema `Project` —, así que la meta de una lista sólo existe en la respuesta. OpenAPI sí describe bien los comandos y los value objects (`metaFromSchema`).",
+          "La definición del modelo se publica **una vez**: el contexto la describe en su documento de descubrimiento (OpenAPI, con `x-sincpro`) y el transporte la lee de ahí (`metaFromContract`), no de cada respuesta — una respuesta trae sólo su `model_version`, y otra versión significa volver a leer el documento. Si la aplicación la trae de antes (`FrameworkProvider metas`: un snapshot del documento, o `defineMeta`), las columnas se dibujan antes de que llegue la primera página.",
       },
     },
   },
@@ -26,7 +26,7 @@ function Pedidos({ asked }: { asked: readonly Criteria[] }) {
   return (
     <p className="px-4 py-2 font-mono text-micro text-muted">
       {asked
-        .map((one, i) => `pedido ${i + 1}: meta ${one.meta === false ? "no" : "sí"}`)
+        .map((one, i) => `pedido ${i + 1}: ${one.pagination?.limit ?? "—"} filas`)
         .join(" · ")}
     </p>
   );
@@ -62,7 +62,7 @@ export const SinPrecarga: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByText("20 de 64");
-    await expect(await canvas.findByText(/pedido 1: meta sí/)).toBeVisible();
+    await expect(await canvas.findByText(/pedido 1: 20 filas/)).toBeVisible();
   },
 };
 
@@ -71,7 +71,7 @@ export const ConLaMetaPrecargada: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByText("20 de 64");
-    await expect(await canvas.findByText(/pedido 1: meta no/)).toBeVisible();
+    await expect(await canvas.findByText(/pedido 1: 20 filas/)).toBeVisible();
     await expect(await canvas.findByRole("columnheader", { name: /Cliente/ })).toBeVisible();
   },
 };

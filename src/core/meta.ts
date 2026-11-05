@@ -192,7 +192,8 @@ function searchTemplate(fields: readonly string[]): Record<string, unknown> | nu
   });
   const [only] = fields;
   return {
-    where: fields.length === 1 && only !== undefined ? like(only) : { any: fields.map(like) },
+    selection:
+      fields.length === 1 && only !== undefined ? like(only) : { any: fields.map(like) },
   };
 }
 

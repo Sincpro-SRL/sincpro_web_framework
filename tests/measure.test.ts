@@ -18,7 +18,6 @@ test("the server adds each group up over every row of it, not the page", async (
   const page = await transport.list<Bucket<AnyRecord>>("/facturas", {
     grouping: { group_by: [{ field: "state" }], measures: measuresOf(["amount_total"]) },
     pagination: { limit: 1 },
-    meta: false,
   } as never);
   const paid = page.rows.find((bucket) => bucket.value === "paid");
   const expected = FACTURAS.filter((one) => one.state === "paid").reduce(

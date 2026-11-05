@@ -92,8 +92,9 @@ Rules for any agent (or person) changing this package. Read the README for the i
   350 ms after the page went quiet and let three failing plays pass — that is why it is gone.)
 - **Typed criteria refuse unknown fields at compile time**, which is right for code and wrong
   for a reading that came from a URL or a saved filter: those are read untyped.
-- **Whether a list asks for the model definition is decided at mount** (`meta: false` when it
-  is already known). Deciding it later changes the criteria and restarts the reading.
+- **The model definition is never asked of a read.** sincpro_framework publishes it once, in
+  the discovery document `restTransport` reads (`document`, `/openapi.json`); an answer carries
+  only `model_version`, and another version reads the document again (`ETag`, `304`).
 - **`EntityList`'s `cells` is memoised by identity** — its functions may close over state.
   Memoise it in the screen, or the table redraws every cell on every render.
 - **web-ui's search bar is a `combobox` «Buscar» and its suggestions are `option`s** (1.4). The
