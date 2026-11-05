@@ -1,7 +1,7 @@
 "use client";
 
 import { type AnyRecord, type Expression, matches } from "@sincpro/criteria";
-import { pathFor } from "@sincpro/web-framework/core/entity";
+import { bodyFor, pathFor } from "@sincpro/web-framework/core/entity";
 import { retryKeys } from "@sincpro/web-framework/core/retry";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
@@ -68,7 +68,8 @@ export function useRowCommands<T extends AnyRecord>(
       const gesture = `${one.command}\u0000${id}`;
       const retry = keys.get(gesture) ?? retryKeys();
       keys.set(gesture, retry);
-      const body = one.body?.(row) ?? {};
+      // A Command whose body names its record (`target`) gets the row's id there.
+      const body = bodyFor(route, id, one.body?.(row) ?? {});
       setRunning((now) => new Set(now).add(gesture));
       setError(null);
       try {

@@ -2,7 +2,7 @@
 
 import type { AnyRecord } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
-import type { Entity } from "@sincpro/web-framework/core/entity";
+import type { CommandBodies, Entity } from "@sincpro/web-framework/core/entity";
 import { useCommand } from "@sincpro/web-framework/react/useCommand";
 import { Refused } from "@sincpro/web-framework/web/Refused";
 import { Button, Dialog } from "@sincpro/web-ui";
@@ -17,7 +17,12 @@ import { useState } from "react";
  * shows THAT in the window: the confirmation is the consequence, in the server's words, not a
  * question. A refusal is shown where it happened, with what to do.
  */
-export function CommandButton<T extends AnyRecord, R = unknown>({
+export function CommandButton<
+  T extends AnyRecord,
+  R = unknown,
+  C extends CommandBodies = CommandBodies,
+  N extends keyof C & string = keyof C & string,
+>({
   entity,
   command,
   id,
@@ -28,10 +33,12 @@ export function CommandButton<T extends AnyRecord, R = unknown>({
   disabled = false,
   onDone,
 }: {
-  entity: Entity<T>;
-  command: string;
+  entity: Entity<T, C>;
+  /** One the entity declares; a typed entity takes only its own names. */
+  command: N;
   id?: string;
-  body?: AnyRecord;
+  /** What it is sent with — checked against a typed entity's `C[command]`. */
+  body?: C[N];
   label: string;
   /** Asks the server what it would do before doing it. */
   destructive?: boolean;
@@ -41,7 +48,7 @@ export function CommandButton<T extends AnyRecord, R = unknown>({
   onDone?: (answer: R) => void;
 }) {
   const copy = frameworkCopy().command;
-  const action = useCommand<T, R>(entity, command);
+  const action = useCommand<T, R, C, N>(entity, command);
   const [open, setOpen] = useState(false);
 
   const run = async () => {

@@ -73,6 +73,12 @@ doctor:
 	if $(SCAN) '(^|[^.A-Za-z_])(document|window)\.' src/core src/react | $(NOT_COMMENT); then \
 		echo >&2 "✘ document/window outside web/ — only web/ may touch the DOM"; found=1; \
 	fi; \
+	if $(SCAN) 'from "$(PACKAGE)/codegen' src/core src/react src/web | $(NOT_COMMENT); then \
+		echo >&2 "✘ a level importing codegen/ — the generator is a build step, no screen loads it"; found=1; \
+	fi; \
+	if $(SCAN) 'from "node:' src/core src/react src/web | $(NOT_COMMENT); then \
+		echo >&2 "✘ node: outside codegen/ — the runtime runs in a browser"; found=1; \
+	fi; \
 	if [ "$$found" = "1" ]; then exit 1; fi; \
 	echo "✓ no traps found"
 
@@ -96,6 +102,20 @@ build:
 	@npx tsc -p tsconfig.build.json
 	@npx tsc-alias -p tsconfig.build.json
 	@echo "✓ Build ready in ./dist (JS + .d.ts, $(PACKAGE) resolved to relative)"
+
+# What tests/codegen.test.ts compares the generator with, and story 40 runs: forge's client
+# contracts (stories/support/forge-contract/<context>.contract.json, copied from a real
+# `export-client-contract`) through the built `sincpro-web`, as forge's console runs it
+# (`--domain <context> --base /v1`). Run it after changing the generator ON PURPOSE, and read
+# the diff.
+FORGE_CONTRACT := stories/support/forge-contract
+codegen-fixtures: build
+	@for one in project auth sandbox; do \
+		node dist/codegen/cli.js generate $(FORGE_CONTRACT)/$$one.contract.json \
+			--out $(FORGE_CONTRACT)/$$one --domain $$one --base /v1 >/dev/null && \
+		rm $(FORGE_CONTRACT)/$$one/contract.json; \
+	done
+	@echo "✓ $(FORGE_CONTRACT)/ written from the contracts"
 
 dev:
 	@npx storybook dev -p 6008 --no-open
@@ -137,5 +157,5 @@ clean:
 	@rm -rf dist storybook-static node_modules
 	@echo "✓ Cleaned"
 
-.PHONY: help prepare-environment install init typecheck format lint doctor test verify-format build \
+.PHONY: help prepare-environment install init typecheck format lint doctor test verify-format build codegen-fixtures \
 	dev storybook update-version publish deploy clean

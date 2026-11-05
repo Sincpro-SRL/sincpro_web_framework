@@ -1,7 +1,13 @@
 "use client";
 
 import type { AnyRecord } from "@sincpro/criteria";
-import { type Entity, pathFor } from "@sincpro/web-framework/core/entity";
+import {
+  bodyFor,
+  type CommandBodies,
+  type Entity,
+  pathFor,
+  type WriteRoute,
+} from "@sincpro/web-framework/core/entity";
 import { type RetryKeys, retryKeys } from "@sincpro/web-framework/core/retry";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -18,13 +24,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * One at a time: `busy` turns the button off, because a payment sent twice is two payments. And
  * once sent, the same gesture keeps its `Idempotency-Key` until the server answers: a retry
  * after a dropped request is the same payment, never a second one (`retryKeys`).
+ *
+ * A typed entity (`entity<Issue, { send: { message: string } }>`) gets its names and bodies
+ * checked: `useCommand(issues, "send").run(id, { mesage })` does not compile. TypeScript infers
+ * that only when no type argument is written — `useCommand<Issue, Answer>(…)` stays loose.
  */
 export type Rehearsal = { text: string; data: Record<string, unknown> };
 
-export type CommandState<R> = {
-  run: (id?: string, body?: AnyRecord) => Promise<R | undefined>;
+export type CommandState<R, B extends AnyRecord = AnyRecord> = {
+  /** Without a body, an empty one: the route may name everything. A body given is checked. */
+  run: (id?: string, body?: B) => Promise<R | undefined>;
   /** The dry run: what it would do, nothing touched. */
-  rehearse: (id?: string, body?: AnyRecord) => Promise<Rehearsal | undefined>;
+  rehearse: (id?: string, body?: B) => Promise<Rehearsal | undefined>;
   busy: boolean;
   error: unknown;
   /** The last dry run's answer, until `reset`. */
@@ -32,12 +43,15 @@ export type CommandState<R> = {
   reset: () => void;
 };
 
-export function useCommand<T extends AnyRecord, R = unknown>(
-  entity: Entity<T>,
-  name: string,
-): CommandState<R> {
+export function useCommand<
+  T extends AnyRecord,
+  R = unknown,
+  C extends CommandBodies = CommandBodies,
+  N extends keyof C & string = keyof C & string,
+>(entity: Entity<T, C>, name: N): CommandState<R, C[N]> {
   const { transport } = useFramework();
-  const route = entity.commands[name];
+  // A name outside the declared ones still reaches here from untyped code: say which.
+  const route: WriteRoute | undefined = entity.commands[name];
   if (route === undefined) throw new Error(`${entity.key} declares no command "${name}"`);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -63,11 +77,13 @@ export function useCommand<T extends AnyRecord, R = unknown>(
       setBusy(true);
       setError(null);
       const idempotencyKey = gesture.keyFor({ id, body });
+      // A Command whose body names its record (`target`) gets the id there.
+      const sent = bodyFor(route, id, body);
       try {
         const answer = await transport.send<A>(
           route.method,
-          pathFor(route, id, body),
-          body,
+          pathFor(route, id, sent),
+          sent,
           undefined,
           { idempotencyKey },
         );
@@ -85,8 +101,8 @@ export function useCommand<T extends AnyRecord, R = unknown>(
   );
 
   return {
-    run: (id, body = {}) => send<R>(id, body, keys.current),
-    rehearse: async (id, body = {}) => {
+    run: (id, body) => send<R>(id, body ?? {}, keys.current),
+    rehearse: async (id, body) => {
       const answer = await send<Rehearsal>(id, { ...body, dry_run: true }, retryKeys());
       if (answer !== undefined && mounted.current) setRehearsal(answer);
       return answer;

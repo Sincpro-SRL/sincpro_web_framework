@@ -41,16 +41,18 @@ Rules for any agent (or person) changing this package. Read the README for the i
 | `src/web/list/`      | a collection: `EntityList`, `EntitySearchBar`, columns, search model   | everything above, web-ui, composer        |
 | `src/web/record/`    | one record: fields, facts, relations, picker, commands                 | everything above, web-ui — NOT composer   |
 | `src/web/workspace/` | the composer: views, skin, `useRecordInWorkspace`, `<SincproApp>`      | everything above, web-ui, composer        |
+| `src/codegen/`       | the generator: DTOs, client and entities out of a client contract      | `core/`, Node — nothing imports it        |
 | `stories/`           | the use cases, one scenario per story, with `play`                     | the package's public entry only           |
 | `stories/support/`   | fake domains: `ventas` (by hand), `forge` (copied from a real service) | —                                         |
-| `tests/`             | vitest (`model` project, Node) over `core/` and `react/` logic         | —                                         |
+| `tests/`             | vitest (`model` project, Node) over `core/`, `react/` and `codegen/`   | —                                         |
 | `docs/`              | `PURPOSE.md` (what for), `ROADMAP.md` (found, next, open)              | —                                         |
 
 ## Hard rules (the build enforces them)
 
 - **Levels do not climb** (`make doctor`): `core/` imports no React, no DOM, no UI and touches
   no `window`/`document`; `react/` imports no `react-dom` and no `@sincpro/web-ui`; `web/record/`
-  imports no composer (a form must work outside a workspace).
+  imports no composer (a form must work outside a workspace). Nothing in `core/`, `react/` or
+  `web/` imports `codegen/`, and only `codegen/` imports `node:` — it is a build step.
 - **Built for millions.** Never filter, order, count or group on the page; never grow a page
   without a ceiling (`pages` is the default paging); never fetch a whole table to search it.
   A new collection piece proves it on story 15's 200 000 rows.
@@ -212,6 +214,26 @@ Rules for any agent (or person) changing this package. Read the README for the i
 - **A route's keys other than `{id}` come from the BODY** (`pathFor(route, id, body)`):
   sincpro_framework reads a path parameter as a field of the DTO. Never a second argument for
   them, never a hand-built path through `transport.send`.
+- **A typed entity's Commands are checked only when no type argument is written.**
+  `entity<T, C>` types each Command's body (`CommandBodies`); `useCommand(issues, "send")` infers
+  `C` and the name. `useCommand<Issue, Answer>(…)` falls back to the loose default (TypeScript
+  never infers part of a list), so a screen that wants the check writes no type argument.
+- **What the generator writes is compared byte for byte.** `stories/support/forge-contract/`
+  holds forge's client contracts as they came (`export-client-contract`) and the `domain.ts`,
+  `client.ts` and `entities.ts` written from each; all stay out of prettier and eslint, and
+  story 40 runs on them. After changing the generator on purpose, run `make codegen-fixtures`
+  and read the diff. An application keeps its generated folder out of its formatters the same
+  way, or `make verify-client` fails on what a formatter rewrote.
+- **A module name the generator WRITES is built in parts** (`codegen/names.ts`, `FRAMEWORK`):
+  the build's `tsc-alias` rewrites this package's specifiers inside strings too, and the
+  generated files came out importing `"../index.js"`. Read the built output, not the source.
+- **A Command's record goes where its body names it** (`target`, `bodyFor`): `run(id, body)`
+  writes the id in that field and `pathFor` takes it from there, whether the path carries it
+  (`/issues/{issue_id}/messages`) or not (`POST /issues` with `project_id`). A generated entity
+  types the body without that field, so the screen never writes the key twice.
+- **In a record every field comes but a related one** (`codegen/domain.ts`, `optional`): a
+  model's contract lists as required only what has no default — in forge, nothing —, while the
+  server writes the whole record. A relation comes only when the read expands it.
 - **The meta store is filled DURING useListing's render**: a value read from it earlier in the
   same component's render is from before the answer, and nothing renders again. A criteria that
   depends on the definition keeps it in state and sets it in an effect (`useLookup exclude`).

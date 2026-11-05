@@ -392,7 +392,33 @@ Three folders, one direction — `make doctor` keeps the arrows:
 | `web/record`    | one record: `RecordField`, `factsOf`, `RelatedList`, `EntityPicker`, `cardOf` | works outside a workspace (no composer)               |
 | `web/workspace` | the composer: `entityView`, `openIn`, `RelatedRecord`, `<SincproApp>`         | where it opens, the application context               |
 
-Everything is imported from `@sincpro/web-framework`.
+Everything is imported from `@sincpro/web-framework`. Code that draws nothing — a script, a
+test in Node, a generated client — imports `@sincpro/web-framework/core`, which loads no React.
+
+A fourth folder, `codegen`, is a build step: no screen loads it (`make doctor`).
+
+### From the contract
+
+A service built on sincpro_framework exports what it publishes — its models and every operation,
+what each one is for its entity and how each wire reaches it — as one client contract per
+bounded context. `sincpro-web generate` writes, from it, what the screens used to declare by
+hand:
+
+```bash
+python -m sincpro_framework.entrypoints export-client-contract app.http:gateways contracts/
+npx sincpro-web generate contracts/project.contract.json --out src/generated/project --base /v1
+```
+
+| File            | What it holds                                                                                       |
+| --------------- | --------------------------------------------------------------------------------------------------- |
+| `domain.ts`     | the DTOs — every model, every operation's input and answer — with the server's own docs. Types only |
+| `client.ts`     | every operation as data, and `clientOf(transport)`: a typed method per page, record and write       |
+| `entities.ts`   | an `entity<T, C>()` per model a screen lists: its routes and Commands, read off what each one is    |
+| `contract.json` | the snapshot they came from: `metasOf(contract, "project")` preloads the definitions                |
+
+What is generated is never edited; a screen extends it (`presented(issues, { row })`, a type
+with `&`). Keep the folder out of prettier and eslint, and let CI regenerate and compare it.
+At runtime nothing is closed: the transport keeps reading the live definitions.
 
 ## Where it stands
 
@@ -406,6 +432,9 @@ Everything is imported from `@sincpro/web-framework`.
 | `useLookup`, `EntityPicker`             | Literal search: a many2one select, ⌘K                                                        | ✅     |
 | `useRecord` + `RecordField`, `dirtyOf`  | Editing: hints evaluated live, preview, save with version (409), server drafts               | ✅     |
 | `useCommand`, `CommandButton`           | An entity's actions, with a dry run before what destroys                                     | ✅     |
+| `entity<T, C>` (`CommandBodies`)        | Typed Commands: a name the entity does not declare, or a wrong body, does not compile        | ✅     |
+| `sincpro-web generate`                  | A context's DTOs, client and entities out of its exported client contract                    | ✅     |
+| `metasOf`, `bodyFor` (`target`)         | Definitions preloaded from that snapshot; a Command's record written where its body names it | ✅     |
 | `useHistory`                            | Business events in `Record.Activity` (comments: backend first)                               | ✅     |
 | `entityView`                            | An entity as a composer view: list, record, ⌘K search                                        | ✅     |
 | `<SincproApp>`                          | The application context in one place, the workspace dressed as web-ui (`webUiSkin`)          | ✅     |

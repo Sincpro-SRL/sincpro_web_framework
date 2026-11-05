@@ -1081,6 +1081,94 @@ el `Edit`, aunque sincpro_framework lo contempla. Historias
 - **sincpro_framework — `PreviewEntity.id`** es «el registro guardado que se edita; `None` para
   uno nuevo»: un registro nuevo con borrador guardado se previsualiza con `id: null`.
 
+## Comandos tipados y el núcleo sin React (2026-11-05)
+
+Fase A de [`prd/PRD_01_dominio-y-cliente-generados.md`](prd/PRD_01_dominio-y-cliente-generados.md):
+lo que no espera al contrato del backend. Test `command` (los errores los encuentra el
+compilador: cada `@ts-expect-error` falla el build si el tipo deja de atraparlo) e `index`.
+
+- **`entity<T, C>`** — `C` (`CommandBodies`) dice con qué se manda cada Command, por nombre.
+  `useCommand(issues, "send").run(id, { mesage })` y `<CommandButton command="sned" …>` no
+  compilan, y un Command tipado sin ruta tampoco (`EntityRoutes<C>` la exige). Por defecto `C` es
+  la forma suelta de siempre, y una entidad tipada sigue sirviendo donde se pide `Entity<T>`:
+  nada de lo que existía cambia.
+- **Escribir los argumentos de tipo deja la forma suelta.** TypeScript no infiere una parte: con
+  `useCommand<Issue, Respuesta>(…)` (lo que hace forge) `C` y el nombre vuelven al default. Para
+  que lo chequee, no se escribe ningún argumento. La respuesta tipada desde el contrato (`output`)
+  queda para cuando llegue el generador: un tercer parámetro de `Entity`, sin romper `C`.
+- **`useRowCommands` no está tipado**: `Listing<T>` no lleva `C`. Sigue con nombres sueltos.
+- **`@sincpro/web-framework/core`** — el subpath del núcleo: lo importa un script o un test de
+  Node (y el cliente que se va a generar) sin cargar React. Comprobado: después de `make build`,
+  `import("@sincpro/web-framework/core")` desde Node da `restTransport`, y `dist/core` no importa
+  React ni web-ui.
+
+## Generado desde el contrato: DTOs, cliente y entidades (2026-11-05)
+
+Fase B de [`prd/PRD_01_dominio-y-cliente-generados.md`](prd/PRD_01_dominio-y-cliente-generados.md).
+`sincpro-web generate <contrato.json> --out <carpeta> [--domain <nombre>] [--base <ruta>]` lee
+el contrato que exporta sincpro_framework 3.32 (`export-client-contract`, #243) y escribe
+`domain.ts` (los DTOs, sólo tipos), `client.ts` (cada operación como dato y
+`clientOf(transport)`), `entities.ts` (un `entity<T, C>()` por modelo que se lista) y
+`contract.json` (la foto, para `metasOf`). Probado contra los contratos REALES de forge
+(`stories/support/forge-contract/`: `project`, `auth`, `sandbox`): 3 345 líneas en total
+(contadas con `wc -l`), que compilan contra la API de hoy y se comparan byte a byte (test
+`codegen`, `make codegen-fixtures`). La historia `40 · Desde el contrato` arma una pantalla sólo
+con lo generado: la lista y «Enviar» sin una ruta escrita a mano.
+
+- **Un registro trae todos sus campos menos sus relaciones.** El contrato de un modelo de forge
+  no marca ningún campo como requerido (todos tienen default), pero el servidor escribe el
+  registro entero; sólo una relación (`one2many`, `many2one`, `many2many`) llega cuando la
+  lectura la expande. Una lectura con máscara de campos trae menos: el tipo dice lo que trae
+  una lectura por defecto.
+- **Cada ruta sale de lo que la operación ES para su entidad** (`role`), nunca de su path: la
+  lista es su `search`, el registro su `get`, `edit` y `preview` los suyos. Con dos del mismo
+  papel y ninguna `own`, el generador no elige y lo dice en el archivo (forge: ninguna hoy).
+- **Un comando lleva su registro donde su cuerpo lo nombra** (`target`, `bodyFor`): el id va en
+  ese campo y `pathFor` lo toma de ahí, esté en la ruta (`/issues/{issue_id}/messages`) o no
+  (`POST /issues` con `project_id`). El `revokeShare` de forge, escrito a mano, sale solo:
+  `unshareProject` con `target: "project_id"` y `tenant_id` en el cuerpo.
+- **criteria se importa, no se escribe**; sólo se escriben las definiciones que algo alcanza;
+  dos cosas con un mismo nombre en TypeScript se rechazan nombrando las dos.
+- **`--base` saca la versión** (`/v1`) que el export pone en cada ruta y el transporte ya
+  antepone; una ruta fuera de esa base se rechaza. **`--domain`** da la clave corta de las
+  entidades (`project:issue`): el `context` del contrato es el nombre del bus
+  (`sincpro-forge-project`) y la clave es cosa del workspace, así que se resuelve acá.
+- **`tsc-alias` reescribía los textos que el generador emite** (`from "@sincpro/web-framework"`
+  salía `from "../index.js"` en lo generado): los nombres de módulo se arman por partes.
+
+### Lo que el contrato o el transporte todavía no dejan
+
+- **Un GET que no es página ni registro** (`GET /me` en `auth`, dos en `sandbox`) no tiene
+  método: el `Transport` lee un GET sólo como `list` u `one`. Hace falta una lectura de un
+  Query en el puerto antes de generarle un método.
+- **Un comando que crea con una clave elegida** (`CommandRegisterProject`, con `project_id` un
+  slug) sale con `target: "project_id"` como uno que corre sobre un registro: `targets` no
+  distingue «crear con esta clave» de «correr sobre este registro». Funciona
+  (`run(nuevoSlug, cuerpo)`), pero se lee raro; desaparece cuando forge crea por `Edit`
+  (su iteración 6).
+- **El historial de una entidad** no se deduce: el de forge es un `search` de `ProjectEvent`,
+  no el papel `events`. `history` lo sigue declarando la pantalla.
+- **El aviso de una foto vieja** (`onVersionDrift`) espera un diseño: una `Meta` no lleva su
+  versión (`versionOf` la lee del contrato) y el runtime no escribe en la consola.
+
+### Con sincpro_framework #244
+
+El contrato se nombra por `bounded_context` (el prefijo de cada identidad) y `alias` (el nombre
+con que lo publica el gateway: `project`), y cada valor que un registro guarda dentro es un
+modelo más, con nombre (`Issue.project_snapshot` → `ProjectSnapshot`). El generador lee los dos
+(y `context`, de un contrato de 3.32): la clave corta de las entidades sale del `alias`, sin
+`--domain`; sólo un modelo con `identity` es una entidad (`entities.ts`, `metasOf`), y un valor
+es un tipo con nombre. Una lista de claves como destino (`issue_ids`) no lleva `target`: el
+cuerpo la manda entera. **Un valor por `$ref` necesita `@sincpro/criteria` 1.1**, que lo
+resuelve (`shapeOf` con `shapes`): con 1.0.0 una pantalla pierde la definición de un valor. Este
+paquete pide `^1.1.0`, y lo fijan dos tests: el transporte leyendo un OpenAPI con un valor
+apuntado (`rest`) y `metasOf` sobre el contrato de forge (`contract`) — los dos fallaron con
+1.0.0.
+
+### Pedidos a sincpro_framework que salen de esto
+
+- **`own`** (dos operaciones del mismo papel), propuesto en PRD_33 y esperando aprobación.
+
 ## Decisiones abiertas
 
 - **Transportes**: REST hoy; JSON-RPC sale casi gratis (`rpcSource` de criteria). gRPC desde
