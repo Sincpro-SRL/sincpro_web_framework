@@ -5,6 +5,7 @@ import {
   type ClientContract,
   memoryTransport,
   metasOf,
+  presented,
   useCommand,
 } from "@sincpro/web-framework";
 import {
@@ -211,6 +212,15 @@ function useForgeAsGenerated(issue: Issue) {
   // @ts-expect-error — the issue's key is the id `run` takes, never written in the body again
   void send.run("i1", { issue_id: "i1", message: "y el reporte también" });
   void useCommand(projects, "openIssue").run("p1", { request: "Falla el login" });
+  // Presented, a generated entity keeps its typed Commands.
+  const shown = presented(issues, { row: (one) => ({ meta: one.status }) });
+  void useCommand(shown, "sendIssue").run("i1", { message: "y el reporte" });
+  // @ts-expect-error — still checked once presented
+  void useCommand(shown, "sendIssue").run("i1", { mesage: "y el reporte" });
+  // What a Command answers comes with it, with no type argument written.
+  void send.run("i1", { message: "y el reporte" }).then((answer) => answer?.run_id);
+  // @ts-expect-error — the answer holds what the server publishes, nothing else
+  void send.run("i1", { message: "y el reporte" }).then((answer) => answer?.nope);
 
   const client = clientOf(memoryTransport({}));
   void client.sendIssue({ issue_id: "i1", message: "y el reporte también" });
@@ -311,10 +321,64 @@ test("a page is listed, a record is read, a write is sent — under the base the
   assert.ok(source.includes('mcp: { tool: "pay_order" },'));
 });
 
-test("what a transport cannot call gets no method, and the client says why", () => {
+test("a GET that is no page and no record is read as it answers", () => {
   const source = clientFileOf(shop, options);
-  assert.ok(source.includes(" * - `QueryGetCaller`: GET /me is no page and no record."));
-  assert.ok(!source.includes("getCaller:"));
+  assert.ok(
+    source.includes(
+      'getCaller: () =>\n      readRoute<dto.QueryGetCallerAnswer>(transport, "/me"),',
+    ),
+  );
+  assert.ok(source.includes("import { listRoute, pathFor, readRoute, type SendOptions"));
+});
+
+test("a list under a record asks for its key; the rest of its fields are optional", () => {
+  const members: Metamodel = {
+    ...shop,
+    operations: {
+      ...shop.operations,
+      "shop.QueryListOrders": {
+        ...shop.operations["shop.QueryListOrders"]!,
+        input: {
+          type: "object",
+          properties: {
+            criteria: { $ref: "#/$defs/Criteria" },
+            customer_id: { type: "string" },
+            state: { type: "string" },
+          },
+        },
+      },
+    },
+    bindings: {
+      rest: {
+        ...shop.bindings!.rest,
+        "shop.QueryListOrders": {
+          method: "GET",
+          path: "/v1/customers/{customer_id}/orders",
+          path_fields: ["customer_id"],
+        },
+      },
+    },
+  };
+  assert.ok(
+    clientFileOf(members, options).includes(
+      'listOrders: (criteria: Criteria<dto.Order>, params: Readonly<Record<"customer_id", string>> & Partial<Record<"state", string>>) =>\n      transport.list<dto.Order>(listRoute("/customers/{customer_id}/orders", params), criteria),',
+    ),
+  );
+  assert.ok(
+    entitiesFileOf(members, options).includes('  list: "/customers/{customer_id}/orders",'),
+  );
+});
+
+test("what REST does not publish gets no method, and the client says why", () => {
+  const mcpOnly: Metamodel = {
+    ...shop,
+    operations: { ...shop.operations, "shop.CommandRecount": operation({}) },
+  };
+  assert.ok(
+    clientFileOf(mcpOnly, options).includes(
+      " * - `CommandRecount`: REST does not publish it.",
+    ),
+  );
 });
 
 test("a path outside the base is refused, never sent half-right", () => {
@@ -335,6 +399,7 @@ test("an entity's routes come from what each operation is for it", () => {
   );
   assert.ok(source.includes('    payOrder: Omit<dto.CommandPayOrder, "order_id">;'));
   assert.ok(source.includes("    placeOrder: dto.CommandPlaceOrder;"));
+  assert.ok(source.includes("    payOrder: dto.CommandPayOrderAnswer;"));
   assert.ok(
     source.includes(
       '    payOrder: { route: "POST /orders/{order_id}/payments", target: "order_id" },',

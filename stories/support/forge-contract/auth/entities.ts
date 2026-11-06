@@ -22,6 +22,11 @@ export const groups = entity<
     addMember: Omit<dto.CommandAddMember, "group_id">;
     createGroup: Omit<dto.CommandCreateGroup, "group_id">;
     removeMember: Omit<dto.CommandRemoveMember, "group_id">;
+  },
+  {
+    addMember: dto.CommandAddMemberAnswer;
+    createGroup: dto.CommandCreateGroupAnswer;
+    removeMember: dto.CommandRemoveMemberAnswer;
   }
 >("auth:group", {
   list: "/groups",
@@ -35,6 +40,13 @@ export const groups = entity<
 });
 
 /**
+ * `Membership`: its list, its record and the Commands that run on it or create it.
+ */
+export const memberships = entity<dto.Membership>("auth:membership", {
+  list: "/tenants/{tenant_id}/members",
+});
+
+/**
  * `Tenant`: its list, its record and the Commands that run on it or create it.
  */
 export const tenants = entity<
@@ -43,6 +55,11 @@ export const tenants = entity<
     createTenant: Omit<dto.CommandCreateTenant, "tenant_id">;
     joinTenant: Omit<dto.CommandJoinTenant, "tenant_id">;
     leaveTenant: Omit<dto.CommandLeaveTenant, "tenant_id">;
+  },
+  {
+    createTenant: dto.CommandCreateTenantAnswer;
+    joinTenant: dto.CommandJoinTenantAnswer;
+    leaveTenant: dto.CommandLeaveTenantAnswer;
   }
 >("auth:tenant", {
   list: "/tenants",
@@ -67,6 +84,14 @@ export const users = entity<
     joinTenant: dto.CommandJoinTenant;
     leaveTenant: dto.CommandLeaveTenant;
     removeMember: dto.CommandRemoveMember;
+  },
+  {
+    addMember: dto.CommandAddMemberAnswer;
+    addUser: dto.CommandAddUserAnswer;
+    issueToken: dto.CommandIssueTokenAnswer;
+    joinTenant: dto.CommandJoinTenantAnswer;
+    leaveTenant: dto.CommandLeaveTenantAnswer;
+    removeMember: dto.CommandRemoveMemberAnswer;
   }
 >("auth:user", {
   list: "/users",
@@ -84,8 +109,5 @@ export const users = entity<
 
 /**
  * Every entity of «auth», for `FrameworkProvider entities`.
- *
- * Without an entity here:
- * - `Membership`: its `search` is at /tenants/{tenant_id}/members.
  */
-export const entities = [authEvents, groups, tenants, users] as const;
+export const entities = [authEvents, groups, memberships, tenants, users] as const;

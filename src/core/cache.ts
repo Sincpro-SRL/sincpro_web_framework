@@ -110,6 +110,13 @@ export function cachedTransport(
     one<T>(route: string, signal?: AbortSignal): Promise<One<T>> {
       return remembered(`one ${route}`, () => transport.one<T>(route, signal));
     },
+    // A read of the context's own (`GET /me`) is not an entity's: no write forgets it, so it is
+    // never kept — it goes to the server every time.
+    ...(transport.read === undefined
+      ? {}
+      : {
+          read: <T>(route: string, signal?: AbortSignal) => transport.read!<T>(route, signal),
+        }),
     async send<T>(
       method: Method,
       route: string,

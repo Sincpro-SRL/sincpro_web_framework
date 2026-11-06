@@ -97,8 +97,8 @@ function entitySourceOf(
   const list = oneOf(reads("search", isGet), "search");
   if (list === undefined) return { missing: "no `search` a transport reads" };
   if ("missing" in list) return { missing: list.missing };
-  if (list.found.rest.fields.length > 0)
-    return { missing: `its \`search\` is at ${list.found.rest.path}` };
+  // A list under a record (`/tenants/{tenant_id}/members`) keeps its keys: the screen gives
+  // them as the list's parameters (`useListing(entity, { params })`), and `listRoute` fills them.
 
   const missing: string[] = [];
   const routes: string[] = [`  list: ${JSON.stringify(list.found.rest.path)},`];
@@ -128,6 +128,7 @@ function entitySourceOf(
       one.operation.entities.includes(model),
   );
   const bodies: string[] = [];
+  const answers: string[] = [];
   const named: string[] = [];
   for (const command of commands) {
     const method = methodOf(command.local);
@@ -138,6 +139,7 @@ function entitySourceOf(
         ? `    ${method}: dto.${command.local};`
         : `    ${method}: Omit<dto.${command.local}, ${JSON.stringify(target)}>;`,
     );
+    answers.push(`    ${method}: dto.${command.local}Answer;`);
     named.push(
       target === undefined
         ? `    ${method}: ${JSON.stringify(route)},`
@@ -151,7 +153,7 @@ function entitySourceOf(
   const types =
     bodies.length === 0
       ? `dto.${identifierOf(model)}`
-      : `\n  dto.${identifierOf(model)},\n  {\n${bodies.join("\n")}\n  }\n`;
+      : `\n  dto.${identifierOf(model)},\n  {\n${bodies.join("\n")}\n  },\n  {\n${answers.join("\n")}\n  }\n`;
   const doc = [
     "/**",
     ` * \`${model}\`: its list, its record and the Commands that run on it or create it.`,

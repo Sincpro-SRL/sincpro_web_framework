@@ -418,7 +418,9 @@ npx sincpro-web generate contracts/project.contract.json --out src/generated/pro
 
 What is generated is never edited; a screen extends it (`presented(issues, { row })`, a type
 with `&`). Keep the folder out of prettier and eslint, and let CI regenerate and compare it.
-At runtime nothing is closed: the transport keeps reading the live definitions.
+At runtime nothing is closed: the transport keeps reading the live definitions. How an
+application adopts it — where each file goes, what is written by hand, how a hand-written screen
+moves to the generated one — is [`docs/ADOPCION.md`](docs/ADOPCION.md) (in Spanish).
 
 ## Where it stands
 
@@ -433,6 +435,10 @@ At runtime nothing is closed: the transport keeps reading the live definitions.
 | `useRecord` + `RecordField`, `dirtyOf`  | Editing: hints evaluated live, preview, save with version (409), server drafts               | ✅     |
 | `useCommand`, `CommandButton`           | An entity's actions, with a dry run before what destroys                                     | ✅     |
 | `entity<T, C>` (`CommandBodies`)        | Typed Commands: a name the entity does not declare, or a wrong body, does not compile        | ✅     |
+| `entity<T, C, A>` (`CommandAnswers`)    | What each Command answers, typed: `run(…)` returns it with no type argument written          | ✅     |
+| `readRoute`, `Transport.read`           | A GET of the context's own (`/me`), neither a page nor a record                              | ✅     |
+| A key alone (`EntityID`), `useNameOf`   | A key that names whose record it is, drawn as a many2one: a picker, and the name when read   | ✅     |
+| `versionsOf`, `onVersionDrift`          | A snapshot behind the server is told once per model — never an error                         | ✅     |
 | `sincpro-web generate`                  | A context's DTOs, client and entities out of its exported client contract                    | ✅     |
 | `metasOf`, `bodyFor` (`target`)         | Definitions preloaded from that snapshot; a Command's record written where its body names it | ✅     |
 | `useHistory`                            | Business events in `Record.Activity` (comments: backend first)                               | ✅     |

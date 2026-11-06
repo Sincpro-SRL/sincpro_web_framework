@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 
-import { CommandButton, entity, useCommand } from "@sincpro/web-framework";
+import {
+  CommandButton,
+  entity,
+  useCommand,
+  useListing,
+  useRowCommands,
+} from "@sincpro/web-framework";
+import { Send } from "lucide-react";
 import { test } from "vitest";
 
 type Issue = { id: string; title: string };
@@ -36,6 +43,19 @@ function useMistakesTheCompilerCatches() {
   // Written type arguments keep the loose shape every screen had: forge's
   // `useCommand<Issue, Answer>(issues, "open")` still compiles.
   void useCommand<Issue, { id: string }>(issues, "anything").run("i1", { any: 1 });
+
+  // A row's Commands are its entity's: their names, and the body each one takes.
+  const listing = useListing(issues);
+  useRowCommands(listing, [
+    { command: "send", label: "Enviar", icon: Send, body: () => ({ message: "…" }) },
+    { command: "stop", label: "Detener", icon: Send },
+  ]);
+  // @ts-expect-error — a Command the entity does not declare, on a row
+  useRowCommands(listing, [{ command: "sned", label: "Enviar", icon: Send }]);
+  useRowCommands(listing, [
+    // @ts-expect-error — a row's body checked against its own Command
+    { command: "send", label: "Enviar", icon: Send, body: () => ({ mesage: "…" }) },
+  ]);
 
   return (
     <>

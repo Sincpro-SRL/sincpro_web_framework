@@ -15,7 +15,11 @@ import {
   type Sort,
 } from "@sincpro/criteria";
 import { useReading } from "@sincpro/criteria-react";
-import { type Entity, listRoute } from "@sincpro/web-framework/core/entity";
+import {
+  type CommandBodies,
+  type Entity,
+  listRoute,
+} from "@sincpro/web-framework/core/entity";
 import { isList, type ListDefinition, scopeOf } from "@sincpro/web-framework/core/list";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useListScope } from "@sincpro/web-framework/react/scope";
@@ -37,8 +41,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
  * All three refine the same reading instead of starting another. It holds state and draws
  * nothing: `EntityList` draws it, and a screen that needs another shape draws it itself.
  */
-export type Listing<T> = {
-  entity: Entity<T & AnyRecord>;
+export type Listing<T, C extends CommandBodies = CommandBodies> = {
+  /** Its entity, with the Commands it types (`entity<T, C>`): what `useRowCommands` checks. */
+  entity: Entity<T & AnyRecord, C>;
   /** The named list it reads, when it was handed one (`defineList`): what `EntityList` draws
    *  by default — its columns, filters, faces, title — and how `useGroups` starts. */
   definition?: ListDefinition<T & AnyRecord>;
@@ -124,14 +129,15 @@ type Narrowing<T> = {
   order: readonly Sort[];
 };
 
-export function useListing<T extends AnyRecord>(
-  given: Entity<T> | ListDefinition<T>,
+export function useListing<T extends AnyRecord, C extends CommandBodies = CommandBodies>(
+  given: Entity<T, C> | ListDefinition<T>,
   own: ListingOptions<T> = {},
-): Listing<T> {
+): Listing<T, C> {
   const { transport, locale, metas } = useFramework();
   // A named list is its entity under a fixed scope: the scope ANDs under the caller's own.
   const definition = isList(given) ? given : undefined;
-  const entity = definition?.entity ?? (given as Entity<T>);
+  // A named list's entity has no typed Commands of its own: the default, as `C` then is.
+  const entity = (definition?.entity ?? given) as Entity<T, C>;
   // The screen's cut for this entity (a chooser's, `ListScopeProvider`) ANDs like a scope.
   const cut = useListScope(entity.key);
   const scopes = [

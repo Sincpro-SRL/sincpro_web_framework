@@ -2,14 +2,14 @@
 
 - **Estado**: 2026-11-05, en `feat/typed-commands`, sin commitear.
   - **Fase A construida** (`docs/ROADMAP.md`, «Comandos tipados y el núcleo sin React»).
-  - **Fase B construida** contra el contrato de sincpro_framework #243 y #244 (`bounded_context`,
-    `alias`, valores con nombre; un contrato de 3.32 con `context` también se lee): `domain.ts`,
-    `client.ts`, `entities.ts`, `contract.json`, `--domain`, `--base`, `metasOf`, `target` /
-    `bodyFor`, y la historia 40 («Generado desde el contrato» en el ROADMAP). Queda fuera
-    `onVersionDrift`, que espera un diseño (una `Meta` no lleva su versión).
-  - **Fase C, en parte:** README («From the contract»), ROADMAP y `AGENTS.md` al día. Falta
-    leer el contrato vivo (`/client-contract/<ctx>.json`) desde el transporte y dibujar las
-    claves con `relation` como many2one.
+  - **Fase B construida** contra el contrato de sincpro_framework 3.32 (#242–#244; un contrato
+    con `context` también se lee): `domain.ts`, `client.ts`, `entities.ts`, `contract.json`,
+    `--domain`, `--base`, `metasOf`, `versionsOf` / `onVersionDrift`, `target` / `bodyFor`, la
+    respuesta tipada (`Entity<T, C, A>`), las listas bajo un registro, `Transport.read`, las
+    acciones por fila tipadas y la clave sola como many2one (historias 40 y 41).
+  - **Fase C construida:** README («From the contract»), [`ADOPCION.md`](../ADOPCION.md),
+    ROADMAP y `AGENTS.md`. Lo que queda para el refactor está en el ROADMAP («Lo que faltaba
+    antes del refactor → Queda»).
 - **Lo encontró**: la consola de forge. Escribe a mano los tipos del cable (225 líneas en
   `web/src/domains/*/domain/*.ts`), cada ruta y cada Command (`adapters/forge_*.tsx`), y se
   desfasan: `revokeShare` sigue armando su ruta a mano aunque `pathFor` ya llena cualquier

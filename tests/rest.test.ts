@@ -2,12 +2,16 @@ import assert from "node:assert/strict";
 
 import { criteria, plain } from "@sincpro/criteria";
 import {
+  cachedTransport,
   entity,
   explain,
   installFrameworkCopy,
+  memoryTransport,
+  readRoute,
   restTransport,
   SPANISH_FRAMEWORK_COPY,
   TransportError,
+  type VersionDrift,
 } from "@sincpro/web-framework";
 import { test } from "vitest";
 
@@ -50,6 +54,37 @@ test("the records come out of the field named after them", async () => {
   const transport = restTransport({ fetch: server(200, PAGE, []) });
   const page = await transport.list("/projects", {});
   assert.deepEqual(page.rows, [{ id: "odoo-acme" }]);
+});
+
+test("a read of the context's own goes as a GET and comes back as it was answered", async () => {
+  const calls: Call[] = [];
+  const transport = restTransport({
+    base: "/v1",
+    fetch: server(200, { id: "u1", roles: ["admin"] }, calls),
+  });
+  const caller = await readRoute<{ id: string; roles: string[] }>(transport, "/me?scope=all");
+  assert.deepEqual(caller, { id: "u1", roles: ["admin"] });
+  assert.equal(calls[0]?.url, "/v1/me?scope=all");
+});
+
+test("a refused read carries the server's problem, as every other call", async () => {
+  const transport = restTransport({
+    fetch: server(403, { status: 403, title: "Forbidden", kind: "forbidden" }, []),
+  });
+  await assert.rejects(readRoute(transport, "/me"), TransportError);
+});
+
+test("a transport with no read says so by name, never a TypeError inside a screen", async () => {
+  const bare = memoryTransport({});
+  await assert.rejects(
+    readRoute(bare, "/me"),
+    /this transport has no read\(\): it cannot ask GET \/me/,
+  );
+  const answering = memoryTransport({}, { read: (route) => ({ route }) });
+  assert.deepEqual(await readRoute(answering, "/me"), { route: "/me" });
+  // The cache passes it through, and keeps nothing: it is the context's own, not an entity's.
+  const cached = cachedTransport(answering, { entities: [] });
+  assert.deepEqual(await readRoute(cached, "/me"), { route: "/me" });
 });
 
 test("one record is the answer's own field; the envelope is left out", async () => {
@@ -157,6 +192,28 @@ test("a value a record holds, named once and pointed at, keeps its definition (s
   const page = await transport.list("/issues", {});
   // With @sincpro/criteria 1.0.0 the pointed value had no definition: a form drew it blank.
   assert.equal(page.meta?.fields["snapshot"]?.definition?.fields["host"]?.type, "text");
+});
+
+test("a server ahead of the snapshot the code came from is told once per model and version", async () => {
+  const drifts: VersionDrift[] = [];
+  const behind = restTransport({
+    base: "/v1",
+    fetch: described("v2", [], { document: 0 }),
+    snapshot: { Project: "v1" },
+    onVersionDrift: (drift) => drifts.push(drift),
+  });
+  await behind.list("/projects", {});
+  await behind.list("/projects", {});
+  assert.deepEqual(drifts, [{ model: "Project", snapshot: "v1", live: "v2" }]);
+
+  const current = restTransport({
+    base: "/v1",
+    fetch: described("v2", [], { document: 0 }),
+    snapshot: { Project: "v2" },
+    onVersionDrift: (drift) => drifts.push(drift),
+  });
+  await current.list("/projects", {});
+  assert.equal(drifts.length, 1, "a snapshot that matches the server says nothing");
 });
 
 test("an answer of another version reads the document again, revalidated by its tag", async () => {

@@ -163,7 +163,14 @@ function LineValue({
         label={label}
         standalone={inCell}
         onChange={(id, chosen) =>
-          write({ [relation.key]: id, [relation.relation]: chosen ?? null })
+          // A relation held beside its key keeps the chosen record, so the cell names it at
+          // once; a key alone (`EntityID`) is only its key — writing the record there too
+          // would put the record IN the key.
+          write(
+            relation.held
+              ? { [relation.key]: id, [relation.relation]: chosen ?? null }
+              : { [relation.key]: id },
+          )
         }
       />
     );

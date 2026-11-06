@@ -3,6 +3,7 @@
 import type { AnyRecord } from "@sincpro/criteria";
 import {
   bodyFor,
+  type CommandAnswers,
   type CommandBodies,
   type Entity,
   pathFor,
@@ -43,12 +44,19 @@ export type CommandState<R, B extends AnyRecord = AnyRecord> = {
   reset: () => void;
 };
 
+/**
+ * What a Command answers: `R` when the screen writes it, else what its entity says the Command
+ * answers (`CommandAnswers`), else `unknown`.
+ */
+export type AnswerOf<R, A, N> = unknown extends R ? (N extends keyof A ? A[N] : unknown) : R;
+
 export function useCommand<
   T extends AnyRecord,
   R = unknown,
   C extends CommandBodies = CommandBodies,
   N extends keyof C & string = keyof C & string,
->(entity: Entity<T, C>, name: N): CommandState<R, C[N]> {
+  A extends CommandAnswers = CommandAnswers,
+>(entity: Entity<T, C, A>, name: N): CommandState<AnswerOf<R, A, N>, C[N]> {
   const { transport } = useFramework();
   // A name outside the declared ones still reaches here from untyped code: say which.
   const route: WriteRoute | undefined = entity.commands[name];
@@ -101,7 +109,7 @@ export function useCommand<
   );
 
   return {
-    run: (id, body) => send<R>(id, body ?? {}, keys.current),
+    run: (id, body) => send<AnswerOf<R, A, N>>(id, body ?? {}, keys.current),
     rehearse: async (id, body) => {
       const answer = await send<Rehearsal>(id, { ...body, dry_run: true }, retryKeys());
       if (answer !== undefined && mounted.current) setRehearsal(answer);

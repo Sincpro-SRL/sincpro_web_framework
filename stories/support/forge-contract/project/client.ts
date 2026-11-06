@@ -202,7 +202,7 @@ const routes = {
 
 /**
  * «project» over a transport: a method for each operation REST reaches as a
- * page, a record or a write.
+ * page, a record, a read of its own or a write.
  */
 export function clientOf(transport: Transport) {
   return {

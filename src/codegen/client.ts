@@ -28,38 +28,63 @@ import {
  *
  * Context: a method only writes down the route the contract published and hands the call to the
  * transport, which keeps the rules — the `Idempotency-Key`, the `Problem`, the model's version.
- * A transport reads a GET only as a page (`list`) or as one record (`one`), so a GET that is
- * neither — a Query of the context's own, `GET /me` — gets no method, and says so.
+ * A GET is a page (`list`), one record (`one`), or — a Query of the context's own, `GET /me` —
+ * a read of its answer as it came (`readRoute`, over a transport that has `read`). A GET's
+ * keys in its path are required parameters; every other field is an optional one.
  */
 
 /** A search's fields a page asks with, not the screen: the criteria, and its cursor inside it. */
 const PAGED = new Set(["criteria", "cursor"]);
 
+/** What a GET is asked with: the keys its path names, and every other field, as text. */
+type Asked = { path: readonly string[]; query: readonly string[] };
+
 /** How an operation is called through a transport, or why it is not. */
 type Call =
-  | { kind: "list"; entity: string; params: readonly string[] }
+  | ({ kind: "list"; entity: string } & Asked)
   | { kind: "one"; entity: string; field: string }
+  | ({ kind: "read" } & Asked)
   | { kind: "send" }
   | { kind: "none"; why: string };
+
+/** A GET's parameters: the path's keys, and the rest of its input but what a page asks with. */
+function askedOf(operation: Operation, rest: Reached, paged: boolean): Asked {
+  const path = [...rest.fields].sort();
+  const query = Object.keys(operation.input.properties ?? {})
+    .filter((one) => !path.includes(one) && !(paged && PAGED.has(one)))
+    .sort();
+  return { path, query };
+}
 
 function callOf(metamodel: Metamodel, operation: Operation, rest: Reached | undefined): Call {
   if (rest === undefined) return { kind: "none", why: "REST does not publish it" };
   if (WRITES.has(rest.method)) return { kind: "send" };
   const owner = ownerOf(metamodel, operation);
-  if (operation.role === "search" && owner !== undefined && owner in metamodel.models) {
-    if (rest.fields.length > 0) return { kind: "none", why: `its page is at ${rest.path}` };
-    const params = Object.keys(operation.input.properties ?? {})
-      .filter((one) => !PAGED.has(one))
-      .sort();
-    return { kind: "list", entity: owner, params };
-  }
+  if (operation.role === "search" && owner !== undefined && owner in metamodel.models)
+    return { kind: "list", entity: owner, ...askedOf(operation, rest, true) };
   const field = owner === undefined ? undefined : operation.targets[owner];
-  if (operation.role === "get" && owner !== undefined && field !== undefined) {
-    if (rest.fields.length !== 1 || rest.fields[0] !== field)
-      return { kind: "none", why: `its record is at ${rest.path}` };
+  const record = rest.fields.length === 1 && rest.fields[0] === field;
+  if (operation.role === "get" && owner !== undefined && field !== undefined && record)
     return { kind: "one", entity: owner, field };
-  }
-  return { kind: "none", why: `${rest.method} ${rest.path} is no page and no record` };
+  // Any other GET — a Query of the context's own, `GET /me` — is read as it answers.
+  return { kind: "read", ...askedOf(operation, rest, false) };
+}
+
+/** A parameter list's TypeScript: the path's keys required, the rest optional, all as text. */
+function paramsOf(asked: Asked): { signature: string; route: (path: string) => string } {
+  const union = (names: readonly string[]) =>
+    names.map((one) => JSON.stringify(one)).join(" | ");
+  if (asked.path.length === 0 && asked.query.length === 0)
+    return { signature: "", route: (path) => JSON.stringify(path) };
+  const required =
+    asked.path.length === 0 ? "" : `Readonly<Record<${union(asked.path)}, string>>`;
+  const optional =
+    asked.query.length === 0 ? "" : `Partial<Record<${union(asked.query)}, string>>`;
+  const type = [required, optional].filter((one) => one !== "").join(" & ");
+  return {
+    signature: `params${asked.path.length === 0 ? "?" : ""}: ${type}`,
+    route: (path) => `listRoute(${JSON.stringify(path)}, params)`,
+  };
 }
 
 /** The data of one operation: what it is, and how each wire reaches it. */
@@ -98,15 +123,13 @@ function methodSourceOf(
 ): string {
   if (call.kind === "list") {
     const entity = `dto.${identifierOf(call.entity)}`;
-    const params =
-      call.params.length === 0
-        ? ""
-        : `, params?: Partial<Record<${call.params.map((one) => JSON.stringify(one)).join(" | ")}, string>>`;
-    const route =
-      call.params.length === 0
-        ? JSON.stringify(rest.path)
-        : `listRoute(${JSON.stringify(rest.path)}, params)`;
-    return `${doc}    ${method}: (criteria: Criteria<${entity}>${params}) =>\n      transport.list<${entity}>(${route}, criteria),`;
+    const params = paramsOf(call);
+    const signature = params.signature === "" ? "" : `, ${params.signature}`;
+    return `${doc}    ${method}: (criteria: Criteria<${entity}>${signature}) =>\n      transport.list<${entity}>(${params.route(rest.path)}, criteria),`;
+  }
+  if (call.kind === "read") {
+    const params = paramsOf(call);
+    return `${doc}    ${method}: (${params.signature}) =>\n      readRoute<dto.${local}Answer>(transport, ${params.route(rest.path)}),`;
   }
   if (call.kind === "one") {
     const path = rest.path.replace(`{${call.field}}`, "${encodeURIComponent(id)}");
@@ -147,6 +170,7 @@ export function clientFileOf(metamodel: Metamodel, options: GenerateOptions = {}
   const unreached: string[] = [];
   let lists = false;
   let paged = false;
+  let reads = false;
   let sends = false;
 
   for (const [identity, operation] of operations) {
@@ -162,9 +186,10 @@ export function clientFileOf(metamodel: Metamodel, options: GenerateOptions = {}
     claim(method, `operation ${identity}`);
     const doc = docOf([operation.description, deprecationOf(metamodel, operation)], "    ");
     methods.push(methodSourceOf(local, method, call, rest, doc));
-    if (call.kind === "list") {
-      paged = true;
-      lists ||= call.params.length > 0;
+    if (call.kind === "list" || call.kind === "read") {
+      paged ||= call.kind === "list";
+      reads ||= call.kind === "read";
+      lists ||= call.path.length + call.query.length > 0;
     }
     if (call.kind === "send") {
       sends = true;
@@ -176,7 +201,9 @@ export function clientFileOf(metamodel: Metamodel, options: GenerateOptions = {}
 
   const core = [
     ...(lists ? ["listRoute"] : []),
-    ...(sends ? ["pathFor", "type SendOptions"] : []),
+    ...(sends ? ["pathFor"] : []),
+    ...(reads ? ["readRoute"] : []),
+    ...(sends ? ["type SendOptions"] : []),
     "type Transport",
     ...(sends ? ["writeRoute"] : []),
   ];
@@ -189,7 +216,7 @@ export function clientFileOf(metamodel: Metamodel, options: GenerateOptions = {}
   const client = [
     "/**",
     ` * «${aliasOf(metamodel)}» over a transport: a method for each operation REST reaches as a`,
-    " * page, a record or a write.",
+    " * page, a record, a read of its own or a write.",
     ...(unreached.length === 0
       ? []
       : [" *", " * Without a method here:", ...unreached.map((one) => ` * - ${one}`)]),
