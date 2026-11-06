@@ -18,9 +18,9 @@ import type { AnyRecord, Criteria, Expression, Grain, Sort } from "@sincpro/crit
  *     export const porCobrar = defineList(facturas, {
  *       id: "por-cobrar",
  *       title: "Por cobrar",
- *       scope: { where: { field: "state", operator: "=", value: "posted" } },
+ *       scope: { selection: { field: "state", operator: "=", value: "posted" } },
  *       columns: ["number", "customer", "due_date", "amount_total"],
- *       filters: [{ id: "vencidas", label: "Vencidas", where: … }],
+ *       filters: [{ id: "vencidas", label: "Vencidas", selection: … }],
  *     });
  */
 export type ListDefinition<T extends AnyRecord = AnyRecord> = {
@@ -51,7 +51,8 @@ export type ListDefinition<T extends AnyRecord = AnyRecord> = {
 export type NamedFilter<T> = {
   id: string;
   label: string;
-  where: Expression<T>;
+  /** What it keeps, as criteria's `selection`. */
+  selection: Expression<T>;
 };
 
 /** One level of a grouping: by which field, and by which cut of time when it is a date. */

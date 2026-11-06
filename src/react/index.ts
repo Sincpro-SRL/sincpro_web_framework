@@ -19,6 +19,7 @@ export {
   type Rehearsal,
   useCommand,
 } from "@sincpro/web-framework/react/useCommand";
+export { useContextValues } from "@sincpro/web-framework/react/useContextValues";
 export { type Groups, useGroups } from "@sincpro/web-framework/react/useGroups";
 export { useHistory } from "@sincpro/web-framework/react/useHistory";
 export {
@@ -41,4 +42,5 @@ export {
   useRecord,
 } from "@sincpro/web-framework/react/useRecord";
 export { useRelated } from "@sincpro/web-framework/react/useRelated";
+export { type ServiceState, useService } from "@sincpro/web-framework/react/useService";
 export { useSummaryOf } from "@sincpro/web-framework/react/useSummary";

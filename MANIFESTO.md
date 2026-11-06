@@ -30,7 +30,7 @@ This framework exists to walk between them: **extensible first, ordered always.*
 
 ## What it is
 
-- **A framework of work** — an architecture, the runtime pieces that implement it, and the tools
+- **A framework of work** — an architecture, the pieces of code that implement it, and the tools
   that keep it: a generator from the server's contract, scaffolding, and import rules that fail in
   CI.
 - **The web side of sincpro_framework.** The backend publishes its models, its use cases and its
@@ -145,17 +145,22 @@ An entity climbs a level only when it needs to.
 
 ## Where it stands
 
-**Built and published (1.1.0):** the transport; entities with typed commands and answers; model
-definitions read once from the server; lists, records, pickers, relations and lines; drafts,
-previews and conflicts; the backoffice shell on composer; and the generator from
-sincpro_framework's client contract.
+**Built (2.0):** lists, records, pickers, relations and lines; drafts, previews and conflicts; the
+backoffice shell on composer; filters named `selection`, as criteria 2.0 and the backend read
+them; `useService`, so a screen runs the application's use cases; and optional browser telemetry
+and error reporting (`./telemetry`, `./errors`), built from the application's own settings.
 
-**Next — the framework of work** ([`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) and
-[`docs/prd/PRD_02_marco-de-trabajo.md`](docs/prd/PRD_02_marco-de-trabajo.md), in Spanish like the
-rest of Sincpro's design records): services with interceptors that trace and report; the levels of
-context; a server-state cache that refreshes every open window; the extension model with anchors
-and widgets; live sources; import rules and scaffolding for applications; and a reference
-application built the way this page says.
+**Split out to [@sincpro/client-framework](https://github.com/Sincpro-SRL/sincpro_client_framework)**,
+because every client needs it, not only the web: the transport, entities with typed commands and
+answers, model definitions, the generator from sincpro_framework's client contract, and `Feature`
+and `ApplicationService` with interceptors that trace and report.
+
+**Next — the rest of the framework of work** ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
+[`docs/prd/PRD_02_how-an-application-is-built.md`](docs/prd/PRD_02_how-an-application-is-built.md)):
+the framework's own reads and writes as traced Features; a server-state cache that refreshes every
+open window; the levels of context and the bounded contexts; the
+extension model with anchors and widgets; live sources; import rules and scaffolding for
+applications; and a reference application built the way this page says.
 
 ## How we decide
 

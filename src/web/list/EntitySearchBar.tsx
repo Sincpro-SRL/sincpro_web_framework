@@ -18,10 +18,10 @@ import {
   hasNamed,
   SearchBar,
   type SearchCriteria,
+  selectionOf,
   toggleNamed,
   useGroupingControl,
   useUiCopy,
-  whereOf,
 } from "@sincpro/web-ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -38,7 +38,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
  *   - «search by name»: facets are the fields the entity's search template names first;
  *   - a typed question («total > 5000») is checked against each field's operators;
  *   - a named filter is one click; the builder writes what nobody foresaw (all/any/not);
- *   - everything put becomes ONE `where` the SERVER answers (`listing.filter`);
+ *   - everything put becomes ONE `selection` the SERVER answers (`listing.filter`) — web-ui
+ *     writes it in criteria's own shape, a filter through a relation included;
  *   - with `groups`, «Group by» offers the fields the model says may split the set, and the
  *     SERVER counts the groups (`useGroups`).
  *
@@ -76,11 +77,11 @@ export function EntitySearchBar<T extends AnyRecord>({
   useEffect(() => {
     if (seeded.current || seed === undefined || seed === "" || meta?.search == null) return;
     seeded.current = true;
-    const where = matching(meta, seed).selection as BuiltFilter | undefined;
-    if (where === undefined) return;
-    const chip = filterCriteria(where, fillCopy(ui.search.literalChip, { text: seed }));
+    const literal = matching(meta, seed).selection as BuiltFilter | undefined;
+    if (literal === undefined) return;
+    const chip = filterCriteria(literal, fillCopy(ui.search.literalChip, { text: seed }));
     setPut([chip]);
-    listing.filter(whereOf([chip]) as Expression<T> | undefined);
+    listing.filter(selectionOf([chip]) as Expression<T> | undefined);
     // Once the definition is known; what the person changes afterwards is theirs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meta, seed]);
@@ -93,8 +94,10 @@ export function EntitySearchBar<T extends AnyRecord>({
 
   const place = (next: SearchCriteria[]) => {
     setPut(next);
-    listing.filter(whereOf(next) as Expression<T> | undefined);
+    listing.filter(selectionOf(next) as Expression<T> | undefined);
   };
+  // What the bar holds, as one selection: what the builder opens on.
+  const current = selectionOf(put);
 
   return (
     <>
@@ -119,7 +122,13 @@ export function EntitySearchBar<T extends AnyRecord>({
               onFilterSelect: (id: string) => {
                 const named = filters.find((one) => one.id === id);
                 if (named !== undefined)
-                  place(toggleNamed(put, { ...named, where: named.where as BuiltFilter }));
+                  place(
+                    toggleNamed(put, {
+                      id: named.id,
+                      label: named.label,
+                      selection: named.selection as BuiltFilter,
+                    }),
+                  );
               },
             })}
         {...(groups === undefined || groupable.length === 0
@@ -139,11 +148,11 @@ export function EntitySearchBar<T extends AnyRecord>({
             model={model}
             // What is on: the filter AND the order, by as many fields as were asked — the
             // builder writes `order: [...]` and it goes to the server whole.
-            {...(whereOf(put) === undefined && listing.order.length === 0
+            {...(current === undefined && listing.order.length === 0
               ? {}
               : {
                   initial: {
-                    ...(whereOf(put) === undefined ? {} : { where: whereOf(put)! }),
+                    ...(current === undefined ? {} : { selection: current }),
                     ...(listing.order.length === 0
                       ? {}
                       : {
@@ -156,9 +165,9 @@ export function EntitySearchBar<T extends AnyRecord>({
                 })}
             onApply={(built) => {
               place(
-                built?.where === undefined
+                built?.selection === undefined
                   ? []
-                  : [filterCriteria(built.where, describeFilter(built.where, model))],
+                  : [filterCriteria(built.selection, describeFilter(built.selection, model))],
               );
               listing.orderBy(
                 (built?.order ?? []).map((one) => ({

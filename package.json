@@ -13,6 +13,14 @@
     "./core": {
       "types": "./dist/core/index.d.ts",
       "default": "./dist/core/index.js"
+    },
+    "./telemetry": {
+      "types": "./dist/telemetry/index.d.ts",
+      "default": "./dist/telemetry/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors/index.d.ts",
+      "default": "./dist/errors/index.js"
     }
   },
   "publishConfig": {
@@ -27,21 +35,48 @@
     "printWidth": 94
   },
   "peerDependencies": {
-    "@sincpro/client-framework": "^0.1.0",
+    "@opentelemetry/api": "^1.10.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.301.0",
+    "@opentelemetry/resources": "^3.1.0",
+    "@opentelemetry/sdk-trace": "^3.1.0",
+    "@sentry/browser": "^11.11.0",
+    "@sincpro/client-framework": "^0.4.0",
     "@sincpro/criteria": "^2.0.0",
     "@sincpro/criteria-react": "^2.0.0",
     "@sincpro/web-composer": "^1.5.0",
-    "@sincpro/web-ui": "^1.11.1",
+    "@sincpro/web-ui": "^2.0.0",
     "react": ">=19",
     "react-dom": ">=19"
   },
+  "peerDependenciesMeta": {
+    "@opentelemetry/api": {
+      "optional": true
+    },
+    "@opentelemetry/exporter-trace-otlp-http": {
+      "optional": true
+    },
+    "@opentelemetry/resources": {
+      "optional": true
+    },
+    "@opentelemetry/sdk-trace": {
+      "optional": true
+    },
+    "@sentry/browser": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@sincpro/client-framework": "^0.1.0",
+    "@opentelemetry/api": "1.10.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.301.0",
+    "@opentelemetry/resources": "3.1.0",
+    "@opentelemetry/sdk-trace": "3.1.0",
+    "@sentry/browser": "11.11.0",
+    "@sincpro/client-framework": "^0.4.0",
     "@sincpro/criteria": "^2.0.0",
     "@sincpro/criteria-react": "^2.0.0",
     "@sincpro/web-composer": "^1.5.0",
-    "@sincpro/web-ui": "^1.11.1",
+    "@sincpro/web-ui": "^2.0.0",
     "@storybook/addon-a11y": "10.6.5",
     "@storybook/addon-docs": "10.6.5",
     "@storybook/addon-mcp": "10.6.5",

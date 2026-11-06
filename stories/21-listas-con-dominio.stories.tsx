@@ -49,7 +49,7 @@ const porCobrar = defineList(facturas, {
     {
       id: "urgentes",
       label: "Urgentes",
-      where: { field: "urgent", operator: "=", value: true },
+      selection: { field: "urgent", operator: "=", value: true },
     },
   ],
 });

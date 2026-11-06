@@ -1,144 +1,146 @@
-# Para qué existe @sincpro/web-framework
+# What @sincpro/web-framework is for
 
-> **Usar bien, juntas, las piezas con las que Sincpro construye software empresarial — el
-> backend (sincpro_framework), criteria, web-ui y composer — para que una entidad se vea, se
-> busque, se edite y actúe en la web con una declaración mínima, y que varias convivan en una
-> misma pantalla.**
+> **To make good use, together, of the pieces Sincpro builds enterprise software with — the
+> backend (sincpro_framework), criteria, web-ui and composer — so that an entity is shown,
+> searched, edited and acted on in the web with a minimal declaration, and so that several of them
+> live on the same screen.**
 
-Es la guía contra la que se revisa cada cambio: una pieza que no sirve a algo de esta página no
-entra.
+This is the guide every change is reviewed against: a piece that serves nothing on this page does
+not go in.
 
-## La premisa: abierto, con buenas prácticas por defecto
+## The premise: open, with good practices by default
 
-Esto va a ser como un ERP modular: alguien tiene que poder agregar sus casos raros sin pedirnos
-permiso. Por eso:
+This is going to be like a modular ERP: someone has to be able to add their odd cases without
+asking us for permission. So:
 
-- **Damos defaults, nunca jaulas.** Cada pieza se usa en tres niveles, y cualquiera se puede
-  saltar:
+- **We give defaults, never cages.** Each piece is used at three levels, and any of them can be
+  skipped:
 
-  | Nivel             | Qué escribe quien la usa                        | Ejemplo                           |
-  | ----------------- | ----------------------------------------------- | --------------------------------- |
-  | 1. Declarativo    | nombra campos y entidades                       | `<EntityList columns={[...]}/>`   |
-  | 2. Hooks          | arma su propia pantalla con nuestro estado      | `useListing` + `List` de web-ui   |
-  | 3. Piezas sueltas | va directo a criteria, al transporte o a web-ui | `transport.list(route, criteria)` |
+  | Level           | What the user writes                               | Example                           |
+  | --------------- | -------------------------------------------------- | --------------------------------- |
+  | 1. Declarative  | names fields and entities                          | `<EntityList columns={[...]}/>`   |
+  | 2. Hooks        | builds their own screen with our state             | `useListing` + web-ui's `List`    |
+  | 3. Loose pieces | goes straight to criteria, the transport or web-ui | `transport.list(route, criteria)` |
 
-- **Lo que damos son buenas prácticas, no reglas de negocio.** La regla vive en el backend; acá
-  se lee lo que el backend publica (meta, hints, preview) y nunca se reimplementa.
-- **Se puede hacer y deshacer.** Agregar una pieza no obliga a nada más, y sacarla no rompe lo
-  demás: una pantalla que deja `EntityList` sigue teniendo `useListing`.
-- **El objetivo es resolver casi toda integración de forma sana acá**, con la tecnología de
-  Sincpro, para que cada app no escriba su propio cliente, su propio formateo ni su propio
-  manejo de errores (lo que forge tuvo que hacer).
+- **What we give are good practices, not business rules.** The rule lives in the backend; here we
+  read what the backend publishes (meta, hints, preview) and never re-implement it.
+- **It can be done and undone.** Adding a piece does not force anything else, and removing it does
+  not break the rest: a screen that drops `EntityList` still has `useListing`.
+- **The goal is to solve almost every integration in a healthy way here**, with Sincpro's
+  technology, so that each app does not write its own client, its own formatting or its own error
+  handling (what forge had to do).
 
-## Qué pone cada proyecto de Sincpro
+## What each Sincpro project provides
 
-| Proyecto                | Pone                                                                                                                                                                                               |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sincpro_framework`     | Entidades, criteria, `EntityReads` (Get, GetMany, **LiteralSearch**, Search, Preview), comandos y dry-run, **drafts**, eventos (`/<ctx>-events`), permisos, protocolos (REST, JSON-RPC, gRPC, MCP) |
-| `@sincpro/criteria`     | El contrato con el servidor: Criteria, Meta, Page, Problem, `matches`                                                                                                                              |
-| `@sincpro/web-ui`       | Cómo se ve: `List`, `Record`, `SearchBar`, `Picker`, `Activity`, `Dialog`…                                                                                                                         |
-| `@sincpro/web-composer` | Dónde se abre y el contexto: página, peek, ventana, paneles, selección compartida, ⌘K, atajos                                                                                                      |
-| **este paquete**        | El pegamento: entidad + meta + estado + comandos + actividad, dibujados con web-ui y abiertos con composer                                                                                         |
-| La aplicación           | Qué es una factura                                                                                                                                                                                 |
+| Project                     | Provides                                                                                                                                                                                             |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sincpro_framework`         | Entities, criteria, `EntityReads` (Get, GetMany, **LiteralSearch**, Search, Preview), commands and dry-run, **drafts**, events (`/<ctx>-events`), permissions, protocols (REST, JSON-RPC, gRPC, MCP) |
+| `@sincpro/criteria`         | The contract with the server: Criteria, Meta, Page, Problem, `matches`                                                                                                                               |
+| `@sincpro/client-framework` | What every client shares — web, mobile, an SSR, a script —: the transport, `entity()`, the generated client, `Feature` and `ApplicationService` traced and reported by default                       |
+| `@sincpro/web-ui`           | How it looks: `List`, `Record`, `SearchBar`, `Picker`, `Activity`, `Dialog`…                                                                                                                         |
+| `@sincpro/web-composer`     | Where it opens and the context: page, peek, window, panels, shared selection, ⌘K, shortcuts                                                                                                          |
+| **this package**            | The screens: state, lists, records, pickers, commands and activity, drawn with web-ui and opened with composer; browser telemetry and error reporting, optional                                      |
+| The application             | What an invoice is                                                                                                                                                                                   |
 
-## Las abstracciones
+## The abstractions
 
-| Abstracción                  | Qué resuelve                                                                             | Estado                      |
-| ---------------------------- | ---------------------------------------------------------------------------------------- | --------------------------- |
-| `Transport`                  | El puerto hacia el backend: REST hoy, JSON-RPC/gRPC después                              | ✅ REST + memoria           |
-| `Meta`                       | Qué es cada campo: del servidor, a mano (`defineMeta`) o completada con OpenAPI          | ✅                          |
-| `entity()`                   | La declaración única: lista, registro, comandos, historial, su clave para composer       | ✅                          |
-| `useListing` / `EntityList`  | N registros: criteria, barra de búsqueda, constructor, paginación                        | ✅                          |
-| `useLookup` / `EntityPicker` | **Búsqueda literal**: el select de un many2one y ⌘K (`LiteralSearch`)                    | ✅                          |
-| `useRecord`                  | 1 registro: leer, editar, preview, hints, **draft**, guardar, conflicto                  | ✅                          |
-| `useCommand`                 | Las acciones de una entidad, con dry-run antes de lo destructivo                         | ✅                          |
-| `useHistory`                 | Eventos de negocio (y comentarios, cuando el backend los tenga) → `Record.Activity`      | ✅                          |
-| `entityView()`               | La entidad como vistas de composer: abrir, buscar en ⌘K, sus acciones                    | ✅ (`entityView`)           |
-| `<SincproApp>`               | El contexto de la aplicación: transporte, idioma, metas, composer, atajos                | ✅                          |
-| `defineList` / `listView`    | Una entidad con un corte fijo (por cobrar, borradores): dato, lista y vista              | ✅                          |
-| `useGroups`                  | Agrupar en el servidor: grupos contados sobre todo el conjunto, filas al abrir           | ✅                          |
-| `useFollowed`                | Un panel de detalle que sigue el registro en el que está la persona                      | ✅                          |
-| `summaryOf` / `useSummaryOf` | Lo que se sabe de cualquier registro: nombre, descripción, estado, tipo, imagen, autoría | ✅ (`cardOf`, `relationOf`) |
-| `EntityRecord` / `formOf`    | El registro de cualquier entidad dibujado desde su meta, sin escribir la pantalla        | ✅                          |
-| `EntityTags`                 | Varios registros (many2many): búsqueda literal en el servidor, con caras                 | ✅                          |
-| `RecordField` + `entities`   | Un many2one / one2many armado solo desde la meta (`relationFieldOf`, `entityFor`)        | ✅                          |
-| `openIn` / `RelatedRecord`   | Abrir un registro donde corresponde: modal por defecto, nunca un modal sobre otro        | ✅                          |
+| Abstraction                  | What it solves                                                                        | Status                      |
+| ---------------------------- | ------------------------------------------------------------------------------------- | --------------------------- |
+| `Transport`                  | The port to the backend: REST today, JSON-RPC/gRPC later                              | ✅ REST + memory            |
+| `Meta`                       | What each field is: from the server, by hand (`defineMeta`) or completed with OpenAPI | ✅                          |
+| `entity()`                   | The single declaration: list, record, commands, history, its key for composer         | ✅                          |
+| `useListing` / `EntityList`  | N records: criteria, search bar, builder, paging                                      | ✅                          |
+| `useLookup` / `EntityPicker` | **Literal search**: a many2one's select and ⌘K (`LiteralSearch`)                      | ✅                          |
+| `useRecord`                  | 1 record: read, edit, preview, hints, **draft**, save, conflict                       | ✅                          |
+| `useCommand`                 | An entity's actions, with a dry-run before anything destructive                       | ✅                          |
+| `useHistory`                 | Business events (and comments, once the backend has them) → `Record.Activity`         | ✅                          |
+| `entityView()`               | The entity as composer views: open, search in ⌘K, its actions                         | ✅ (`entityView`)           |
+| `<SincproApp>`               | The application's context: transport, language, metas, composer, shortcuts            | ✅                          |
+| `defineList` / `listView`    | An entity with a fixed cut (receivable, drafts): data, list and view                  | ✅                          |
+| `useGroups`                  | Group on the server: groups counted over the whole set, rows on open                  | ✅                          |
+| `useFollowed`                | A detail panel that follows the record the person is on                               | ✅                          |
+| `summaryOf` / `useSummaryOf` | What is known about any record: name, description, state, type, image, authorship     | ✅ (`cardOf`, `relationOf`) |
+| `EntityRecord` / `formOf`    | The record of any entity drawn from its meta, without writing the screen              | ✅                          |
+| `EntityTags`                 | Several records (many2many): literal search on the server, with faces                 | ✅                          |
+| `RecordField` + `entities`   | A many2one / one2many built from the meta alone (`relationFieldOf`, `entityFor`)      | ✅                          |
+| `openIn` / `RelatedRecord`   | Open a record where it belongs: a modal by default, never a modal over another        | ✅                          |
 
-### Búsqueda literal
+### Literal search
 
-Un texto tipeado es **siempre la búsqueda literal de la entidad** — su plantilla (`meta.search`,
-el `LiteralSearch` del framework), todos sus campos a la vez — y la contesta el **servidor**.
-Cambia sólo cuándo se pregunta:
+A typed text is **always the entity's literal search** — its template (`meta.search`, the
+framework's `LiteralSearch`), all its fields at once — and the **server** answers it. Only when
+it is asked changes:
 
-- **Para elegir un registro** (many2one, «compartir con», ⌘K): abre con los **primeros 10 en el
-  orden de la entidad**, y mientras se escribe pregunta al servidor (`useLookup` +
-  `Picker onSearch`). El elegido conserva su nombre aunque no esté entre los diez. «Buscar más…»
-  abre la lista entera para elegir (`api.pick`).
-- **En una tabla**: con **Enter**, nunca a cada tecla. La barra ofrece primero «Buscar «X»» (la
-  plantilla), salvo que el modelo lea lo escrito como pregunta suya — un operador
-  («total <= 1000»), un valor de un enum («pagada»), el nombre de un campo —: entonces eso va
-  primero y la literal al final. La caja simple (`search="box"`) busca lo mismo, con Enter.
+- **To choose a record** (many2one, «share with», ⌘K): it opens with the **first 10 in the
+  entity's order**, and while typing it asks the server (`useLookup` + `Picker onSearch`). The
+  chosen one keeps its name even if it is not among the ten. «Buscar más…» opens the whole list to
+  choose from (`api.pick`).
+- **In a table**: with **Enter**, never on every key. The bar offers «Buscar «X»» first (the
+  template), unless the model reads what was typed as a question of its own — an operator
+  («total <= 1000»), an enum value («pagada»), the name of a field —: then that goes first and the
+  literal one last. The plain box (`search="box"`) searches the same, with Enter.
 
-Buscar por un campo de **otra** entidad («facturas del cliente Globex») no se resuelve en el
-cliente: criteria compara campos propios, así que la entidad publica el campo
-(`customer_name`) o lo incluye en su plantilla.
+Searching by a field of **another** entity («invoices of the customer Globex») is not resolved in
+the client: criteria compares its own fields, so the entity publishes the field (`customer_name`)
+or includes it in its template.
 
 ### Drafts
 
-Dos niveles, que no se mezclan:
+Two levels, which are not mixed:
 
-1. **Lo que se está tipeando** vive en el cliente (`useRecord`): dirty, preview, hints. Se
-   pierde al cerrar, y está bien.
-2. **Un draft del servidor** (`Drafts` del framework, en Redis con versión): para una edición
-   larga, un wizard, el mismo registro en dos pestañas. `useRecord` lo guarda con la versión
-   que leyó; si otra pestaña guardó antes, el servidor responde **409** y la pantalla lo dice
-   en vez de pisarlo. La respuesta de un registro ya trae la clave `draft` (lo vimos en forge).
+1. **What is being typed** lives in the client (`useRecord`): dirty, preview, hints. It is lost on
+   close, and that is fine.
+2. **A server draft** (the framework's `Drafts`, in Redis with a version): for a long edit, a
+   wizard, the same record in two tabs. `useRecord` saves it with the version it read; if another
+   tab saved first, the server answers **409** and the screen says so instead of overwriting it.
+   A record's answer already carries the `draft` key (we saw it in forge).
 
-Un draft que **otros** tienen que ver (una factura en aprobación) no es un draft: es un
-registro con estado `draft`.
+A draft that **others** have to see (an invoice under approval) is not a draft: it is a record
+with state `draft`.
 
-### Contexto de la aplicación y composer
+### Application context and composer
 
-Composer ya resuelve el contexto: dónde se abre algo, la selección que una vista publica y otra
-lee, ⌘K, Escape compartido, mover el foco entre paneles. Este paquete **no lo repite: lo usa.**
+Composer already resolves the context: where something opens, the selection one view publishes
+and another reads, ⌘K, shared Escape, moving focus between panels. This package **does not repeat
+it: it uses it.**
 
-- Una entidad se vuelve vistas de composer (`entityView`): su lista, su registro, su búsqueda
-  en ⌘K (con `LiteralSearch`) y sus acciones (con `useCommand`, y su atajo dibujado en ⌘K).
-- `EntityList` publica su selección (`api.select`), así un panel de al lado la sigue.
-- Los links a otra entidad son referencias (`dominio:tipo/id`), nunca imports: dos contextos
-  se hablan por referencia.
+- An entity becomes composer views (`entityView`): its list, its record, its search in ⌘K (with
+  `LiteralSearch`) and its actions (with `useCommand`, and their shortcut drawn in ⌘K).
+- `EntityList` publishes its selection (`api.select`), so a panel next to it follows it.
+- Links to another entity are references (`bounded_context:type/id`), never imports: two bounded
+  contexts talk to each other by reference.
 
-### Varias entidades en una pantalla
+### Several entities on one screen
 
-Tres formas, de la más común a la más especial:
+Three forms, from the most common to the most special:
 
-1. **Un registro con sus relaciones**: las líneas de una factura, los miembros de un tenant
-   (`RecordLines`), con su total real.
-2. **Varias vistas a la vez** (composer): la lista en la página, el detalle en un panel que
-   sigue la selección, otra entidad en una ventana.
-3. **Una vista de integración**: conciliar un extracto con facturas. La vista recibe las dos
-   referencias, muestra el dry-run y termina en **un** comando del servidor — la UI orquesta la
-   interacción, el servidor orquesta la transacción.
+1. **A record with its relations**: an invoice's lines, a tenant's members (`RecordLines`), with
+   their real total.
+2. **Several views at once** (composer): the list on the page, the detail in a panel that follows
+   the selection, another entity in a window.
+3. **An integration view**: reconcile a statement with invoices. The view receives the two
+   references, shows the dry-run and ends in **one** server command — the UI orchestrates the
+   interaction, the server orchestrates the transaction.
 
-## Qué NO hace
+## What it does NOT do
 
-- No es para mobile: `sincpro_mobile` tiene su propio core.
-- No maneja sesión ni login (de la app), no tiene router (composer), no es un gestor de estado
-  general.
-- No tiene registro de widgets por nombre en texto: un control se reemplaza con `as`, en código.
-- No dibuja logs técnicos: la actividad de un registro son eventos de negocio.
-- No guarda reglas de negocio: si una regla importa, la cumple el backend.
+- It is not for mobile: `sincpro_mobile` has its own core.
+- It does not handle session or login (the app's), it has no router (composer), it is not a
+  general state manager.
+- It has no registry of widgets by name in text: a control is replaced with `as`, in code.
+- It does not draw technical logs: a record's activity is business events.
+- It does not hold business rules: if a rule matters, the backend enforces it.
 
-## Cómo se sabe que cumple
+## How we know it meets its purpose
 
-Reescribir la web de forge (`~/dev/sincpro_forge/web`) con este paquete. Si desaparecen
-`shared/views.tsx`, `forge_client.ts`, `history.ts` y `tenant_select.tsx`, y cada pantalla queda
-en entidad + JSX, cumple. Lo que no desaparezca es lo que falta.
+Rewrite forge's web (`~/dev/sincpro_forge/web`) with this package. If `shared/views.tsx`,
+`forge_client.ts`, `history.ts` and `tenant_select.tsx` disappear, and every screen ends up as
+entity + JSX, it meets its purpose. What does not disappear is what is missing.
 
-## Preguntas abiertas
+## Open questions
 
-- **Comentarios**: no vimos en sincpro_framework un concepto de comentarios sobre un registro
-  (el «chatter» de Odoo). Hay que definir su contrato en el backend antes de dibujarlo.
-- **Acciones de una entidad**: la meta no dice qué comandos tiene una entidad. Hasta que lo
-  publique, se declaran en `entity()`.
-- **Permisos y grupos** (decidido 2026-10-31): lógica de negocio, fuera de este paquete.
+- **Comments**: we did not see in sincpro_framework a concept of comments on a record (Odoo's
+  «chatter»). Its contract has to be defined in the backend before drawing it.
+- **An entity's actions**: the meta does not say which commands an entity has. Until it publishes
+  them, they are declared in `entity()`.
+- **Permissions and groups** (decided 2026-10-31): business logic, outside this package.

@@ -2,6 +2,7 @@
 
 import {
   type Entity,
+  installTimeZone,
   type MetaStore,
   metaStore,
   type Transport,
@@ -9,7 +10,6 @@ import {
 import type { Meta } from "@sincpro/criteria";
 import { entityFor } from "@sincpro/web-framework/core/relation";
 import type { Trail } from "@sincpro/web-framework/core/trail";
-import { installTimeZone } from "@sincpro/web-framework/core/zone";
 import { createContext, type ReactNode, useContext, useMemo, useRef, useState } from "react";
 
 /**

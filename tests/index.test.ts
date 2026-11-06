@@ -24,4 +24,7 @@ test("what every platform shares is @sincpro/client-framework's, never re-export
   // second door here would let two versions meet in one screen.
   assert.equal("entity" in entry, false);
   assert.equal("restTransport" in core, false);
+  // The same for the day/instant conversions: one zone installed, in one place.
+  assert.equal("installTimeZone" in entry, false);
+  assert.equal("installTimeZone" in core, false);
 });

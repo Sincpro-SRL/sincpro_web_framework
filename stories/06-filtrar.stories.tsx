@@ -31,17 +31,17 @@ const FILTROS: NamedFilter<Factura>[] = [
   {
     id: "pagadas",
     label: "Sólo pagadas",
-    where: { field: "state", operator: "=", value: "paid" },
+    selection: { field: "state", operator: "=", value: "paid" },
   },
   {
     id: "grandes",
     label: "Más de Bs. 5.000",
-    where: { field: "amount_total", operator: ">", value: 5000 },
+    selection: { field: "amount_total", operator: ">", value: 5000 },
   },
   {
     id: "abiertas",
     label: "Por cobrar",
-    where: {
+    selection: {
       any: [
         { field: "state", operator: "=", value: "posted" },
         { field: "state", operator: "=", value: "draft" },
@@ -123,7 +123,7 @@ const CLIENTES_FILTROS: NamedFilter<Cliente>[] = [
   {
     id: "activos",
     label: "Sólo activos",
-    where: { field: "active", operator: "=", value: true },
+    selection: { field: "active", operator: "=", value: true },
   },
 ];
 

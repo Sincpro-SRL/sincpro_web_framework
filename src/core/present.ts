@@ -1,3 +1,4 @@
+import { timeZoneNow } from "@sincpro/client-framework";
 import {
   type AnyRecord,
   choiceLabelOf,
@@ -7,7 +8,6 @@ import {
 } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { relatedOf } from "@sincpro/web-framework/core/related";
-import { timeZoneNow } from "@sincpro/web-framework/core/zone";
 
 /**
  * How a field is SHOWN, decided once from the model and nowhere else.
