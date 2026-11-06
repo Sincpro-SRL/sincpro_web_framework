@@ -1277,10 +1277,10 @@
     "@sentry/browser-utils" "11.11.0"
     "@sentry/core" "11.11.0"
 
-"@sincpro/client-framework@^0.4.0":
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/client-framework/-/client-framework-0.4.0.tgz#3fea8ed0379f2405b3cb154f4dcbefc7046e3f3f"
-  integrity sha512-Q/lZk4O7pdJj4pwkWMpGX6egInkFESrU9xJcKuI/nztIi5t05pLoq8KSALWDPWrA3Z2A1U6v/Hi3wv9gYTxjag==
+"@sincpro/client-framework@^0.5.0":
+  version "0.5.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/client-framework/-/client-framework-0.5.0.tgz#42ea1bf2105281fa177b723f289878cd28c3fc27"
+  integrity sha512-CDSlhChccKcq+TMlOvJDbiJzJvxR7e+KhpUk9+r0NzaSGCcEGd9MRWGI4JnwbFitGp0naTo70DKqrudJlGPeQg==
 
 "@sincpro/criteria-react@^2.0.0":
   version "2.0.0"
@@ -1292,17 +1292,17 @@
   resolved "https://registry.yarnpkg.com/@sincpro/criteria/-/criteria-2.0.0.tgz#672cfe03889a771663a91939e4c56d6075578bea"
   integrity sha512-gJmlSn4g3qlV/OZpy/iyvgXV+lB4UPIspGogru2jT/wFdlPQUB3WR/guTyVxGwWdR7v0QiKOZzgExce9B1wo2A==
 
-"@sincpro/web-composer@^1.5.0":
-  version "1.5.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/web-composer/-/web-composer-1.5.0.tgz#6e4344e0fcf0957e3e6e69192b59410c21a63464"
-  integrity sha512-1W7sCvXHcHCAlDPMOBrVUD8YtYRJlh155bYSnxP1I7woVqFa+9ddb1oJ3nRjMeSuUeUA8F1B6zN17HrSneGwow==
+"@sincpro/web-composer@^1.6.0":
+  version "1.6.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/web-composer/-/web-composer-1.6.0.tgz#964dab117b4311f7d3ee3d372bdb3ac080ba7fc0"
+  integrity sha512-SnVIjIiJB1IjxbePFlSJ9vufr19Mx9vBtafR7g3pDKW60nw+7qVFlKGIB2GbXvHZlE37Y1X42gxWBH2bktGNiA==
   dependencies:
     "@atlaskit/pragmatic-drag-and-drop" "^4.0.0"
 
-"@sincpro/web-ui@^2.0.0":
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/web-ui/-/web-ui-2.0.0.tgz#e8fbc9a46e9c411887a3b9295e0a5f6f9684d1b7"
-  integrity sha512-wMR9DREVWdrSL3HUYw/fDg8JwkUmrsqeEFS2M1+8WsmeDIbMRFxhjtNAM/du6cfdX8snBA34ld1/Fn6IDANejg==
+"@sincpro/web-ui@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/web-ui/-/web-ui-2.1.0.tgz#1b7c9f2e934ca77e28fd89d434157bc589ec9cf3"
+  integrity sha512-8jQqToI1K0L6YAGzz5FlJEDZzkD/etZK2vANylH05ciMraJoe7Cq/EOhUiXuAq4I8y0MKws1zCFvArhqs8zfjw==
   dependencies:
     "@codemirror/lang-json" "^6.0.2"
     "@codemirror/lint" "^6.9.7"
