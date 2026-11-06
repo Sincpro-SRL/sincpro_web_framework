@@ -87,7 +87,8 @@ export const UnaListaDeValoresSeEscribeComoLineas: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     // The values the record holds, as lines — not an empty field.
-    await expect(await canvas.findByText("#general")).toBeVisible();
+    // As a cell — the line also names itself to a screen reader with the same words.
+    await expect((await canvas.findAllByRole("cell", { name: "#general" }))[0]).toBeVisible();
     await expect(canvas.getByText("canales: 2 · sin guardar: no")).toBeVisible();
     // A new value is a line written in the table — every field of a value fits a cell — and
     // the record holds it until it is saved.
