@@ -12,6 +12,7 @@ export {
   type ClientContract,
   entityKeyOf,
   metasOf,
+  versionsOf,
 } from "@sincpro/web-framework/core/contract";
 export {
   ENGLISH_FRAMEWORK_COPY,
@@ -41,6 +42,7 @@ export {
 } from "@sincpro/web-framework/core/edit";
 export {
   bodyFor,
+  type CommandAnswers,
   type CommandBodies,
   type CommandRoute,
   type Entity,
@@ -115,7 +117,12 @@ export {
   type RelationField,
   relationFieldOf,
 } from "@sincpro/web-framework/core/relation";
-export { type RestOptions, restTransport, urlOf } from "@sincpro/web-framework/core/rest";
+export {
+  type RestOptions,
+  restTransport,
+  urlOf,
+  type VersionDrift,
+} from "@sincpro/web-framework/core/rest";
 export { type RetryKeys, retryKeys, unanswered } from "@sincpro/web-framework/core/retry";
 export {
   completeMeta,
@@ -136,6 +143,7 @@ export {
   explain,
   type Method,
   type One,
+  readRoute,
   type SendOptions,
   type Transport,
   TransportError,

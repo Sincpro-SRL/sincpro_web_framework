@@ -12,6 +12,15 @@ import type { Method } from "@sincpro/web-framework/core/transport";
 export type CommandBodies = Readonly<Record<string, AnyRecord>>;
 
 /**
+ * What each Command of an entity answers, by its name: `{ send: { run_id: string } }` — what a
+ * generated entity reads off each operation's `output`.
+ *
+ * Context: `useCommand(issues, "send").run(…)` returns it with no type argument written; a
+ * Command it does not name answers `unknown`, as every Command did before.
+ */
+export type CommandAnswers = Readonly<Record<string, unknown>>;
+
+/**
  * Everything a screen needs to know about where an entity lives on the server, declared once.
  *
  * Context: a screen should not know a URL. It names the entity, and the entity says where its
@@ -31,14 +40,16 @@ export type CommandBodies = Readonly<Record<string, AnyRecord>>;
  *       history: { route: "/billing-events", type: "Invoice" },
  *     });
  *
- * Its Commands may be typed too — what each one is sent with, by name (`CommandBodies`) — and
- * then `useCommand` and `CommandButton` take only those names and those bodies:
+ * Its Commands may be typed too — what each one is sent with, by name (`CommandBodies`), and
+ * what each one answers (`CommandAnswers`) — and then `useCommand` and `CommandButton` take
+ * only those names and those bodies, and give back that answer:
  *
- *     entity<Issue, { send: { message: string }; stop: Record<string, never> }>(…)
+ *     entity<Issue, { send: { message: string } }, { send: { run_id: string } }>(…)
  */
 export type Entity<
   T extends AnyRecord = AnyRecord,
   C extends CommandBodies = CommandBodies,
+  A extends CommandAnswers = CommandAnswers,
 > = {
   /** `domain:kind`, e.g. `"billing:invoice"`. */
   key: string;
@@ -85,6 +96,8 @@ export type Entity<
   readonly _record?: T;
   /** Only carries what each Command is sent with; never read. */
   readonly _commands?: C;
+  /** Only carries what each Command answers; never read. */
+  readonly _answers?: A;
 };
 
 /** A composer `ResourceRef`, structurally: `core/` does not import the composer. */
@@ -252,20 +265,38 @@ function commandRoute(declared: CommandRoute): WriteRoute {
   return { ...writeRoute(declared.route), target: declared.target };
 }
 
-/** A list's route with its own parameters: `{ tenant_id: "acme" }` → `/projects?tenant_id=acme`.
- *  An empty value is no parameter — a filter left blank. */
+/**
+ * A list's route with its own parameters: `{ tenant_id: "acme" }` → `/projects?tenant_id=acme`.
+ * An empty value is no parameter — a filter left blank. A list under a record names its key in
+ * the path (`/tenants/{tenant_id}/members`): that parameter fills it, and only the rest goes in
+ * the query.
+ *
+ * Context: sincpro_framework reads a path parameter as a field of the search's DTO, the same
+ * field a query parameter would fill, so the screen gives them all as one set of parameters. A
+ * key the path needs and the parameters lack is the screen's bug, said before anything is sent.
+ */
 export function listRoute(list: string, params?: Readonly<Record<string, string>>): string {
+  const given = params ?? {};
+  const placed = new Set<string>();
+  const path = list.replace(PATH_KEY, (_whole, name: string) => {
+    const value = given[name];
+    if (value === undefined || value === "")
+      throw new Error(`the list "${list}" needs "${name}" in its parameters`);
+    placed.add(name);
+    return encodeURIComponent(value);
+  });
   const query = new URLSearchParams(
-    Object.entries(params ?? {}).filter(([, value]) => value !== ""),
+    Object.entries(given).filter(([name, value]) => value !== "" && !placed.has(name)),
   ).toString();
-  if (query === "") return list;
-  return `${list}${list.includes("?") ? "&" : "?"}${query}`;
+  if (query === "") return path;
+  return `${path}${path.includes("?") ? "&" : "?"}${query}`;
 }
 
 export function entity<
   T extends AnyRecord = AnyRecord,
   C extends CommandBodies = CommandBodies,
->(key: string, routes: EntityRoutes<C>): Entity<T, C> {
+  A extends CommandAnswers = CommandAnswers,
+>(key: string, routes: EntityRoutes<C>): Entity<T, C, A> {
   if (!/^[^:\s]+:[^:\s]+$/.test(key))
     throw new Error(`entity key "${key}" is not domain:kind`);
   const list = routes.list.split("?")[0] ?? routes.list;

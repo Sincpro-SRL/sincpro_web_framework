@@ -1169,6 +1169,46 @@ apuntado (`rest`) y `metasOf` sobre el contrato de forge (`contract`) — los do
 
 - **`own`** (dos operaciones del mismo papel), propuesto en PRD_33 y esperando aprobación.
 
+## Lo que faltaba antes del refactor (2026-11-05)
+
+Lo que el ROADMAP anotaba como «lo que el contrato o el transporte todavía no dejan», hecho, más
+la guía con que se adopta: [`ADOPCION.md`](ADOPCION.md). Historia `41 · Una clave que dice de
+quién es`; tests `codegen`, `command`, `entity`, `rest`, `relation`, `contract`.
+
+- **La respuesta de un comando, tipada en la entidad** (`Entity<T, C, A>`, `CommandAnswers`):
+  `useCommand(issues, "sendIssue").run(…)` devuelve `CommandSendIssueAnswer` sin argumentos de
+  tipo (`AnswerOf`); el generador escribe `A` desde cada `…Answer`. Escribir `R` sigue mandando.
+- **Una lista bajo un registro** (`/tenants/{tenant_id}/members`): `listRoute` llena cada
+  `{clave}` desde los parámetros de la lista y manda el resto como query; sin la clave, se rechaza
+  antes de mandar nada. El generador ya no las excluye: `memberships` en `auth`, y
+  `listTenantMembers(criteria, { tenant_id })`.
+- **Un GET que no es página ni registro** (`GET /me`): `Transport.read` (opcional, para no romper
+  a quien implementa el puerto) y `readRoute`, que dice por su nombre cuándo un transporte no
+  sabe leer. La caché nunca guarda una lectura propia. El cliente generado ya tiene `getCaller`.
+- **Las acciones por fila, tipadas**: `Listing<T, C>` lleva los comandos de su entidad y
+  `RowCommand<T, C>` acepta sólo esos nombres y el cuerpo de cada uno.
+- **Una clave sola que dice de quién es** (`EntityID[Tenant]`, `relation: "auth.Tenant"` sin
+  campo relación al lado) es un many2one: `relationFieldOf` la reconoce con `held: false`,
+  `entityFor` encuentra la entidad por el modelo (`auth.Tenant` → `auth:tenant`, `Project` en su
+  dominio, o la única de ese tipo), y al leer se pide su nombre una vez por clave (`useNameOf`).
+  **Lo encontrado al hacerlo:** el editor de líneas escribía `{ [key]: id, [relation]: elegido }`
+  — con una clave sola son el mismo campo, y el registro elegido quedaba DENTRO de la clave.
+- **Una foto vieja se avisa**: `restTransport({ snapshot: versionsOf(contract), onVersionDrift })`
+  llama una vez por modelo y versión cuando el servidor contesta otra que la foto. Nunca un error.
+- **`presented` conserva los comandos y respuestas tipados** (`Presented<T, C, A>`). Lo encontré
+  escribiendo la guía: envolver una entidad generada la volvía suelta y apagaba el chequeo.
+
+### Queda, para el refactor
+
+- **En una tabla, una clave sola muestra su id**: pedir un nombre por fila no escala; lo justo es
+  que el servidor expanda el nombre en la lectura.
+- **`useNameOf` repite una parte de `useLookup`** (nombrar por clave): unificarlos.
+- **Una lista de claves** (`list[EntityID[Tag]]`, `text[]` con `relation`) no tiene control propio
+  todavía: sería `EntityTags` por claves.
+- **La historia `30 · EnElSelector` falló una vez** en la suite completa (de cuatro corridas):
+  pide visible el NIT de una opción del picker mientras se dibuja. Sola pasa siempre; mirar si
+  la aserción debe esperar la opción entera.
+
 ## Decisiones abiertas
 
 - **Transportes**: REST hoy; JSON-RPC sale casi gratis (`rpcSource` de criteria). gRPC desde

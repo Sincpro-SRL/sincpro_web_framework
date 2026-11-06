@@ -14,6 +14,7 @@ export {
   useListScope,
 } from "@sincpro/web-framework/react/scope";
 export {
+  type AnswerOf,
   type CommandState,
   type Rehearsal,
   useCommand,
@@ -27,6 +28,7 @@ export {
   useListing,
 } from "@sincpro/web-framework/react/useListing";
 export { excluding, type Lookup, useLookup } from "@sincpro/web-framework/react/useLookup";
+export { useNameOf } from "@sincpro/web-framework/react/useNameOf";
 export {
   type PivotAxes,
   type PivotReading,

@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { labelOf } from "@sincpro/criteria";
-import { type ClientContract, entityKeyOf, metasOf } from "@sincpro/web-framework";
+import {
+  type ClientContract,
+  entityKeyOf,
+  metasOf,
+  versionsOf,
+} from "@sincpro/web-framework";
 import { test } from "vitest";
 
 import { entities } from "../stories/support/forge-contract/project/entities";
@@ -41,4 +46,17 @@ test("a contract's models are preloaded under their entities' keys, as the serve
 test("every generated entity finds its preloaded definition under its own key", () => {
   const metas = metasOf(project, "project");
   for (const one of entities) assert.ok(metas[one.key] !== undefined, one.key);
+});
+
+test("the snapshot's version of each entity is what a transport compares answers with", () => {
+  const versions = versionsOf(project);
+  assert.deepEqual(Object.keys(versions).sort(), [
+    "Issue",
+    "Project",
+    "ProjectEvent",
+    "ProjectRepository",
+    "Run",
+    "RunStep",
+  ]);
+  assert.match(versions["Issue"] ?? "", /^[0-9a-f]{64}$/);
 });

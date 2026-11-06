@@ -20,6 +20,16 @@ export const issues = entity<
     resetIssueSandbox: Omit<dto.CommandResetIssueSandbox, "issue_id">;
     sendIssue: Omit<dto.CommandSendIssue, "issue_id">;
     stopIssue: Omit<dto.CommandStopIssue, "issue_id">;
+  },
+  {
+    assignIssueSandbox: dto.CommandAssignIssueSandboxAnswer;
+    cancelIssue: dto.CommandCancelIssueAnswer;
+    deliverIssue: dto.CommandDeliverIssueAnswer;
+    openIssue: dto.CommandOpenIssueAnswer;
+    queueIssueRun: dto.CommandQueueIssueRunAnswer;
+    resetIssueSandbox: dto.CommandResetIssueSandboxAnswer;
+    sendIssue: dto.CommandSendIssueAnswer;
+    stopIssue: dto.CommandStopIssueAnswer;
   }
 >("project:issue", {
   list: "/issues",
@@ -47,6 +57,13 @@ export const projects = entity<
     setProjectTenant: Omit<dto.CommandSetProjectTenant, "project_id">;
     shareProject: Omit<dto.CommandShareProject, "project_id">;
     unshareProject: Omit<dto.CommandUnshareProject, "project_id">;
+  },
+  {
+    openIssue: dto.CommandOpenIssueAnswer;
+    registerProject: dto.CommandRegisterProjectAnswer;
+    setProjectTenant: dto.CommandSetProjectTenantAnswer;
+    shareProject: dto.CommandShareProjectAnswer;
+    unshareProject: dto.CommandUnshareProjectAnswer;
   }
 >("project:project", {
   list: "/projects",

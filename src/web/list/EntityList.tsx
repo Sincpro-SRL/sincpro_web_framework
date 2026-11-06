@@ -3,7 +3,12 @@
 import { type AnyRecord, type Criteria, nameOf } from "@sincpro/criteria";
 import { RecordLink, useCrumbs, type WorkspaceApi } from "@sincpro/web-composer";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
-import { PICK_PARAM, QUERY_PARAM, TRAIL_PARAM } from "@sincpro/web-framework/core/entity";
+import {
+  type CommandBodies,
+  PICK_PARAM,
+  QUERY_PARAM,
+  TRAIL_PARAM,
+} from "@sincpro/web-framework/core/entity";
 import type { GroupLevel, NamedFilter } from "@sincpro/web-framework/core/list";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
 import { explain } from "@sincpro/web-framework/core/transport";
@@ -72,8 +77,8 @@ const NO_WORKSPACE = {
 /** How many lists' trails are kept: the records opened from the last fifty lists page on. */
 const TRAILS = 50;
 
-export type EntityListProps<T extends AnyRecord> = {
-  listing: Listing<T>;
+export type EntityListProps<T extends AnyRecord, C extends CommandBodies = CommandBodies> = {
+  listing: Listing<T, C>;
   /**
    * The workspace this list is a view of. With it, a row opens its record as a page, the
    * identity column is the composer's `RecordLink` (peek, side panel, window on hover) and the
@@ -151,7 +156,7 @@ export type EntityListProps<T extends AnyRecord> = {
    * The entity's Commands offered on each row («Confirmar»), sent with their idempotency key;
    * the list is read again when one is done (`useRowCommands`).
    */
-  commands?: readonly RowCommand<T>[];
+  commands?: readonly RowCommand<T, C>[];
   /** Any other action of a row — or the commands built by hand with `useRowCommands`. */
   rowActions?: (row: T) => readonly RowAction[];
   /**
@@ -181,7 +186,7 @@ export type View = "table" | "rows" | "board" | "sheet" | "pivot";
 /** What a list offers when nobody said: every face that needs no configuration. */
 const EVERY_VIEW: readonly View[] = ["table", "rows", "board", "sheet"];
 
-export function EntityList<T extends AnyRecord>({
+export function EntityList<T extends AnyRecord, C extends CommandBodies = CommandBodies>({
   listing,
   api,
   columns: askedColumns,
@@ -207,7 +212,7 @@ export function EntityList<T extends AnyRecord>({
   commands = NO_COMMANDS,
   rowActions: askedRowActions,
   faces,
-}: EntityListProps<T>) {
+}: EntityListProps<T, C>) {
   // A named list (`defineList`) brings its own columns, filters, faces and words; what the
   // screen passes wins.
   const definition = listing.definition;

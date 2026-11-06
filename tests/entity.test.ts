@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 
 import type { Expression } from "@sincpro/criteria";
-import { bodyFor, entity, pathFor, SCOPE_PARAM, scopeOfRef } from "@sincpro/web-framework";
+import {
+  bodyFor,
+  entity,
+  listRoute,
+  pathFor,
+  SCOPE_PARAM,
+  scopeOfRef,
+} from "@sincpro/web-framework";
 import { test } from "vitest";
 
 const projects = entity("forge:project", {
@@ -72,4 +79,22 @@ test("a chooser carries the picker's cut, and reads it back as the expression it
 test("a cut typed in an address bar that does not read is no cut, never an error", () => {
   assert.equal(scopeOfRef({ params: { [SCOPE_PARAM]: "{not json" } }), undefined);
   assert.equal(scopeOfRef({ params: { [SCOPE_PARAM]: '{"name":"Globex"}' } }), undefined);
+});
+
+test("a list under a record takes its key from the parameters, and the rest as its query", () => {
+  assert.equal(
+    listRoute("/tenants/{tenant_id}/members", { tenant_id: "acme bo", role: "admin" }),
+    "/tenants/acme%20bo/members?role=admin",
+  );
+  assert.equal(
+    listRoute("/projects", { tenant_id: "acme", q: "" }),
+    "/projects?tenant_id=acme",
+  );
+});
+
+test("a list whose path needs a key the parameters lack is refused before anything is sent", () => {
+  assert.throws(
+    () => listRoute("/tenants/{tenant_id}/members", { role: "admin" }),
+    /the list "\/tenants\/\{tenant_id\}\/members" needs "tenant_id"/,
+  );
 });

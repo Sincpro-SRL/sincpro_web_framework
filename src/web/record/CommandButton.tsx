@@ -2,8 +2,12 @@
 
 import type { AnyRecord } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
-import type { CommandBodies, Entity } from "@sincpro/web-framework/core/entity";
-import { useCommand } from "@sincpro/web-framework/react/useCommand";
+import type {
+  CommandAnswers,
+  CommandBodies,
+  Entity,
+} from "@sincpro/web-framework/core/entity";
+import { type AnswerOf, useCommand } from "@sincpro/web-framework/react/useCommand";
 import { Refused } from "@sincpro/web-framework/web/Refused";
 import { Button, Dialog } from "@sincpro/web-ui";
 import { useState } from "react";
@@ -22,6 +26,7 @@ export function CommandButton<
   R = unknown,
   C extends CommandBodies = CommandBodies,
   N extends keyof C & string = keyof C & string,
+  A extends CommandAnswers = CommandAnswers,
 >({
   entity,
   command,
@@ -33,7 +38,7 @@ export function CommandButton<
   disabled = false,
   onDone,
 }: {
-  entity: Entity<T, C>;
+  entity: Entity<T, C, A>;
   /** One the entity declares; a typed entity takes only its own names. */
   command: N;
   id?: string;
@@ -45,10 +50,10 @@ export function CommandButton<
   role?: "primary" | "secondary" | "ghost";
   /** Not offered right now — «Mover» with no other tenant chosen. The server still decides. */
   disabled?: boolean;
-  onDone?: (answer: R) => void;
+  onDone?: (answer: AnswerOf<R, A, N>) => void;
 }) {
   const copy = frameworkCopy().command;
-  const action = useCommand<T, R, C, N>(entity, command);
+  const action = useCommand<T, R, C, N, A>(entity, command);
   const [open, setOpen] = useState(false);
 
   const run = async () => {

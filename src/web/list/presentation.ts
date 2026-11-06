@@ -1,5 +1,9 @@
 import type { AnyRecord } from "@sincpro/criteria";
-import type { Entity } from "@sincpro/web-framework/core/entity";
+import type {
+  CommandAnswers,
+  CommandBodies,
+  Entity,
+} from "@sincpro/web-framework/core/entity";
 import { isList, type ListDefinition } from "@sincpro/web-framework/core/list";
 import type { PickerItem, RecordCard, RowOf } from "@sincpro/web-ui";
 import type { ComponentProps } from "react";
@@ -44,15 +48,21 @@ export type Presentation<T> = {
   card?: (record: T) => CardLook;
 };
 
-export type Presented<T extends AnyRecord> = Entity<T> & {
+export type Presented<
+  T extends AnyRecord,
+  C extends CommandBodies = CommandBodies,
+  A extends CommandAnswers = CommandAnswers,
+> = Entity<T, C, A> & {
   readonly presentation: Presentation<T>;
 };
 
 /** The entity with how its records look: pass it wherever an entity goes. */
-export function presented<T extends AnyRecord>(
-  entity: Entity<T>,
-  presentation: Presentation<T>,
-): Presented<T> {
+export function presented<
+  T extends AnyRecord,
+  C extends CommandBodies = CommandBodies,
+  A extends CommandAnswers = CommandAnswers,
+>(entity: Entity<T, C, A>, presentation: Presentation<T>): Presented<T, C, A> {
+  // Its typed Commands and answers go with it: a generated entity, presented, is still checked.
   return { ...entity, presentation };
 }
 

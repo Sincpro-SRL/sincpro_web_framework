@@ -43,7 +43,19 @@ export type RestOptions = {
   /** Where the bounded context's discovery document is: `"/openapi.json"` by default, at the
    *  origin of `base`. `null`: none is read, and the definitions come only from `metas`. */
   document?: string | null;
+  /**
+   * The version of each model the application was written against — the snapshot it was
+   * generated from (`versionsOf(contract)`). With it, an answer of another version is told to
+   * `onVersionDrift`: the server moved, the generated code did not.
+   */
+  snapshot?: Readonly<Record<string, string>>;
+  /** Called once per model and version the server answers that the snapshot does not hold —
+   *  never an error: the screen keeps working on the live definition. */
+  onVersionDrift?: (drift: VersionDrift) => void;
 };
+
+/** A model the server answers at another version than the snapshot the code came from. */
+export type VersionDrift = { model: string; snapshot: string; live: string };
 
 /** The keys of an answer that are not the record: what is left is the record's own field. */
 const ENVELOPE = new Set(["cursor", "count", "model_version", "dropped", "draft", "missing"]);
@@ -101,6 +113,17 @@ export function restTransport(options: RestOptions = {}): Transport {
   }
 
   /** The definition of the model `url` answers; read again when `version` is not the one held. */
+  // Each drift is told once: a list read every few seconds would say it on every page.
+  const told = new Set<string>();
+  function noticeDrift(model: string, live: string | null | undefined): void {
+    const snapshot = options.snapshot?.[model];
+    if (snapshot === undefined || !live || live === snapshot) return;
+    const key = `${model}\u0000${live}`;
+    if (told.has(key)) return;
+    told.add(key);
+    options.onVersionDrift?.({ model, snapshot, live });
+  }
+
   async function definitionAt(
     url: string,
     method: string,
@@ -110,6 +133,7 @@ export function restTransport(options: RestOptions = {}): Transport {
     if (published === null) return null;
     const name = modelAt(published, pathOf(url), method);
     if (name === undefined) return null;
+    noticeDrift(name, version);
     const known = definitionOf(published, name);
     if (known === undefined || !version || known.version === version)
       return known?.meta ?? null;
@@ -155,6 +179,10 @@ export function restTransport(options: RestOptions = {}): Transport {
           throw new TransportError(route, error.status, error.problem, undefined);
         throw error;
       }
+    },
+
+    async read<T>(route: string, signal?: AbortSignal): Promise<T> {
+      return (await get(route, urlOf(base, route), signal)) as T;
     },
 
     async one<T>(route: string, signal?: AbortSignal): Promise<One<T>> {

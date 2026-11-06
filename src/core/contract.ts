@@ -15,8 +15,8 @@ export type ClientContract = {
   $defs?: Readonly<Record<string, Contract>>;
 };
 
-/** `ProjectEvent` → `project_event`. */
-function kindOf(model: string): string {
+/** `ProjectEvent` → `project_event`: the kind in an entity's key. */
+export function kindOf(model: string): string {
   return model
     .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
     .replace(/([A-Z])([A-Z][a-z])/g, "$1_$2")
@@ -26,6 +26,23 @@ function kindOf(model: string): string {
 /** The key of a model's entity: `entityKeyOf("project", "ProjectEvent")` → `"project:project_event"`. */
 export function entityKeyOf(domain: string, model: string): string {
   return `${domain}:${kindOf(model)}`;
+}
+
+/**
+ * The version of every entity of `contract`, by its model's name — what `restTransport`
+ * compares each answer with (`snapshot`) to say when the generated code is behind the server.
+ *
+ *     restTransport({ base: "/v1", snapshot: versionsOf(contract), onVersionDrift: warn })
+ */
+export function versionsOf(contract: ClientContract): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(contract.models).flatMap(([name, model]) => {
+      const version = model["x-sincpro"]?.version;
+      return model["x-sincpro"]?.identity != null && typeof version === "string"
+        ? [[name, version]]
+        : [];
+    }),
+  );
 }
 
 /**

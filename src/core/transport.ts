@@ -26,6 +26,28 @@ export interface Transport {
     signal?: AbortSignal,
     options?: SendOptions,
   ): Promise<T>;
+  /**
+   * A read that is neither a page nor one record — a Query of the context's own, `GET /me` —:
+   * the route with its parameters already in it (`listRoute`), its answer as it came. Optional,
+   * so a transport written before it keeps compiling; call it through `readRoute`.
+   */
+  read?<T>(route: string, signal?: AbortSignal): Promise<T>;
+}
+
+/**
+ * A read through `transport.read`, or the reason it cannot be: a transport that has no `read`
+ * is said so by name, never a `TypeError` from somewhere inside a screen.
+ */
+export function readRoute<T>(
+  transport: Transport,
+  route: string,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (transport.read === undefined)
+    return Promise.reject(
+      new Error(`this transport has no read(): it cannot ask GET ${route} — give it one`),
+    );
+  return transport.read<T>(route, signal);
 }
 
 export type Method = "POST" | "PUT" | "PATCH" | "DELETE";

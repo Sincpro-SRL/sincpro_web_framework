@@ -3,7 +3,7 @@
 // Do not edit: regenerate it (`sincpro-web generate`).
 
 import type { Criteria } from "@sincpro/criteria";
-import { listRoute, pathFor, type SendOptions, type Transport, writeRoute } from "@sincpro/web-framework/core";
+import { listRoute, pathFor, readRoute, type SendOptions, type Transport, writeRoute } from "@sincpro/web-framework/core";
 
 import type * as dto from "./domain";
 
@@ -187,11 +187,7 @@ const routes = {
 
 /**
  * «auth» over a transport: a method for each operation REST reaches as a
- * page, a record or a write.
- *
- * Without a method here:
- * - `CommandGetCaller`: GET /me is no page and no record.
- * - `CommandListTenantMembers`: its page is at /tenants/{tenant_id}/members.
+ * page, a record, a read of its own or a write.
  */
 export function clientOf(transport: Transport) {
   return {
@@ -261,6 +257,9 @@ export function clientOf(transport: Transport) {
         undefined,
         options,
       ),
+    /** Who calls and what they may do: the admin, or a user and the tenant they act in. */
+    getCaller: (params?: Partial<Record<"criteria" | "cursor", string>>) =>
+      readRoute<dto.CommandGetCallerAnswer>(transport, listRoute("/me", params)),
     /** One group, by its id. */
     getGroup: (id: string) =>
       transport.one<dto.Group>(`/groups/${encodeURIComponent(id)}`),
@@ -303,6 +302,9 @@ export function clientOf(transport: Transport) {
     /** The groups of one tenant, or the groups across tenants. */
     listGroups: (criteria: Criteria<dto.Group>, params?: Partial<Record<"drafts" | "tenant_id", string>>) =>
       transport.list<dto.Group>(listRoute("/groups", params), criteria),
+    /** Who belongs to one tenant, with their role there. */
+    listTenantMembers: (criteria: Criteria<dto.Membership>, params: Readonly<Record<"tenant_id", string>> & Partial<Record<"drafts", string>>) =>
+      transport.list<dto.Membership>(listRoute("/tenants/{tenant_id}/members", params), criteria),
     /** Every tenant forge knows, newest first. */
     listTenants: (criteria: Criteria<dto.Tenant>, params?: Partial<Record<"drafts", string>>) =>
       transport.list<dto.Tenant>(listRoute("/tenants", params), criteria),

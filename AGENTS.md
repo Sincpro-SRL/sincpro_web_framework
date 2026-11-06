@@ -34,18 +34,18 @@ Rules for any agent (or person) changing this package. Read the README for the i
 
 ## Where things go
 
-| Folder               | What                                                                   | May import                                |
-| -------------------- | ---------------------------------------------------------------------- | ----------------------------------------- |
-| `src/core/`          | transport, entity, model definition, text of a value                   | `@sincpro/criteria` only                  |
-| `src/react/`         | hooks and the provider — state, no drawing                             | `core/`, React, `@sincpro/criteria-react` |
-| `src/web/list/`      | a collection: `EntityList`, `EntitySearchBar`, columns, search model   | everything above, web-ui, composer        |
-| `src/web/record/`    | one record: fields, facts, relations, picker, commands                 | everything above, web-ui — NOT composer   |
-| `src/web/workspace/` | the composer: views, skin, `useRecordInWorkspace`, `<SincproApp>`      | everything above, web-ui, composer        |
-| `src/codegen/`       | the generator: DTOs, client and entities out of a client contract      | `core/`, Node — nothing imports it        |
-| `stories/`           | the use cases, one scenario per story, with `play`                     | the package's public entry only           |
-| `stories/support/`   | fake domains: `ventas` (by hand), `forge` (copied from a real service) | —                                         |
-| `tests/`             | vitest (`model` project, Node) over `core/`, `react/` and `codegen/`   | —                                         |
-| `docs/`              | `PURPOSE.md` (what for), `ROADMAP.md` (found, next, open)              | —                                         |
+| Folder               | What                                                                     | May import                                |
+| -------------------- | ------------------------------------------------------------------------ | ----------------------------------------- |
+| `src/core/`          | transport, entity, model definition, text of a value                     | `@sincpro/criteria` only                  |
+| `src/react/`         | hooks and the provider — state, no drawing                               | `core/`, React, `@sincpro/criteria-react` |
+| `src/web/list/`      | a collection: `EntityList`, `EntitySearchBar`, columns, search model     | everything above, web-ui, composer        |
+| `src/web/record/`    | one record: fields, facts, relations, picker, commands                   | everything above, web-ui — NOT composer   |
+| `src/web/workspace/` | the composer: views, skin, `useRecordInWorkspace`, `<SincproApp>`        | everything above, web-ui, composer        |
+| `src/codegen/`       | the generator: DTOs, client and entities out of a client contract        | `core/`, Node — nothing imports it        |
+| `stories/`           | the use cases, one scenario per story, with `play`                       | the package's public entry only           |
+| `stories/support/`   | fake domains: `ventas` (by hand), `forge` (copied from a real service)   | —                                         |
+| `tests/`             | vitest (`model` project, Node) over `core/`, `react/` and `codegen/`     | —                                         |
+| `docs/`              | `PURPOSE.md`, `ROADMAP.md`, `ADOPCION.md` (how an app adopts it), `prd/` | —                                         |
 
 ## Hard rules (the build enforces them)
 
@@ -234,6 +234,17 @@ Rules for any agent (or person) changing this package. Read the README for the i
 - **In a record every field comes but a related one** (`codegen/domain.ts`, `optional`): a
   model's contract lists as required only what has no default — in forge, nothing —, while the
   server writes the whole record. A relation comes only when the read expands it.
+- **A key alone is a relation with `held: false`** (`relationFieldOf`): `EntityID[Tenant]` has no
+  relation field beside it, so `relation` IS the key. Never write the chosen record beside it —
+  the lines editor did (`{ [key]: id, [relation]: chosen }`) and the record went INTO the key.
+  Its name is asked once by key (`useNameOf`); in a table it stays the key.
+- **A list under a record fills its path keys from `params`** (`listRoute`): a key it lacks is
+  refused before anything is sent, and a new record of such an entity needs its definition
+  preloaded (`metasOf`) — there is no list to ask without the key.
+- **`Transport.read` is optional**: call it through `readRoute`, which says by name when a
+  transport has none. `cachedTransport` never keeps a read — it is the context's own.
+- **`presented` keeps an entity's typed Commands and answers** (`Presented<T, C, A>`). A helper
+  that takes an entity and returns `Entity<T>` silently turns a generated entity loose.
 - **The meta store is filled DURING useListing's render**: a value read from it earlier in the
   same component's render is from before the answer, and nothing renders again. A criteria that
   depends on the definition keeps it in state and sets it in an effect (`useLookup exclude`).

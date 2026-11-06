@@ -1,7 +1,7 @@
 "use client";
 
 import { type AnyRecord, type Expression, matches } from "@sincpro/criteria";
-import { bodyFor, pathFor } from "@sincpro/web-framework/core/entity";
+import { bodyFor, type CommandBodies, pathFor } from "@sincpro/web-framework/core/entity";
 import { retryKeys } from "@sincpro/web-framework/core/retry";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
@@ -28,17 +28,20 @@ import { useCallback, useState } from "react";
  *     ]);
  *     <EntityList listing={listing} rowActions={commands.rowActions} />
  */
-export type RowCommand<T> = {
-  /** A Command the entity declares (`entity({ commands })`). */
-  command: string;
-  label: string;
-  icon: LucideIcon;
-  tone?: RowAction["tone"];
-  /** Offered only on rows that hold it — a hint, not protection: the server decides. */
-  when?: Expression<T>;
-  /** What the Command is sent with. Without it, an empty body: the route names the row. */
-  body?: (row: T) => AnyRecord;
-};
+export type RowCommand<T, C extends CommandBodies = CommandBodies> = {
+  [N in keyof C & string]: {
+    /** A Command the entity declares (`entity({ commands })`); a typed entity, only its own. */
+    command: N;
+    label: string;
+    icon: LucideIcon;
+    tone?: RowAction["tone"];
+    /** Offered only on rows that hold it — a hint, not protection: the server decides. */
+    when?: Expression<T>;
+    /** What the Command is sent with — checked against a typed entity's `C[command]`. Without
+     *  it, an empty body: the route (or the Command's `target`) names the row. */
+    body?: (row: T) => C[N];
+  };
+}[keyof C & string];
 
 export type RowCommands<T> = {
   rowActions: (row: T) => readonly RowAction[];
@@ -47,9 +50,9 @@ export type RowCommands<T> = {
   dismiss: () => void;
 };
 
-export function useRowCommands<T extends AnyRecord>(
-  listing: Listing<T>,
-  commands: readonly RowCommand<T>[],
+export function useRowCommands<T extends AnyRecord, C extends CommandBodies = CommandBodies>(
+  listing: Listing<T, C>,
+  commands: readonly RowCommand<T, C>[],
 ): RowCommands<T> {
   const { transport } = useFramework();
   const [running, setRunning] = useState<ReadonlySet<string>>(new Set());

@@ -3,10 +3,12 @@
 import { type AnyRecord, choicesOf } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { errorAt } from "@sincpro/web-framework/core/edit";
+import type { Entity } from "@sincpro/web-framework/core/entity";
 import { editableLines } from "@sincpro/web-framework/core/lines";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
 import { relationFieldOf } from "@sincpro/web-framework/core/relation";
 import { useEntityFor, useFramework } from "@sincpro/web-framework/react/context";
+import { useNameOf } from "@sincpro/web-framework/react/useNameOf";
 import type { RecordReading } from "@sincpro/web-framework/react/useRecord";
 import type { EntityListProps } from "@sincpro/web-framework/web/list/EntityList";
 import {
@@ -27,8 +29,20 @@ import {
   type OpenTarget,
   ReadValue,
   RelationValue,
+  type RelationValueProps,
 } from "@sincpro/web-ui";
 import type { ReactNode } from "react";
+
+/** A key alone, read: the name of the record it points at, asked once by key — the key until
+ *  then, and when nothing answers. */
+function KeyValue({
+  target,
+  id,
+  ...rest
+}: { target: Entity; id: string } & Omit<RelationValueProps, "name">) {
+  const name = useNameOf(target, id);
+  return <RelationValue name={name ?? id} {...rest} />;
+}
 
 /**
  * One field of a record being edited, from the model: its word, whether it is required or
@@ -154,18 +168,23 @@ export function RecordField<T extends Record<string, unknown>>({
     if (relation === undefined || target === undefined) return null;
     const key = edit.values[relation.key];
     const id = key === null || key === undefined ? "" : String(key);
-    if (state.readonly)
+    if (state.readonly) {
+      const opens =
+        opening === null || id === ""
+          ? {}
+          : {
+              onOpenIn: (to: OpenTarget) => opening.open(target.ref(id), to),
+              openTargets: opening.targets,
+            };
+      // A relation held beside its key names itself; a key alone (`EntityID`) asks its name.
+      if (!relation.held) return <KeyValue target={target} id={id} {...opens} />;
       return (
         <RelationValue
           name={textOf(meta, relation.relation, edit.values[relation.relation], locale) ?? id}
-          {...(opening === null || id === ""
-            ? {}
-            : {
-                onOpenIn: (to: OpenTarget) => opening.open(target.ref(id), to),
-                openTargets: opening.targets,
-              })}
+          {...opens}
         />
       );
+    }
     return (
       <RelationPicker
         target={target}

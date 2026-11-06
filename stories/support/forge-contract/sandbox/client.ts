@@ -3,7 +3,7 @@
 // Do not edit: regenerate it (`sincpro-web generate`).
 
 import type { Criteria } from "@sincpro/criteria";
-import { listRoute, pathFor, type SendOptions, type Transport, writeRoute } from "@sincpro/web-framework/core";
+import { listRoute, pathFor, readRoute, type SendOptions, type Transport, writeRoute } from "@sincpro/web-framework/core";
 
 import type * as dto from "./domain";
 
@@ -119,11 +119,7 @@ const routes = {
 
 /**
  * «sandbox» over a transport: a method for each operation REST reaches as a
- * page, a record or a write.
- *
- * Without a method here:
- * - `CommandGetDeliveryStatus`: GET /deliveries is no page and no record.
- * - `CommandListOccupiedSandboxes`: GET /occupied-sandboxes is no page and no record.
+ * page, a record, a read of its own or a write.
  */
 export function clientOf(transport: Transport) {
   return {
@@ -166,9 +162,15 @@ export function clientOf(transport: Transport) {
         undefined,
         options,
       ),
+    /** What a workspace's change branch delivered: its branches and their review requests. */
+    getDeliveryStatus: (params?: Partial<Record<"branch" | "criteria" | "cursor" | "workspace_id", string>>) =>
+      readRoute<dto.CommandGetDeliveryStatusAnswer>(transport, listRoute("/deliveries", params)),
     /** One Sandbox: its lifecycle, its Workspace and its deployment. */
     getSandbox: (id: string) =>
       transport.one<dto.Sandbox>(`/sandboxes/${encodeURIComponent(id)}`),
+    /** The Sandboxes no run may take now: reserved, or uncertain. */
+    listOccupiedSandboxes: (params?: Partial<Record<"criteria" | "cursor", string>>) =>
+      readRoute<dto.CommandListOccupiedSandboxesAnswer>(transport, listRoute("/occupied-sandboxes", params)),
     /** Who holds each Sandbox, or held it last. */
     listReservations: (criteria: Criteria<dto.Reservation>, params?: Partial<Record<"drafts", string>>) =>
       transport.list<dto.Reservation>(listRoute("/reservations", params), criteria),

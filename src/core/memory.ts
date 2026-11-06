@@ -38,6 +38,9 @@ export type MemoryOptions = {
    * refuse. Without it, every Command is a 404.
    */
   handle?: (method: Method, route: string, body: unknown) => unknown;
+  /** Answer a read that is neither a page nor a record (`GET /me`), its route with its query.
+   *  Without it, the transport has no `read`. */
+  read?: (route: string) => unknown;
   /** The draft this caller kept of a record, answered with it — sincpro_framework's `Drafts`. */
   draft?: (route: string) => Draft | null;
   /** Every list request, as it arrived: what a story or a test checks was really asked. */
@@ -154,5 +157,15 @@ export function memoryTransport(
       if (key !== undefined) answered.set(key, structuredClone(answer));
       return answer as T;
     },
+
+    ...(options.read === undefined
+      ? {}
+      : {
+          async read<T>(route: string, signal?: AbortSignal): Promise<T> {
+            await check(route, signal);
+            // A copy, as every answer: over a wire nobody holds the server's object.
+            return structuredClone(await options.read!(route)) as T;
+          },
+        }),
   };
 }
