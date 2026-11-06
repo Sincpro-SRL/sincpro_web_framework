@@ -64,7 +64,11 @@ export {
   RelatedRecord,
   targetsFor,
 } from "@sincpro/web-framework/web/workspace/open";
-export { EntityRecord } from "@sincpro/web-framework/web/workspace/record";
+export {
+  EntityRecord,
+  type Stamp,
+  useRecordScreen,
+} from "@sincpro/web-framework/web/workspace/record";
 export { SincproApp } from "@sincpro/web-framework/web/workspace/SincproApp";
 export { webUiSkin } from "@sincpro/web-framework/web/workspace/skin";
 export {

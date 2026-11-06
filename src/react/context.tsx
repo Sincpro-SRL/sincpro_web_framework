@@ -5,11 +5,14 @@ import {
   installTimeZone,
   type MetaStore,
   metaStore,
+  processContext,
+  screensTransport,
   type Transport,
 } from "@sincpro/client-framework";
 import type { Meta } from "@sincpro/criteria";
 import { entityFor } from "@sincpro/web-framework/core/relation";
 import type { Trail } from "@sincpro/web-framework/core/trail";
+import { useContextValues } from "@sincpro/web-framework/react/useContextValues";
 import { createContext, type ReactNode, useContext, useMemo, useRef, useState } from "react";
 
 /**
@@ -26,7 +29,9 @@ import { createContext, type ReactNode, useContext, useMemo, useRef, useState } 
  * `api.choosing` (what a chooser was asked, in memory) and `api.context` (what the user is on,
  * what is selected). Read `~/dev/sincpro_web_composer/README.md` before writing a second one
  * here. A value the backend must see on every request (the active company) goes in the
- * transport's `headers` — the backend's `sincpro-context` header is read by every entrance.
+ * process's context (`processContext.set({ company_id })`, @sincpro/client-framework): every
+ * request under this provider carries it in `sincpro-context` (`screensTransport`), and a change
+ * reads every screen again.
  */
 type FrameworkContextValue = {
   transport: Transport;
@@ -36,6 +41,8 @@ type FrameworkContextValue = {
   entities: readonly Entity[];
   /** Where each open record came from (`Trail`), by the key its reference carries. */
   trails: Map<string, Trail>;
+  /** The process's context now: a reading reads again when it changes (another company). */
+  context: Readonly<Record<string, unknown>>;
 };
 
 const FrameworkContext = createContext<FrameworkContextValue | null>(null);
@@ -73,9 +80,17 @@ export function FrameworkProvider({
   // the screens already learned.
   const [metas] = useState(() => metaStore(seed));
   const [trails] = useState(() => new Map<string, Trail>());
+  // What the screens read and write is a use case of `screens` (`screensTransport`,
+  // client-framework): each request traced, carrying the process's context (the company, the
+  // tenant) read at the moment it is sent, and reported when it failed unexpectedly.
+  const screens = useMemo(() => screensTransport(transport), [transport]);
+  // When the context changes, every reading on screen reads its same question again — a list
+  // keeps its filter, order and page, a record what was typed (`useListing`, `useRecord`). The
+  // transport stays the same one: a new one would start every reading over.
+  const context = useContextValues(processContext);
   const value = useMemo(
-    () => ({ transport, locale, metas, entities, trails }),
-    [transport, locale, metas, entities, trails],
+    () => ({ transport: screens, locale, metas, entities, trails, context }),
+    [screens, locale, metas, entities, trails, context],
   );
   return <FrameworkContext.Provider value={value}>{children}</FrameworkContext.Provider>;
 }

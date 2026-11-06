@@ -121,7 +121,10 @@ built; this file is how to keep it.
   a company, a filter, a default), `api.over` (a modal's host record), `pick(…, { question })` and
   `api.choosing` (a chooser knows it is one; on composer main after 1.4.0), `api.context`
   (focused and selection). The global part is `FrameworkProvider`, and what the backend must see
-  on every request goes in the transport's `headers`. No second store here. An analysis once
+  on every request goes in the process's context (`processContext.set`, sent as
+  `sincpro-context`) — never also in the transport's `headers`: a request's own `sincpro-context`
+  replaces the transport's. The token and the session's headers stay in `headers`. No second
+  store here. An analysis once
   asked composer for all of this because it read only `api.context`.
 - **The shape of a command's answer is the application's** (its DTO), not a framework contract:
   a create that answers `{project_id}` under a meta whose identity is `id` is that service's bug
@@ -196,6 +199,14 @@ built; this file is how to keep it.
   without them — or if they fail to load — use cases run untraced and nothing breaks. They build
   what the application asks for from its own settings; an application may hand its own tracer or
   reporter to `configureProcess` instead.
+- **What a screen reads and writes is a use case of `screens`, and a change of context reads
+  again — never starts over.** `FrameworkProvider` reads and writes through `screensTransport`
+  (each request traced, with the context, reported when it failed); the transport stays the same
+  one. When the process's context changes, a reading re-reads its own question
+  (`useFramework().context` in its effect, `reading.reload()` for a list) and a record being
+  edited keeps what was typed. Giving the screens a new transport instead started every reading
+  over: a list lost its filter and page, a record its edits. In a play with a `memoryTracer`,
+  the `screens/…` spans are there too — filter by name, never take `spans[0]` blindly.
 - **A play waits up to 5 s** (`configure({ asyncUtilTimeout })` in `.storybook/preview.ts`).
   On the CI runner every story file shares one Chrome, and a 250 ms fake-server timer can take
   over a second: with Testing Library's default (1 s) plays failed there and never locally.

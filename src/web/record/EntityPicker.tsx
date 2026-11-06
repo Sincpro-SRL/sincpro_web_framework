@@ -45,9 +45,9 @@ import { useState } from "react";
  * way to the server's literal search. The chooser is a table — the columns the list declares,
  * or `columns` — searched by the entity's literal search on the server.
  *
- * A field that may stay empty offers that as a choice (`none`): «Ninguno», or the screen's own
- * word («Sin tenant»), answered as `""`. web-ui's `Picker` has no way to clear a choice, so it
- * is the first option, while nothing is typed. `exclude` leaves keys out of the choices — the
+ * A field that may stay empty says so with `onClear`: a × beside the chosen name, or the name
+ * erased and the field left (web-ui's `Picker onClear`). Where the empty choice has a word of its
+ * own («Sin tenant»), `none` also offers it as the first option, answered as `""`. `exclude` leaves keys out of the choices — the
  * tenants a project is already shared with —, in the picker and its chooser, and the SERVER
  * leaves them out (`useLookup exclude`).
  *
@@ -67,6 +67,7 @@ export function EntityPicker<T extends AnyRecord>({
   columns,
   browse = true,
   none,
+  onClear,
   exclude,
   placeholder,
   disabled,
@@ -83,6 +84,9 @@ export function EntityPicker<T extends AnyRecord>({
   /** The field may stay empty: a first choice that answers `""` — `true` says «Ninguno», a
    *  text is the screen's own word for it. */
   none?: boolean | string;
+  /** The choice can be removed: a × beside it, and erasing the name and leaving the field
+   *  (web-ui's `Picker onClear`). A field that is not required passes it. */
+  onClear?: () => void;
   /** Keys never offered — those already chosen elsewhere. Left out by the server. */
   exclude?: readonly string[];
   value?: string;
@@ -170,6 +174,7 @@ export function EntityPicker<T extends AnyRecord>({
       // «Loading» only before there is anything: refining keeps the ten on screen.
       loading={lookup.loading && lookup.options.length === 0}
       // No «load more»: ten, and past them the server's search or the chooser.
+      {...(onClear === undefined || disabled === true ? {} : { onClear })}
       {...(opens === undefined || value === "" ? {} : { onOpen: opens })}
       {...(targets === undefined ? {} : { openTargets: targets })}
       onBrowseAll={browseAll}

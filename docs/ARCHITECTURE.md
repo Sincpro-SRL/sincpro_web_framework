@@ -149,8 +149,10 @@ and is drawn from its meta (grow with evidence, as Sincpro's architecture guide 
   shell's registry of bounded contexts (`entityFor`, story 41). What two bounded contexts truly
   share goes to `common`.
 - **Another entity of the same bounded context** is imported only through its `index.ts`.
-- **Enforced, not recommended**: the framework ships a rule preset (dependency-cruiser) that each
-  application's `make doctor` runs, as the framework's own does today.
+- **Enforced, not recommended**: `sincpro-client check --root src` (client-framework) resolves every
+  import with the application's own TypeScript and `tsconfig` — its aliases included — and fails
+  on each break of the table above; each application's `make doctor` runs it, as the framework's
+  own doctor runs its rules.
 
 ## 4. `common`, what bounded contexts share
 
@@ -299,6 +301,10 @@ can compose them with its own.
   process's values, over them its bounded context's, over those a scope's
   (`project.scoped({...})`), read once where the gesture starts.
 - What the backend has to see travels in headers: `sincpro-context` and `traceparent`.
+- **What a screen reads and writes is a use case too**: `FrameworkProvider` sends every request
+  the screens make through `screensTransport` (client-framework) — traced, with the process's
+  context, reported when it failed — and a change of the context reads every screen again and
+  forgets the cache.
 - **Where the context lives is the platform's** (`ContextStore`, like sincpro_framework's):
   memory by default, `sessionStorage` or the screens' store in the browser, MMKV on the phone.
   The API is the same on the web and on mobile: `processContext.set({ tenant_id })`,
@@ -352,7 +358,7 @@ An entity moves up a level only when it needs to:
 | **N0**            | It is in the contract: regenerate and it already has a list, a record, a picker, ⌘K and commands, drawn from its meta                                              | Nothing, not even a folder       |
 | **N1 — present**  | How it looks: its row, card, option; the control of a field, typed by entity and field                                                                             | `components/<entity>/` (its kit) |
 | **N2 — insert**   | A section, column, action or tile in a **slot**, `{ after \| before: anchor }`. The backend publishes the anchor (a field, a section of the form hints, a command) | the kit                          |
-| **N3 — new view** | A view built with the framework's blocks (`RecordField`, the lines editor, `useRecord`), which keep the draft, the preview and the commands                        | `entrypoints/views/`             |
+| **N3 — new view** | A view built with the framework's blocks (`useRecordScreen`, `RecordField`, the lines editor, `useRecord`), which keep the draft, the preview and the commands     | `entrypoints/views/`             |
 | **N4 — replace**  | A screen written whole over services and hooks                                                                                                                     | `entrypoints/views/`             |
 
 To draw a piece of an entity, the search goes, in order: the entity, its bounded context's

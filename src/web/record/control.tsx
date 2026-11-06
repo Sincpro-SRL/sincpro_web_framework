@@ -1,6 +1,12 @@
 "use client";
 
-import { type Entity, instantOf, timeZoneNow, wallTimeOf } from "@sincpro/client-framework";
+import {
+  dayOf,
+  type Entity,
+  instantOf,
+  timeZoneNow,
+  wallTimeOf,
+} from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
 import { EntityPicker } from "@sincpro/web-framework/web/record/EntityPicker";
 import {
@@ -74,14 +80,18 @@ export function controlFor(
         />
       );
     }
-    case "date":
+    case "date": {
+      // «Today» is the business's day, on the installed zone — never the browser's.
+      const today = dayOf(new Date().toISOString(), timeZoneNow());
       return (
         <DatePicker
+          {...(today === null ? {} : { today })}
           value={typeof value === "string" && value !== "" ? value : null}
           onChange={set}
           {...named}
         />
       );
+    }
     case "text[]": {
       // A list of words is chips: each word is its own key, and typing a new one adds it.
       const words = Array.isArray(value) ? value.map(String) : [];
@@ -122,12 +132,15 @@ export function RelationPicker({
   label,
   ownChooser = false,
   standalone = false,
+  onClear,
 }: {
   target: Entity;
   value: string;
   onChange: (id: string, chosen?: AnyRecord) => void;
   label: string;
   ownChooser?: boolean;
+  /** The choice can be removed — a field that is not required. */
+  onClear?: () => void;
   /** No `Field` names it (a cell): it carries `label` itself — as `FieldControl.standalone`. */
   standalone?: boolean;
 }) {
@@ -141,6 +154,7 @@ export function RelationPicker({
       // «Buscar más…» is an option of the picker already: no second button beside it.
       browse={false}
       ownChooser={ownChooser}
+      {...(onClear === undefined ? {} : { onClear })}
       {...(standalone ? { "aria-label": label } : {})}
     />
   );

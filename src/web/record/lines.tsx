@@ -172,6 +172,18 @@ function LineValue({
               : { [relation.key]: id },
           )
         }
+        // A line's key that is not required can be emptied, the record beside it too.
+        {...(definition?.fields[relation.key]?.required === true ||
+        definition?.fields[relation.key]?.required_when !== undefined
+          ? {}
+          : {
+              onClear: () =>
+                write(
+                  relation.held
+                    ? { [relation.key]: null, [relation.relation]: null }
+                    : { [relation.key]: null },
+                ),
+            })}
       />
     );
   }
@@ -235,7 +247,12 @@ export function RecordLinesEditor<T extends AnyRecord>({
   const { entities, metas } = useFramework();
   const opening = useRecordOpening();
   const definition: Meta | null = meta?.fields[name]?.definition ?? null;
-  const identity = definition?.identity || "id";
+  // A value inside the record (an embedded list) has no identity of its own: every line is
+  // keyed locally — falling back to `id` would key it by whatever it holds under that name.
+  const identity =
+    meta?.fields[name]?.type === "embedded"
+      ? (definition?.identity ?? "")
+      : definition?.identity || "id";
   const fields = lineFields(definition);
   const shown =
     look.columns === undefined ? fields : look.columns.filter((one) => fields.includes(one));

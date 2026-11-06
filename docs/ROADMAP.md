@@ -217,49 +217,49 @@ What is missing, with its owner:
 
 The map against which what is missing is measured. «Owner» is whoever has to move to close it.
 
-| Case                                           | How it is used                                   | Story      | Status | Owner of what is missing                           |
-| ---------------------------------------------- | ------------------------------------------------ | ---------- | ------ | -------------------------------------------------- |
-| List paged by the server's cursor              | `useListing` + `EntityList`                      | 01, 15     | ✅     |                                                    |
-| Literal search (the entity's template)         | `search="box"`, `listing.search`                 | 02, 09     | ✅     |                                                    |
-| Filter with the bar, builder and named filters | `EntitySearchBar`, `filters`                     | 06         | ✅     |                                                    |
-| Sort on the server                             | header → `order`                                 | 20         | ✅     |                                                    |
-| Group on the server                            | «Agrupar por», `useGroups`                       | 19, 15     | ✅     | «Ver N más» in a group (web-ui 1.4)                |
-| Measure per group (sums)                       | `EntityList sums`, `useGroups` (`sumsOf`)        | 19         | ✅     | backend: how each field is aggregated              |
-| Lists with a domain (fixed sub-filter)         | `defineList`, `useListing(list)`, `listView`     | 21         | ✅     |                                                    |
-| A list view of your own with the same search   | web-ui `List` + `EntitySearchBar` (level 2)      | 21         | ✅     |                                                    |
-| Several faces of the same set                  | `views`                                          | 15         | ✅     |                                                    |
-| Relations inside a record                      | `RelatedList`, `RecordLines`                     | 16         | ✅     |                                                    |
-| Choose a record (many2one)                     | `EntityPicker`                                   | 09, 12     | ✅     |                                                    |
-| …narrowed by another field                     | `criteria`                                       | 09         | ✅     |                                                    |
-| …from a list with a domain                     | `EntityPicker entity={list}`                     | 09         | ✅     |                                                    |
-| …searching everything, as a table              | «Buscar en todos» button, `columns`              | 09         | ✅     |                                                    |
-| …with composer's chooser                       | `chooserIn`, `api.pick`                          | 18         | ✅     |                                                    |
-| …with a chooser of your own                    | `useLookup` (literal on the server)              | 09         | ✅     |                                                    |
-| Literal search INSIDE the dropdown             | `EntityPicker` (`Picker onSearch`)               | 26         | ✅     | web-ui 1.1.0                                       |
-| Search in a table: literal first, with Enter   | `EntitySearchBar` (`SearchBar literal`), box     | 26         | ✅     | web-ui 1.1.0                                       |
-| Create from the picker («Crear "Globex"…»)     | —                                                | —          | ❌     | backend + here (web-ui 1.0 already has `onCreate`) |
-| Read, edit, preview, hints, 409, drafts        | `useRecord`, `RecordField`                       | 03, 10, 12 | ✅     |                                                    |
-| Create with default values                     | `useRecord(entity, "")`, `newRef()`              | 17, 18     | ✅     | backend #228 (create → identity)                   |
-| Duplicate                                      | —                                                | —          | ❌     | backend (`copy: false`)                            |
-| Archive / delete                               | —                                                | —          | ❌     | backend (convention)                               |
-| Previous / next from the record                | `EntityRecord` + the list's trail (`Trail`)      | 29         | ✅     |                                                    |
-| Editable lines (one2many)                      | `RecordField name="lines"` (`RecordLinesEditor`) | 31         | ✅     |                                                    |
-| …written in the table or in the dialog         | `addingOf`, `RecordField adding`                 | 31         | ✅     |                                                    |
-| …with a many2one in the line (a product)       | `RelationPicker` in the cell                     | 31         | ✅     |                                                    |
-| Add to a one2many of its own entity            | «Agregar» of `RelatedList`, `newRef(values)`     | 28         | ✅     |                                                    |
-| Commands with a dry run                        | `useCommand`, `CommandButton`                    | 10         | ✅     |                                                    |
-| Retry without duplicating                      | `Idempotency-Key`, `retryKeys`                   | 17         | ✅     |                                                    |
-| Per-row actions                                | `commands`, `useRowCommands`                     | 23         | ✅     |                                                    |
-| Bulk action over «all those that match»        | —                                                | —          | ❌     | backend + here                                     |
-| Export what is filtered                        | —                                                | —          | ❌     | backend (`data_analysis`) + here                   |
-| Page, peek, panel, window, ⌘K                  | `entityView`, `RecordLink`                       | 08, 13, 18 | ✅     |                                                    |
-| List and a detail that follows it              | `useFollowed`                                    | 22         | ✅     |                                                    |
-| The breadcrumb with the real name              | `useCrumbs` (composer 1.1)                       | 18         | ✅     |                                                    |
-| Open in a modal (and «Abrir en…»)              | `openIn`, `RelatedRecord`                        | 25         | ✅     |                                                    |
-| A record at each size (card, link)             | `summaryOf`, `cardOf`, `relationOf`              | 24         | ✅     | web-ui: card without a round face                  |
-| The business's time zone                       | `SincproApp` / `FrameworkProvider timeZone`      | 37         | ✅     |                                                    |
-| The call's context (company)                   | `restTransport headers` (`sincpro-context`)      | —          | 🟡     | here: a story is missing                           |
-| Filters saved per person                       | —                                                | —          | ❌     | backend                                            |
+| Case                                           | How it is used                                           | Story      | Status | Owner of what is missing                           |
+| ---------------------------------------------- | -------------------------------------------------------- | ---------- | ------ | -------------------------------------------------- |
+| List paged by the server's cursor              | `useListing` + `EntityList`                              | 01, 15     | ✅     |                                                    |
+| Literal search (the entity's template)         | `search="box"`, `listing.search`                         | 02, 09     | ✅     |                                                    |
+| Filter with the bar, builder and named filters | `EntitySearchBar`, `filters`                             | 06         | ✅     |                                                    |
+| Sort on the server                             | header → `order`                                         | 20         | ✅     |                                                    |
+| Group on the server                            | «Agrupar por», `useGroups`                               | 19, 15     | ✅     | «Ver N más» in a group (web-ui 1.4)                |
+| Measure per group (sums)                       | `EntityList sums`, `useGroups` (`sumsOf`)                | 19         | ✅     | backend: how each field is aggregated              |
+| Lists with a domain (fixed sub-filter)         | `defineList`, `useListing(list)`, `listView`             | 21         | ✅     |                                                    |
+| A list view of your own with the same search   | web-ui `List` + `EntitySearchBar` (level 2)              | 21         | ✅     |                                                    |
+| Several faces of the same set                  | `views`                                                  | 15         | ✅     |                                                    |
+| Relations inside a record                      | `RelatedList`, `RecordLines`                             | 16         | ✅     |                                                    |
+| Choose a record (many2one)                     | `EntityPicker`                                           | 09, 12     | ✅     |                                                    |
+| …narrowed by another field                     | `criteria`                                               | 09         | ✅     |                                                    |
+| …from a list with a domain                     | `EntityPicker entity={list}`                             | 09         | ✅     |                                                    |
+| …searching everything, as a table              | «Buscar en todos» button, `columns`                      | 09         | ✅     |                                                    |
+| …with composer's chooser                       | `chooserIn`, `api.pick`                                  | 18         | ✅     |                                                    |
+| …with a chooser of your own                    | `useLookup` (literal on the server)                      | 09         | ✅     |                                                    |
+| Literal search INSIDE the dropdown             | `EntityPicker` (`Picker onSearch`)                       | 26         | ✅     | web-ui 1.1.0                                       |
+| Search in a table: literal first, with Enter   | `EntitySearchBar` (`SearchBar literal`), box             | 26         | ✅     | web-ui 1.1.0                                       |
+| Create from the picker («Crear "Globex"…»)     | —                                                        | —          | ❌     | backend + here (web-ui 1.0 already has `onCreate`) |
+| Read, edit, preview, hints, 409, drafts        | `useRecord`, `RecordField`                               | 03, 10, 12 | ✅     |                                                    |
+| Create with default values                     | `useRecord(entity, "")`, `newRef()`                      | 17, 18     | ✅     | backend #228 (create → identity)                   |
+| Duplicate                                      | —                                                        | —          | ❌     | backend (`copy: false`)                            |
+| Archive / delete                               | —                                                        | —          | ❌     | backend (convention)                               |
+| Previous / next from the record                | `EntityRecord` + the list's trail (`Trail`)              | 29         | ✅     |                                                    |
+| Editable lines (one2many)                      | `RecordField name="lines"` (`RecordLinesEditor`)         | 31         | ✅     |                                                    |
+| …written in the table or in the dialog         | `addingOf`, `RecordField adding`                         | 31         | ✅     |                                                    |
+| …with a many2one in the line (a product)       | `RelationPicker` in the cell                             | 31         | ✅     |                                                    |
+| Add to a one2many of its own entity            | «Agregar» of `RelatedList`, `newRef(values)`             | 28         | ✅     |                                                    |
+| Commands with a dry run                        | `useCommand`, `CommandButton`                            | 10         | ✅     |                                                    |
+| Retry without duplicating                      | `Idempotency-Key`, `retryKeys`                           | 17         | ✅     |                                                    |
+| Per-row actions                                | `commands`, `useRowCommands`                             | 23         | ✅     |                                                    |
+| Bulk action over «all those that match»        | —                                                        | —          | ❌     | backend + here                                     |
+| Export what is filtered                        | —                                                        | —          | ❌     | backend (`data_analysis`) + here                   |
+| Page, peek, panel, window, ⌘K                  | `entityView`, `RecordLink`                               | 08, 13, 18 | ✅     |                                                    |
+| List and a detail that follows it              | `useFollowed`                                            | 22         | ✅     |                                                    |
+| The breadcrumb with the real name              | `useCrumbs` (composer 1.1)                               | 18         | ✅     |                                                    |
+| Open in a modal (and «Abrir en…»)              | `openIn`, `RelatedRecord`                                | 25         | ✅     |                                                    |
+| A record at each size (card, link)             | `summaryOf`, `cardOf`, `relationOf`                      | 24         | ✅     | web-ui: card without a round face                  |
+| The business's time zone                       | `SincproApp` / `FrameworkProvider timeZone`              | 37         | ✅     |                                                    |
+| The call's context (company)                   | `processContext`, `screensTransport` (`sincpro-context`) | 43         | ✅     |                                                    |
+| Filters saved per person                       | —                                                        | —          | ❌     | backend                                            |
 
 Found in this round:
 
@@ -601,17 +601,19 @@ What has to move in **web-ui** to go further:
 ## State and context (2026-11-03)
 
 No new store is needed: each state already has an owner (README, «Where state lives»). What is
-global is `FrameworkProvider`; what the backend sees on every request goes in the transport's
-`headers` (its `sincpro-context`); what an opening carries is composer's — `params`, `api.over`,
+global is `FrameworkProvider`; what the backend sees on every request goes in the process's
+context (`processContext`, sent as `sincpro-context` — since 2026-11-06; never in the transport's
+`headers` too, or a request's own context replaces it); what an opening carries is composer's — `params`, `api.over`,
 `pick(…, { question })` + `api.choosing`, `api.context`. An earlier analysis asked composer for
 all of this because it had only read `api.context`: it is in `AGENTS.md` as a trap.
 
 What is missing, and is ours:
 
-- **A new record does not take the `params` it was opened with** as initial values: «new invoice»
-  from a customer should arrive with the customer set (the `default_*` of Odoo's `context`).
-  `useRecord(entity, "")` starts only with the meta's `default`s.
-- **The front does not send `sincpro-context`**: it can be done today with `headers`, a story
+- ~~**A new record does not take the `params` it was opened with**~~ — done: `entity.newRef(values)`
+  carries them (`with`), `useRecord(entity, resource)` starts with them over the meta's `default`s,
+  and «Agregar» on a one2many opens the new record with its parent set (story 28).
+- ~~**The front does not send `sincpro-context`**~~ — done (2026-11-06): see «The company travels
+  on every request». It could be done with `headers`, a story
   that shows it is missing (the active company).
 - ~~**Editable lines of an aggregate**~~ — done (see «An aggregate's lines»).
 - sincpro_framework#228 (the identity in a create's answer) was closed: it is each use case's DTO;
@@ -1033,7 +1035,10 @@ Command with two keys and a disabled button), `11 · ConLaBarraDeLaAplicacion` a
 - **A «reference to another entity» field** that draws the person or the link by itself — waits
   for the meta of [#230](https://github.com/Sincpro-SRL/sincpro_framework/issues/230) (open).
   Today it is declared by hand with `summary: { person: true }`.
-- **web-ui `Picker`** — no way to empty a choice; «ninguno» stands in as an option.
+- ~~**web-ui `Picker`** — no way to empty a choice; «ninguno» stands in as an option.~~ Done
+  (2026-11-06): web-ui 2.1's `Picker onClear` — a × beside the name, or the name erased and the
+  field left. `EntityPicker onClear`, and a record's many2one that is not required can be emptied
+  (story `41 · UnaClaveOpcionalSeQuita`); `none` stays for an empty choice with a word of its own.
 - **Per-row actions in an aggregate's lines** (`RecordLines`) — they do not go: the lines travel
   whole with their record and have no Commands of their own (adding, removing, undoing and
   reordering are the screen's). A one2many that is ANOTHER entity (`RelatedList`) already has
@@ -1326,3 +1331,116 @@ person, the inputs and the browser's own libraries stay here.
 
 **Depends on publishing** client-framework 0.4.0: the peer and the devDependency go up to
 `^0.4.0`.
+
+## The core, finished overnight (2026-11-06)
+
+- **A Command's answer goes by the backend's name.** The generator (client-framework 0.5) writes
+  `ResponseCancelIssue` — the output's own title — and keeps `CommandCancelIssueAnswer` as a
+  deprecated alias; `stories/support/forge-contract/` was regenerated (`make codegen-fixtures`).
+- **`textOf` draws a money and every digit of a decimal.** A `{ amount, currency }` value object
+  reads in its currency, rounded to its decimals (`Money` from client-framework), the amount handed
+  to `Intl` as text; a decimal longer than a float holds is drawn whole. An unknown code reads as
+  «amount CODE».
+- **A view that breaks is reported.** composer 1.6's `onViewError` tells the app; `SincproApp`
+  hands it to `reportError` (client-framework) by default — the process's reporter, once, as
+  `view <ref>`. A screen of its own passes `onViewError`.
+- **«Today» is the company's day.** A date field hands web-ui's `DatePicker` the day it is on the
+  installed zone (`dayOf(now, timeZoneNow())`, client-framework); its calendar marks that day and
+  opens on it (`DatePicker today`, web-ui 2.1). Before, React Aria marked the browser's day.
+- **Story 29 is four stories, one scenario each** (the list to the record; edit and save; a
+  related record in a modal and from there beside it; previous and next): the long play that ran
+  out of time under load is gone.
+- **Depends on publishing:** client-framework 0.5 (`reportError`, the answer names), composer 1.6
+  (`onViewError`) and web-ui 2.1 (`DatePicker today`); the peers here are `^0.5.0`, `^1.6.0` and
+  `^2.1.0`.
+
+## What a screen reads and writes is a use case (2026-11-06)
+
+- **Every request the screens send is a use case of `screens`.** `FrameworkProvider` reads and
+  writes through client-framework's `screensTransport`: a page is `screens/EntityReads.list`, a
+  record `…/EntityReads.one`, a save, a draft or a Command `…/EntityWrites.send` — sincpro_framework's
+  built-in `EntityReads`, on the client. So each one gets what any use case gets: its span, with
+  its route (`http.route`); the trace on the request (`traceparent` — the backend's trace now
+  starts in the screen); the process's context in `sincpro-context` (the company — before, the
+  framework's own requests carried none); and a report only when it failed unexpectedly (a 5xx,
+  nobody reached — a 4xx is the screen's to show). A bounded context's dependencies are not
+  wrapped: there its use case is the one that runs.
+- **A change of company reads every screen again, keeping what is on it.** `FrameworkProvider`
+  hands the readings the process's context (`useFramework().context`): a list reads the same
+  question again — its filter, order and page kept (`reading.reload()`); a record with nothing
+  typed reads again, one being edited keeps what was typed (losing it is never the framework's
+  decision); groups, pivots, names and the history read again. `SincproApp` forgets the cache
+  first (`cachedTransport.invalidate()`, synchronously inside `processContext.set`): an answer of
+  one company is never served in the other. An app with its own provider and cache forgets it the
+  same way (`processContext.watch(() => cache.invalidate())`). Story `43 · La empresa viaja en
+cada pedido`. **Found by the review:** the first version gave the screens another transport
+  when the context changed — every reading started over, a list lost its filter and its page, a
+  record what was typed.
+- **Considered, not done:** forgetting by what a Command `reaches` — in forge's contracts it is
+  always the Command's own entities, which the route already names: no evidence yet.
+
+## An optional many2one can be emptied (2026-11-06)
+
+- A record's many2one that is not required was impossible to empty: the picker could only change
+  the choice. Now web-ui's `Picker onClear` (2.1) draws a × beside the name — and erasing the name
+  and leaving the field empties it too —; `RelationPicker` passes it for a field that is not
+  required, writing `null` in the key and in the record held beside it — in a record's field and
+  in a line's cell alike (a line's key the line model does not require).
+- **Found doing it:** `edit.set` built each change over the render's values, so two fields set in
+  one gesture (the key and the record beside it) kept only the last. It builds on the latest now.
+
+## A bounded context starts from its skeleton (2026-11-06)
+
+- `sincpro-client scaffold <contract> --out src/domains/<alias>` (client-framework 0.5) writes,
+  once, the files sincpro_framework's layout has — `infrastructure/dependencies.ts` (the
+  generated client as `this.client`), `infrastructure/bounded_context.ts` (its `Feature` and
+  `ApplicationService`), `services/index.ts` and `index.ts` (`export const project`) — and keeps
+  every file already there. Proven by compiling what it writes beside forge's generated client
+  (`tests/scaffold.test.ts` in client-framework). The «scaffolding» ARCHITECTURE §13 promised.
+
+## The layers, checked (2026-11-06)
+
+- `sincpro-client check --root src` (client-framework 0.5) is the «enforced, not recommended» of
+  ARCHITECTURE §3: every import of the application resolved with its own TypeScript and
+  `tsconfig` (path aliases included), checked against the layers — another bounded context only
+  through its `index.ts` and only from `infrastructure/`; no React, web-ui, composer or the
+  framework's screens in `domain/`, `adapters/`, `services/`; no composer or router in
+  `components/`; within a bounded context, no layer imports what the table forbids (`domain/` its
+  services, `services/` its components); `common` never imports a bounded context; nothing imports
+  the entrypoints; and outside the bounded contexts (the entrypoints, `main.tsx`, a `lib/`) a
+  bounded context is used through its `index.ts`. It follows a config of references (Vite's
+  `tsconfig.app.json`), a monorepo of packages (`domains/<ctx>/src/<layer>`, a package named whole
+  is its index), and it stops — never a green — on a missing root or tsconfig, a config that does
+  not parse, or an alias no config resolves. The same on a phone (`react-native` is React).
+  **Found by the review:** the first version read an unresolved alias as a package, so Vite's
+  layout or a mistyped `--tsconfig` turned every rule off and printed green.
+- **Found running it on forge's console** (read only, not changed): `domains/*/adapters/forge_*.tsx`
+  import web-ui and web-framework — they are each entity's kit (`presented`), which the
+  architecture puts in `components/<entity>/`; `domains/*/domain/{membership,issue}.ts` import
+  web-ui; `entrypoints/console.tsx` reaches into four bounded contexts' insides instead of their
+  `index.ts`. forge's to move; the check says each one with its file.
+
+## A record screen of one's own keeps the framework's (2026-11-06)
+
+- **`useRecordScreen(entity, { api, resource })`** — the level between `EntityRecord` and
+  `useRecord`: everything the framework's record screen does, as values — read for editing, the
+  workspace's breadcrumb, its name and its unsaved work told to the workspace, its history, the
+  previous and next of the list it came from, and web-ui `Record`'s props (placement, name, state,
+  unsaved work, the refusal in words — `explain` —, the audit). PROPS, never components: web-ui
+  finds a record's regions by type. `EntityRecord` is written over it. Story `44 · Una pantalla
+de registro propia`.
+- **Found measuring the purpose against forge's console:** the four files PURPOSE named are gone;
+  what is left in `src/shared` says what was missing — `record_screen.tsx` (this hook, 150
+  lines), `value_lines.tsx` (a list of plain values inside an embedded field, edited with
+  `LineItems`: the lines editor only knows lines of a model) and `action_table.tsx` (per-row
+  actions on a record's parts: `RecordLines` takes none).
+- **A list of values inside a record is written as lines** — `field.embedded(definition, { many:
+true })` (a project's channels): `RecordField` draws the lines editor over the embedded
+  definition, each value with its local key, the whole list back through the record's save. It
+  drew nothing before. Story `45 · Valores dentro de un registro` — forge's `value_lines.tsx`.
+- **A record's part is acted on from its row** — `RecordLines rowActions` (handed to web-ui's
+  `List.Table`, where web-ui takes them — on the root a spread dropped them unseen): a group's member, a
+  project's share, each with its button, running a Command of the record (the parts have no route
+  of their own). Story `46 · Actuar sobre una parte del registro` — forge's `action_table.tsx`.
+- With these three, what forge's `src/shared` still holds is forge's own (its session and access,
+  its slugs, its transport) or waits for the backend (a person drawn across bounded contexts, #230).

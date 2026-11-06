@@ -81,7 +81,7 @@ export function useLookup<T extends AnyRecord>(
     exclude?: readonly string[];
   } = {},
 ): Lookup {
-  const { transport, metas } = useFramework();
+  const { transport, metas, context } = useFramework();
   const base = isList(entity) ? entity.entity : entity;
   // The key field to exclude by comes with the definition: known already, or with the first
   // answer — then this renders again and the reading starts over without the excluded.
@@ -139,7 +139,7 @@ export function useLookup<T extends AnyRecord>(
       })
       .catch(() => undefined); // unnamed is not an error: the field shows its key
     return () => aborter.abort();
-  }, [transport, route, meta, missingKey, base.summary]);
+  }, [transport, route, meta, missingKey, base.summary, context]);
 
   const known = value === "" ? undefined : seen.current.get(value);
   const chosenAll = wanted.map((id) => seen.current.get(id) ?? { id, label: id });

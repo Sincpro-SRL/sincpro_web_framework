@@ -1277,10 +1277,10 @@
     "@sentry/browser-utils" "11.11.0"
     "@sentry/core" "11.11.0"
 
-"@sincpro/client-framework@^0.3.0":
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/client-framework/-/client-framework-0.3.0.tgz#a7704cff2be55d9c2f5b09a9eae6392ba85089bd"
-  integrity sha512-CU3KYYZlF/1UDgvgWTKHtKLGqgCVCgh0dTMLWseopAgIlEyjP8d5In18ppUqnUzwKqaL70EvmmQ9Yaj/C67e+Q==
+"@sincpro/client-framework@^0.4.0":
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/client-framework/-/client-framework-0.4.0.tgz#3fea8ed0379f2405b3cb154f4dcbefc7046e3f3f"
+  integrity sha512-Q/lZk4O7pdJj4pwkWMpGX6egInkFESrU9xJcKuI/nztIi5t05pLoq8KSALWDPWrA3Z2A1U6v/Hi3wv9gYTxjag==
 
 "@sincpro/criteria-react@^2.0.0":
   version "2.0.0"

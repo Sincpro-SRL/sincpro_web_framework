@@ -25,7 +25,7 @@ export function useHistory<T extends AnyRecord>(
   id: string,
   deps: DependencyList = [],
 ): HistoryEntry[] | undefined {
-  const { transport, locale } = useFramework();
+  const { transport, locale, context } = useFramework();
   const [entries, setEntries] = useState<HistoryEntry[] | undefined>(undefined);
   const history = entity.history;
 
@@ -48,7 +48,7 @@ export function useHistory<T extends AnyRecord>(
     );
     return () => aborter.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the caller names what reloads it
-  }, [transport, history, id, locale, ...deps]);
+  }, [transport, history, id, locale, context, ...deps]);
 
   return entries;
 }

@@ -70,7 +70,7 @@ export function useGroups<T extends AnyRecord>(
     maxRows?: number;
   } = {},
 ): Groups<T> {
-  const { transport } = useFramework();
+  const { transport, context } = useFramework();
   // A named list may open grouped (`groupBy`); a person regroups from there.
   const [levels, setLevels] = useState<readonly GroupLevel[]>(
     () => listing.definition?.groupBy ?? [],
@@ -125,7 +125,7 @@ export function useGroups<T extends AnyRecord>(
       },
     );
     return () => aborter.abort();
-  }, [transport, route, question, levels, sums, waiting]);
+  }, [transport, route, question, levels, sums, waiting, context]);
 
   /** One page of a group: the first (`after` null) or the one the cursor points at. */
   const read = useCallback(

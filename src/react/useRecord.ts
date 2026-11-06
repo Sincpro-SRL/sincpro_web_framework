@@ -135,7 +135,7 @@ export function useRecord<T extends AnyRecord>(
   entity: Entity<T>,
   opened: string | EntityRef,
 ): RecordReading<T> {
-  const { transport, locale, metas } = useFramework();
+  const { transport, locale, metas, context } = useFramework();
   const given = typeof opened === "string" ? opened : (opened.id ?? "");
   // As written in the reference: a text compares by value, so a new render with the same
   // reference is not a new start.
@@ -161,6 +161,8 @@ export function useRecord<T extends AnyRecord>(
   const [readFor, setReadFor] = useState<string | null>(null);
   const [round, setRound] = useState(0);
   const [typed, setTyped] = useState<AnyRecord>({});
+  const typedNow = useRef(typed);
+  typedNow.current = typed;
   const [computed, setComputed] = useState<AnyRecord>({});
   const [fromServer, setFromServer] = useState<FieldStates>({});
   const [advice, setAdvice] = useState<Advice[]>([]);
@@ -266,6 +268,14 @@ export function useRecord<T extends AnyRecord>(
   }, []);
 
   const reload = useCallback(() => setRound((n) => n + 1), []);
+  // Another company (the process's context changed): a record with nothing typed reads again;
+  // one being edited keeps what was typed — losing it is never the framework's decision.
+  const askedIn = useRef(context);
+  useEffect(() => {
+    if (askedIn.current === context) return;
+    askedIn.current = context;
+    if (Object.keys(typedNow.current).length === 0) reload();
+  }, [context, reload]);
   const record = useMemo(() => (state.record ?? {}) as AnyRecord, [state.record]);
   const values = useMemo(
     () => ({ ...record, ...computed, ...typed }),
@@ -381,7 +391,10 @@ export function useRecord<T extends AnyRecord>(
     changed,
     dirty: Object.keys(changed).length > 0,
     set: (name, value) => {
-      const next = { ...typed, [name]: value };
+      // Over what was typed last, not this render's: two fields set in one gesture (a key and
+      // the record held beside it) both land.
+      const next = { ...typedNow.current, [name]: value };
+      typedNow.current = next;
       setTyped(next);
       ask(next, name);
     },

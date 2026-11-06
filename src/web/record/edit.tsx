@@ -105,6 +105,27 @@ export function RecordField<T extends Record<string, unknown>>({
   // A one2many of no declared entity (the lines of an invoice): edited inside the record as a
   // whole list (`RecordLinesEditor`) — or, when the record brought only a page, that page read
   // only with its real total.
+  // A list of values inside the record (`field.embedded(definition, { many: true })`: a
+  // project's channels, an inventory's components) — no model of its own, no id — is edited the
+  // same way as lines: a whole list, local keys, through the record's own save.
+  const own = meta?.fields[name];
+  if (as === undefined && own?.type === "embedded" && own.many === true && own.definition) {
+    // A page of them stays read only, as a one2many's: written back whole it would drop what
+    // it did not bring.
+    const whole = editableLines(edit.values[name]);
+    const lines =
+      whole === null ? (
+        <RecordLines record={record.record ?? {}} meta={meta} name={name} locale={locale} />
+      ) : (
+        <RecordLinesEditor
+          record={record}
+          name={name}
+          lines={whole}
+          {...(look === undefined ? {} : { look })}
+        />
+      );
+    return bare ? lines : <FormSection title={view.label}>{lines}</FormSection>;
+  }
   if (as === undefined && relation?.field.type === "one2many" && target === undefined) {
     // Editable when the record holds ALL its lines; a page of them stays read only.
     const whole = editableLines(edit.values[name]);
@@ -191,6 +212,16 @@ export function RecordField<T extends Record<string, unknown>>({
         value={id}
         onChange={(next) => edit.set(relation.key, next)}
         label={view.label}
+        // Not required, it can be emptied: the key — and the record held beside it — go null.
+        // The relation's own state, and its key's: a screen may name either.
+        {...(state.required || edit.state(relation.key).required
+          ? {}
+          : {
+              onClear: () => {
+                edit.set(relation.key, null);
+                if (relation.held) edit.set(relation.relation, null);
+              },
+            })}
       />
     );
   }

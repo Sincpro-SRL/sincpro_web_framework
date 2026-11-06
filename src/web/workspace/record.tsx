@@ -5,6 +5,7 @@ import type { AnyRecord } from "@sincpro/criteria";
 import { labelOf, nameOf } from "@sincpro/criteria";
 import { useCrumbs, type ViewProps } from "@sincpro/web-composer";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
+import { explain } from "@sincpro/web-framework/core/explain";
 import { formOf } from "@sincpro/web-framework/core/form";
 import { placeOf, stepIn } from "@sincpro/web-framework/core/trail";
 import { useFramework } from "@sincpro/web-framework/react/context";
@@ -33,6 +34,122 @@ import { type ReactNode, useState } from "react";
  *       <EntityRecord {...props} entity={invoices} fields={["customer_id", "due_date"]}
  *         actions={(invoice) => <CommandButton entity={invoices} command="post" … />} /> })
  */
+/** A save's refusal as a sentence — its heading when the server gave no detail. */
+function refusalOf(failure: unknown): string {
+  const said = explain(failure);
+  return said.sentence || said.heading;
+}
+
+/** Who made a record, or changed it last, and when: `Record.Audit`'s. */
+export type Stamp = { at: string; by?: string };
+
+/**
+ * What every record screen in a workspace does before drawing its own — what `EntityRecord`
+ * does, as values: read the record for editing, follow the workspace's breadcrumb, tell the
+ * workspace its name and its unsaved work, read its history, step to its neighbours in the list
+ * it was opened from, and say its name, state, unsaved work, refusal and authorship the way
+ * web-ui's `Record` takes them.
+ *
+ *     function InvoiceScreen(props: ViewProps) {
+ *       const screen = useRecordScreen(invoices, props);
+ *       if (screen.reading.status !== "ready") return <Skeleton rows={6} />;
+ *       return (
+ *         <Record {...screen.record}>
+ *           <Record.Rail>
+ *             <Record.Crumbs crumbs={screen.crumbs} />
+ *             {screen.pager ? <Record.Pager {...screen.pager} /> : null}
+ *           </Record.Rail>
+ *           <Record.Paper>…your own fields…</Record.Paper>
+ *         </Record>
+ *       );
+ *     }
+ *
+ * Context: the level between `EntityRecord` and `useRecord` — a screen of its own keeps every
+ * behaviour of the framework's record and writes its own tree. It answers PROPS, never
+ * components: web-ui finds a record's regions by type (`Record.Crumbs` a direct child of
+ * `Record.Rail`), and a region wrapped in one of ours is not found. Before it, forge's console
+ * carried these 150 lines itself (`shared/record_screen.tsx`).
+ */
+export function useRecordScreen<T extends AnyRecord>(
+  entity: Entity<T>,
+  { api, resource }: Pick<ViewProps, "api" | "resource">,
+) {
+  const reading = useRecord(entity, resource);
+  const crumbs = useCrumbs(api);
+  useRecordInWorkspace(api, reading);
+  const history = useHistory(entity, reading.isNew ? "" : reading.id, [reading.record]);
+  const summarize = useSummaryOf(entity);
+  const copy = frameworkCopy().record;
+  // Opened from a list: where it stands in it, and its neighbours (`Trail`).
+  const { trails, transport } = useFramework();
+  const trailKey = resource.params?.[TRAIL_PARAM];
+  const trail = trailKey === undefined ? undefined : trails.get(trailKey);
+  const go = (step: 1 | -1) => () => {
+    if (trail === undefined || trailKey === undefined) return;
+    void stepIn(transport, trail, reading.id, step).then((moved) => {
+      if (moved === null) return;
+      trails.set(trailKey, moved.trail);
+      const ref = entity.ref(moved.id);
+      // In place, as Odoo's pager: the neighbour is not a step deeper, no crumb leads back.
+      api.replace({ ...ref, params: { ...ref.params, [TRAIL_PARAM]: trailKey } });
+    });
+  };
+  const ready = reading.status === "ready";
+  const summary =
+    ready && !reading.isNew ? summarize(reading.record, reading.meta) : undefined;
+  const dirty = ready ? dirtyOf(reading) : undefined;
+  const failure = reading.edit.failure;
+  // Who, only when the record says it (an author is optional: the line then says only when).
+  const stamp = (
+    one: { at: string | null; by: string | null } | undefined,
+  ): Stamp | undefined =>
+    one?.at == null ? undefined : { at: one.at, ...(one.by == null ? {} : { by: one.by }) };
+  const created = stamp(summary?.created);
+  const updated = stamp(summary?.updated);
+  // Moving away with something typed would lose it: «save / discard» comes first.
+  const place =
+    trail === undefined || reading.isNew || reading.edit.dirty
+      ? null
+      : placeOf(trail, reading.id);
+  return {
+    reading,
+    crumbs,
+    history,
+    summary,
+    /** web-ui `Record`'s own props: where it is drawn, its name, its unsaved work, its refusal. */
+    record: {
+      // Where it is mounted decides the paper, not what the rail carries: crumbs, pager and
+      // actions come and go while it is on screen, and the paper flipping with them remounted
+      // the form under the field being typed in. A modal is already a card.
+      placement: api.surface === "modal" ? ("card" as const) : ("page" as const),
+      identity: {
+        // A new record is «creating»; an existing one has no name until it is read.
+        title:
+          summary?.name ??
+          (reading.isNew ? copy.creating(nameOf(reading.meta, reading.locale) || "") : ""),
+        ...(summary?.type == null ? {} : { subtitle: summary.type }),
+        ...(summary?.state == null ? {} : { tag: { label: summary.state } }),
+      },
+      ...(dirty === undefined ? {} : { dirty }),
+      // The refusal in words; its heading when the server said nothing more (no detail).
+      ...(failure === null || failure === undefined ? {} : { error: refusalOf(failure) }),
+    },
+    /** `Record.Pager`'s props, when it was opened from a list and nothing is typed. */
+    pager:
+      place === null
+        ? undefined
+        : { index: place.index, total: place.total, onPrev: go(-1), onNext: go(1) },
+    /** `Record.Audit`'s props, when the record says who made it or changed it. */
+    audit:
+      created === undefined && updated === undefined
+        ? undefined
+        : {
+            ...(created === undefined ? {} : { created }),
+            ...(updated === undefined ? {} : { updated }),
+          },
+  };
+}
+
 export function EntityRecord<T extends AnyRecord>({
   api,
   resource,
@@ -49,27 +166,10 @@ export function EntityRecord<T extends AnyRecord>({
   /** The record's own commands, beside «save / discard». */
   actions?: (record: RecordReading<T>) => ReactNode;
 }) {
-  const reading = useRecord(entity, resource);
-  const crumbs = useCrumbs(api);
-  useRecordInWorkspace(api, reading);
-  const history = useHistory(entity, reading.isNew ? "" : reading.id, [reading.record]);
-  const summarize = useSummaryOf(entity);
+  const screen = useRecordScreen(entity, { api, resource });
+  const { reading, crumbs, history, pager } = screen;
   const [page, setPage] = useState<string | undefined>(undefined);
   const copy = frameworkCopy().record;
-  // Opened from a list: where it stands in it, and its neighbours (`Trail`).
-  const { trails, transport } = useFramework();
-  const trailKey = resource.params?.[TRAIL_PARAM];
-  const trail = trailKey === undefined ? undefined : trails.get(trailKey);
-  const go = (step: 1 | -1) => () => {
-    if (trail === undefined || trailKey === undefined) return;
-    void stepIn(transport, trail, reading.id, step).then((moved) => {
-      if (moved === null) return;
-      trails.set(trailKey, moved.trail);
-      const ref = entity.ref(moved.id);
-      // In place, as Odoo's pager: the neighbour is not a step deeper, no crumb leads back.
-      api.replace({ ...ref, params: { ...ref.params, [TRAIL_PARAM]: trailKey } });
-    });
-  };
 
   if (reading.status === "loading") return <Skeleton rows={6} label={copy.loading} />;
   if (reading.status === "failed")
@@ -80,47 +180,15 @@ export function EntityRecord<T extends AnyRecord>({
   const shown = fields ?? layout.fields;
   const ownActions = actions?.(reading) ?? null;
   const tabs = pages ?? layout.pages;
-  const summary = reading.isNew ? undefined : summarize(reading.record, meta);
-  const dirty = dirtyOf(reading);
-  const created = summary?.created;
-  const updated = summary?.updated;
-  // Who, only when the record says it (web-ui 1.9: an author is optional, the line then says
-  // only when). The moment goes as the framework writes every fact of the record.
-  const stamp = (one: { at: string | null; by: string | null } | undefined) =>
-    one?.at == null ? undefined : { at: one.at, ...(one.by == null ? {} : { by: one.by }) };
-  const createdStamp = stamp(created);
-  const updatedStamp = stamp(updated);
-  // Moving away with something typed would lose it: «save / discard» comes first.
-  const place =
-    trail === undefined || reading.isNew || edit.dirty ? null : placeOf(trail, reading.id);
 
   return (
-    <Record
-      // Where it is mounted decides the paper, not what the rail carries: crumbs, pager and
-      // actions come and go while it is on screen (loading, a draft), and the paper flipping
-      // with them remounted the form under the field being typed in. A modal is already a card.
-      placement={api.surface === "modal" ? "card" : "page"}
-      identity={{
-        title: summary?.name ?? copy.creating(nameOf(meta, locale) || ""),
-        ...(summary?.type == null ? {} : { subtitle: summary.type }),
-        ...(summary?.state == null ? {} : { tag: { label: summary.state } }),
-      }}
-      {...(dirty === undefined ? {} : { dirty })}
-      {...(edit.failure === null ? {} : { error: String((edit.failure as Error).message) })}
-    >
+    <Record {...screen.record}>
       {/* The rail only when it carries something: an empty one is a blank band under the title
           of a modal or a panel. (It used to be needed always — a web-ui remount, fixed.) */}
-      {crumbs.length === 0 && place === null && ownActions === null ? null : (
+      {crumbs.length === 0 && pager === undefined && ownActions === null ? null : (
         <Record.Rail>
           {crumbs.length === 0 ? null : <Record.Crumbs crumbs={crumbs} />}
-          {place === null ? null : (
-            <Record.Pager
-              index={place.index}
-              total={place.total}
-              onPrev={go(-1)}
-              onNext={go(1)}
-            />
-          )}
+          {pager === undefined ? null : <Record.Pager {...pager} />}
           {ownActions === null ? null : <Record.Actions>{ownActions}</Record.Actions>}
         </Record.Rail>
       )}
@@ -166,12 +234,7 @@ export function EntityRecord<T extends AnyRecord>({
             ))}
           </Record.Pages>
         )}
-        {createdStamp === undefined && updatedStamp === undefined ? null : (
-          <Record.Audit
-            {...(createdStamp === undefined ? {} : { created: createdStamp })}
-            {...(updatedStamp === undefined ? {} : { updated: updatedStamp })}
-          />
-        )}
+        {screen.audit === undefined ? null : <Record.Audit {...screen.audit} />}
       </Record.Paper>
       {history === undefined ? null : <Record.Activity events={history} />}
     </Record>

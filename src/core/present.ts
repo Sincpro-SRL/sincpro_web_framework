@@ -1,4 +1,4 @@
-import { timeZoneNow } from "@sincpro/client-framework";
+import { Money, timeZoneNow } from "@sincpro/client-framework";
 import {
   type AnyRecord,
   choiceLabelOf,
@@ -137,6 +137,58 @@ function numberFormat(
   return format;
 }
 
+/** The currency codes `Intl` refused, by locale: asked once, not on every cell. */
+const unknownCurrencies = new Set<string>();
+
+function currencyFormat(
+  locale: string | undefined,
+  currency: string,
+): Intl.NumberFormat | null {
+  const key = `c|${locale ?? ""}|${currency}`;
+  if (unknownCurrencies.has(key)) return null;
+  let format = formatters.get(key) as Intl.NumberFormat | undefined;
+  if (format === undefined) {
+    try {
+      format = new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency,
+        minimumFractionDigits: Money.decimalsOf(currency),
+        maximumFractionDigits: Money.decimalsOf(currency),
+      });
+    } catch {
+      // Not an ISO 4217 code Intl knows (a token, a loyalty point): drawn as «amount CODE».
+      unknownCurrencies.add(key);
+      return null;
+    }
+    formatters.set(key, format);
+  }
+  return format;
+}
+
+/**
+ * A money as a person reads it: `{ amount: "1150.5", currency: "BOB" }` → «Bs 1.150,50». The
+ * amount goes to `Intl` as text, so no digit passes through a float, rounded to the currency's
+ * decimals as an invoice shows it (`Money.rounded`).
+ */
+function moneyText(
+  value: { amount: string | number; currency: string },
+  locale?: string,
+): string | null {
+  let money: Money;
+  try {
+    money = Money.fromJSON(value).rounded();
+  } catch {
+    // A money of the right shape with an amount or a code that is not one (`"1,50"`, `""`): no
+    // text, as any value object — never an error that takes the whole view down.
+    return null;
+  }
+  const amount = money.amount as Intl.StringNumericLiteral;
+  return (
+    currencyFormat(locale, money.currency)?.format(amount) ??
+    `${numberFormat(locale, money.decimals).format(amount)} ${money.currency}`
+  );
+}
+
 /** The record a many2one points at, read by the display its definition names. */
 function displayOf(field: FieldMeta, value: AnyRecord): string {
   const definition = field.definition;
@@ -154,6 +206,7 @@ function displayOf(field: FieldMeta, value: AnyRecord): string {
  *     textOf(meta, "active", true, "es")              -> "sí"
  *     textOf(meta, "due", "2026-03-12", "es")         -> "12 mar 2026"
  *     textOf(meta, "total", "1150.5", "es")           -> "1150,5"     (exact: digits kept)
+ *     textOf(meta, "price", { amount: "19.9", currency: "BOB" }, "es") -> "19,90 Bs"
  *     textOf(meta, "lines", {items, count: {value: 30}}) -> "30 elementos"
  */
 export function textOf(
@@ -184,10 +237,14 @@ export function textOf(
     }
     case "integer":
     case "number": {
-      const number = Number(value);
-      if (Number.isNaN(number)) return String(value);
-      const kept = typeof value === "string" ? decimals(value) : undefined;
-      return numberFormat(locale, kept).format(number);
+      if (Number.isNaN(Number(value))) return String(value);
+      // A decimal that travels as text goes to `Intl` as text: every digit kept, none through a
+      // float (`"12345678901234567.89"` reads whole).
+      if (typeof value === "string")
+        return numberFormat(locale, decimals(value)).format(
+          value.trim() as Intl.StringNumericLiteral,
+        );
+      return numberFormat(locale, undefined).format(Number(value));
     }
     case "text[]":
       return Array.isArray(value)
@@ -203,7 +260,8 @@ export function textOf(
     case "many2one":
       return typeof value === "object" ? displayOf(field, value as AnyRecord) : String(value);
     case "embedded":
-      return null;
+      // A value object has no text of its own — but a money, the one every ERP holds, does.
+      return Money.isMoney(value) ? moneyText(value, locale) : null;
     default:
       return typeof value === "object" ? JSON.stringify(value) : String(value);
   }
