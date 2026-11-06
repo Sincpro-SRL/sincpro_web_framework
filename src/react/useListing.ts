@@ -129,7 +129,7 @@ export function useListing<T extends AnyRecord, C extends CommandBodies = Comman
   given: Entity<T, C> | ListDefinition<T>,
   own: ListingOptions<T> = {},
 ): Listing<T, C> {
-  const { transport, locale, metas } = useFramework();
+  const { transport, locale, metas, context } = useFramework();
   // A named list is its entity under a fixed scope: the scope ANDs under the caller's own.
   const definition = isList(given) ? given : undefined;
   // A named list's entity has no typed Commands of its own: the default, as `C` then is.
@@ -185,6 +185,14 @@ export function useListing<T extends AnyRecord, C extends CommandBodies = Comman
   });
   const typing = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => void (typing.current && clearTimeout(typing.current)), []);
+  // Another company (the process's context changed): the same question read again — its filter,
+  // order and page kept, never a reading started over.
+  const askedIn = useRef(context);
+  useEffect(() => {
+    if (askedIn.current === context) return;
+    askedIn.current = context;
+    void reading.reload();
+  }, [context, reading]);
 
   const narrowed = (next: Narrowing<T>): Criteria<T> => {
     let criteria: Criteria<T> = base;

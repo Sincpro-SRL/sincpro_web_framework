@@ -5,7 +5,7 @@ import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
 import { relatedOf } from "@sincpro/web-framework/core/related";
 import { columnsOf } from "@sincpro/web-framework/web/list/columns";
-import { List, type SheetField } from "@sincpro/web-ui";
+import { List, type RowAction, type SheetField } from "@sincpro/web-ui";
 import type { ReactNode } from "react";
 
 /**
@@ -60,6 +60,14 @@ export function countOf(record: AnyRecord, name: string): number {
  * Its columns come from the relation's own definition when the server expanded it, and are
  * read off the rows otherwise. When the record brought only one page of them, it says so —
  * «se muestran 50 de 1000» — instead of drawing 50 as if they were all.
+ *
+ * `rowActions` acts on a part from its row — a group's member, a project's share — with a
+ * Command of the record (`useCommand(projects, "unshareProject")`): the parts have no route of
+ * their own, so what removes one is the record's, and the screen names it.
+ *
+ *     <RecordLines record={project} meta={meta} name="shares"
+ *       rowActions={(share) => [{ id: "unshare", label: "Quitar", icon: X, tone: "danger",
+ *         onSelect: () => unshare.run(project.id, { tenant_id: share.tenant_id }) }]} />
  */
 export function RecordLines<T extends AnyRecord>({
   record,
@@ -69,6 +77,7 @@ export function RecordLines<T extends AnyRecord>({
   cells,
   locale,
   onOpen,
+  rowActions,
 }: {
   record: AnyRecord;
   meta: Meta | null | undefined;
@@ -77,6 +86,8 @@ export function RecordLines<T extends AnyRecord>({
   cells?: Readonly<Partial<Record<string, (row: T) => ReactNode>>>;
   locale?: string | undefined;
   onOpen?: (row: T) => void;
+  /** What a row's part can be acted on with — a Command of the record. */
+  rowActions?: (row: T) => readonly RowAction[];
 }) {
   const related = relatedOf<T>(record[name]);
   const definition = meta?.fields[name]?.definition ?? describeRows(related.items);
@@ -93,8 +104,11 @@ export function RecordLines<T extends AnyRecord>({
         empty={{ sentence: copy.list.empty }}
         {...(onOpen === undefined ? {} : { onOpen })}
       >
+        {/* web-ui takes a row's actions on the table, not on the list: on the root a spread
+            drops them silently (no excess-property check through a spread). */}
         <List.Table<T>
           columns={columnsOf<T>(definition, columns, { locale, ...(cells ? { cells } : {}) })}
+          {...(rowActions === undefined ? {} : { rowActions })}
         />
       </List>
       {related.partial ? (

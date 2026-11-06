@@ -155,12 +155,17 @@ because every client needs it, not only the web: the transport, entities with ty
 answers, model definitions, the generator from sincpro_framework's client contract, and `Feature`
 and `ApplicationService` with interceptors that trace and report.
 
+**Done since:** the framework's own reads and writes are use cases (`screensTransport`: traced,
+with the context, reported); the levels of context and the bounded contexts (client-framework's
+`UseBoundedContext`, `processContext`, a change of company read again on every screen); import
+rules and scaffolding for applications (`sincpro-client check`, `sincpro-client scaffold`); and a
+record screen of one's own that keeps the framework's (`useRecordScreen`).
+
 **Next — the rest of the framework of work** ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
 [`docs/prd/PRD_02_how-an-application-is-built.md`](docs/prd/PRD_02_how-an-application-is-built.md)):
-the framework's own reads and writes as traced Features; a server-state cache that refreshes every
-open window; the levels of context and the bounded contexts; the
-extension model with anchors and widgets; live sources; import rules and scaffolding for
-applications; and a reference application built the way this page says.
+a server-state cache that refreshes every open window; the extension model with anchors and
+widgets; live sources (waiting on sincpro_framework #201); and a reference application built the
+way this page says.
 
 ## How we decide
 

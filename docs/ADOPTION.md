@@ -12,6 +12,7 @@ written and where, and how a hand-written screen moves to what is generated. The
 | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | sincpro_framework (≥ 3.32)                            | The **client contract** of each bounded context: models, operations (what each one is for its entity, what it receives, what it answers, in which field its record goes) and how each port is reached |
 | `sincpro-client generate` (@sincpro/client-framework) | From that contract: `domain.ts` (the DTOs), `client.ts` (each operation and `clientOf`), `entities.ts` (one `entity<T, C, A>()` per model that is listed), `contract.json` (the snapshot)             |
+| `sincpro-client scaffold` (@sincpro/client-framework) | Once, the bounded context's skeleton: its dependencies (the generated client), its `Feature` and `ApplicationService`, its services' index and `export const <alias>` — never overwritten             |
 | @sincpro/web-framework                                | The state and the drawing: `useListing`, `useRecord`, `useCommand`, `EntityList`, `RecordField`…, over the transport, reading the server's LIVE definition                                            |
 | @sincpro/criteria (≥ 1.1)                             | The read grammar and the reading of definitions (a value a record holds, pointed at by `$ref`, needs 1.1)                                                                                             |
 | The application                                       | How each record looks (`presented`), its views, what the contract does not say yet (the history)                                                                                                      |
@@ -44,6 +45,25 @@ client:
 verify-client: client
 	@git diff --exit-code -- src/generated || \
 		(echo >&2 "✘ the contract changed: run make client and commit src/generated"; exit 1)
+```
+
+**Once per bounded context**, its skeleton — the files that are the application's from then on
+(`infrastructure/dependencies.ts` with the generated client as a dependency,
+`infrastructure/bounded_context.ts`, `services/index.ts`, `index.ts` with `export const project`):
+
+```bash
+npx sincpro-client scaffold contracts/project.contract.json --out src/domains/project \
+  --transport ../common/infrastructure/transport
+```
+
+It writes only what is not there and says which files it kept: run it again and nothing of yours
+changes. (`generate` is the opposite: it rewrites `generated/` whole, every time.)
+
+The layers are checked as part of the app's `make doctor`:
+
+```make
+doctor:
+	@npx sincpro-client check --root src
 ```
 
 `verify-client` goes into the app's `verify-format`. `--base` strips the version the export puts on
@@ -112,7 +132,7 @@ compiler:
 
 ```tsx
 const send = useCommand(issues, "sendIssue");
-const answer = await send.run(issue.id, { message }); // answer: CommandSendIssueAnswer | undefined
+const answer = await send.run(issue.id, { message }); // answer: ResponseSendIssue | undefined
 
 <CommandButton
   entity={issues}

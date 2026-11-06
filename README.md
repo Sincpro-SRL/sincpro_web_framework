@@ -427,7 +427,7 @@ hook and draw your own, or go straight to the loose piece.
 | How does a record look?          | `presented(entity, { option, row, card })`                  | —                                     | `presentationOf`                         |
 | N records: search, filter, page  | `EntityList`, `EntitySearchBar`                             | `useListing`, `useGroups`             | `transport.list(route, criteria)`        |
 | A named slice (to collect, …)    | `defineList` + `listView`                                   | `useListing(list)`                    | `scopeOf`                                |
-| A record's whole screen          | `EntityRecord`, `entityView` without `record`               | —                                     | `formOf`                                 |
+| A record's whole screen          | `EntityRecord`, `entityView` without `record`               | `useRecordScreen`                     | `formOf`                                 |
 | Previous / next from a record    | `EntityRecord` (from a list)                                | —                                     | `placeOf`, `stepIn` (`Trail`)            |
 | How much each group adds up      | `EntityList sums`                                           | `useGroups` (`sums`)                  | `sumsOf`, `detailOf`                     |
 | One record: read, edit, save     | `RecordField`, `factsOf`, `RecordLines`                     | `useRecord`                           | `transport.one`, `transport.send`        |
@@ -459,15 +459,15 @@ The rules behind them, in short:
 
 There is no store of ours to learn: each kind of state already has its owner.
 
-| State                                        | Lives in                                           | Read with                          |
-| -------------------------------------------- | -------------------------------------------------- | ---------------------------------- |
-| Who answers, language, known models          | `FrameworkProvider` (this package)                 | the hooks, through context         |
-| What the backend sees on every request       | the transport's `headers` (e.g. `sincpro-context`) | the backend's `use_context()`      |
-| What an opening carries (company, a default) | composer: the reference's `params`                 | `api.self.params`, `api.setParams` |
-| The record a modal covers                    | composer: `api.over`                               | `api.over`                         |
-| What a chooser was asked                     | composer: `pick(…, { question })`                  | `api.choosing`                     |
-| What the user is on, what is selected        | composer: `api.context`                            | `useWorkspaceContext(api)`         |
-| A screen's list, record, groups              | the hooks                                          | `useListing`, `useRecord`, …       |
+| State                                        | Lives in                                                  | Read with                          |
+| -------------------------------------------- | --------------------------------------------------------- | ---------------------------------- |
+| Who answers, language, known models          | `FrameworkProvider` (this package)                        | the hooks, through context         |
+| What the backend sees on every request       | `processContext` (client-framework), as `sincpro-context` | the backend's `use_context()`      |
+| What an opening carries (company, a default) | composer: the reference's `params`                        | `api.self.params`, `api.setParams` |
+| The record a modal covers                    | composer: `api.over`                                      | `api.over`                         |
+| What a chooser was asked                     | composer: `pick(…, { question })`                         | `api.choosing`                     |
+| What the user is on, what is selected        | composer: `api.context`                                   | `useWorkspaceContext(api)`         |
+| A screen's list, record, groups              | the hooks                                                 | `useListing`, `useRecord`, …       |
 
 Not yet: a new record does not take the `params` it was opened with as its initial values
 (`ROADMAP.md`, «Estado y contexto»).

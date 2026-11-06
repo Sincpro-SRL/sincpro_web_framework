@@ -18,7 +18,7 @@ import { useEffect, useState } from "react";
  *     const name = useNameOf(tenants, record.tenant_id) ?? record.tenant_id;
  */
 export function useNameOf(entity: Entity | undefined, id: string): string | undefined {
-  const { transport, metas } = useFramework();
+  const { transport, metas, context } = useFramework();
   const [named, setNamed] = useState<{ id: string; name: string } | undefined>(undefined);
   useEffect(() => {
     if (entity === undefined || id === "") return;
@@ -43,6 +43,6 @@ export function useNameOf(entity: Entity | undefined, id: string): string | unde
       })
       .catch(() => undefined);
     return () => aborter.abort();
-  }, [transport, metas, entity, id]);
+  }, [transport, metas, entity, id, context]);
   return named?.id === id ? named.name : undefined;
 }

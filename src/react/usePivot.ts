@@ -45,7 +45,7 @@ export function usePivot<T extends AnyRecord>(
   listing: Listing<T>,
   axes: PivotAxes | null,
 ): PivotReading<T> {
-  const { transport } = useFramework();
+  const { transport, context } = useFramework();
   const [state, setState] = useState<Omit<PivotReading<T>, "measures">>({
     status: "idle",
     crossed: [],
@@ -97,7 +97,7 @@ export function usePivot<T extends AnyRecord>(
       },
     );
     return () => aborter.abort();
-  }, [transport, listing.route, question, shape, sums, waiting]);
+  }, [transport, listing.route, question, shape, sums, waiting, context]);
 
   return { ...state, measures };
 }

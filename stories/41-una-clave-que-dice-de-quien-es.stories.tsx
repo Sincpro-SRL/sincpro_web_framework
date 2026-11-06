@@ -113,3 +113,24 @@ export const AlEscribirSeEligeYSeGuardaSuClave: Story = {
     await waitFor(() => expect(canvas.getByText("tenant_id = globex")).toBeVisible());
   },
 };
+
+/**
+ * Una clave que no es obligatoria **se puede quitar**: la × al lado del nombre (o borrarlo y
+ * salir del campo) la deja vacía — `null`, no una opción «ninguno» inventada en la lista.
+ */
+export const UnaClaveOpcionalSeQuita: Story = {
+  render: () => <Issue />,
+  decorators: [
+    (Story) => (
+      <Escenario tables={tablesFor(true)} entities={[tenants, issues]}>
+        <Story />
+      </Escenario>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByDisplayValue("Acme Bolivia")).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Quitar" }));
+    await waitFor(() => expect(canvas.getByText("tenant_id =")).toBeVisible());
+  },
+};

@@ -1,19 +1,29 @@
 "use client";
 
-import { type Entity, type Transport } from "@sincpro/client-framework";
+import {
+  type Entity,
+  processContext,
+  reportError,
+  type Transport,
+} from "@sincpro/client-framework";
 import type { Meta } from "@sincpro/criteria";
 import {
   Composer,
   type ComposerSkin,
   installComposerCopy,
+  type OnViewError,
   type ResourceRef,
   SPANISH_COMPOSER_COPY,
   useWorkspace,
   type ViewSpec,
   type WorkspaceStore,
 } from "@sincpro/web-composer";
-import { createRegistry } from "@sincpro/web-composer/domain";
-import { cachedTransport, type CacheOptions } from "@sincpro/web-framework/core/cache";
+import { createRegistry, formatRef } from "@sincpro/web-composer/domain";
+import {
+  type CachedTransport,
+  cachedTransport,
+  type CacheOptions,
+} from "@sincpro/web-framework/core/cache";
 import {
   installFrameworkCopy,
   SPANISH_FRAMEWORK_COPY,
@@ -39,6 +49,10 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
  *     const workspace = useWorkspace();
  *     <SincproApp workspace={workspace} bar={<Menu onOpen={(ref) => workspace.push(ref)} />} … />
  */
+/** A view that broke while drawing, told to the process's error reporter: `view <ref>`. */
+const reportViewError: OnViewError = (error, { resource }) =>
+  reportError(error, `view ${formatRef(resource)}`);
+
 export function SincproApp({
   transport,
   views,
@@ -52,6 +66,7 @@ export function SincproApp({
   timeZone,
   workspace: given,
   bar,
+  onViewError = reportViewError,
 }: {
   transport: Transport;
   /** The entities as composer views — `entityView(…)` — and any other view of the app. */
@@ -83,6 +98,12 @@ export function SincproApp({
   /** The application's bar, above the workspace and inside the providers: its menus may read
    *  the framework (`useFramework`) and open views through `workspace`. */
   bar?: ReactNode;
+  /**
+   * Told when a view breaks while drawing. By default it reaches the process's error reporter
+   * (`reportError`, @sincpro/client-framework) — the one the use cases report to — as
+   * `view <ref>`; without a reporter configured, nothing is sent.
+   */
+  onViewError?: OnViewError;
 }) {
   // Installed once, before anything draws: the three tables are module state of their packages.
   useState(() => {
@@ -105,6 +126,15 @@ export function SincproApp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [transport],
   );
+  // What was read in one company is not the other's: a change of context forgets every answer
+  // before the screens read again (`FrameworkProvider` gives them another transport).
+  useEffect(() => {
+    if (cache === false) return;
+    const forgetting = cached as CachedTransport;
+    return processContext.watch(() => forgetting.invalidate());
+    // The cache is read once, as `cached` is.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cached]);
   const own = useWorkspace();
   const workspace = given ?? own;
   const registry = useMemo(() => createRegistry(views), [views]);
@@ -130,6 +160,7 @@ export function SincproApp({
               workspace={workspace}
               registry={registry}
               skin={skin}
+              onViewError={onViewError}
               {...(empty === undefined ? {} : { empty })}
             />
           </div>

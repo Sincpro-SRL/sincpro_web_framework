@@ -48,28 +48,44 @@ function App() {
 
 const GLOBEX_INVOICE = "F-2026-0004";
 
-export const DeLaListaAlRegistroYSusRelaciones: Story = {
+/**
+ * The invoice of Globex, reached as a person does: searched literally on Enter, opened from its
+ * row, and drawn — its customer already read by name. Each story below starts here: one scenario
+ * per story, so none runs out of time under load (this one used to walk all three).
+ */
+async function openGlobexInvoice(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await userEvent.type(
+    await canvas.findByRole("combobox", { name: "Buscar" }),
+    `${GLOBEX_INVOICE}{Enter}`,
+  );
+  await userEvent.click(await canvas.findByText(GLOBEX_INVOICE));
+  await canvas.findByRole("heading", { name: GLOBEX_INVOICE });
+  const customer = await canvas.findByRole("combobox", { name: /Cliente \(código\)/ });
+  await waitFor(() => expect(customer).toHaveValue("Globex Bolivia"));
+  return canvas;
+}
+
+export const DeLaListaAlRegistro: Story = {
   render: () => <App />,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const page = within(canvasElement.ownerDocument.body);
-    // The list nobody wrote: searched literally, on Enter — and a row to the record.
-    await userEvent.type(
-      await canvas.findByRole("combobox", { name: "Buscar" }),
-      `${GLOBEX_INVOICE}{Enter}`,
-    );
-    await userEvent.click(await canvas.findByText(GLOBEX_INVOICE));
-    await canvas.findByRole("heading", { name: GLOBEX_INVOICE });
+    // The list nobody wrote, searched literally — and a row to the record, whose many2one is a
+    // picker of its entity, by name, not «C-004».
+    const canvas = await openGlobexInvoice(canvasElement);
     // Its state on top (and in its field), in the model's words.
     await waitFor(() => expect(canvas.getAllByText("Pagada").length).toBeGreaterThan(1));
-    // A many2one, as a picker of its entity — by name, not «C-004».
-    const cliente = await canvas.findByRole("combobox", { name: /Cliente \(código\)/ });
-    await waitFor(() => expect(cliente).toHaveValue("Globex Bolivia"));
     // Its lines in a page of their own, as the table the record brought.
     await userEvent.click(await canvas.findByRole("tab", { name: /Líneas/ }));
     await waitFor(() =>
       expect(canvas.getByRole("columnheader", { name: /Producto/ })).toBeVisible(),
     );
+  },
+};
+
+export const EditarYGuardarSinPerderElRegistro: Story = {
+  render: () => <App />,
+  play: async ({ canvasElement }) => {
+    const canvas = await openGlobexInvoice(canvasElement);
     // A list of words is chips, and a new one is typed in.
     const etiquetas = await canvas.findByRole("combobox", { name: "Etiquetas" });
     await waitFor(() => expect(canvas.getByText("exportación")).toBeVisible());
@@ -93,6 +109,14 @@ export const DeLaListaAlRegistroYSusRelaciones: Story = {
     await new Promise((resolve) => setTimeout(resolve, 300)); // past the re-read (40 ms)
     watch.disconnect();
     await expect(remounted).toBe(false);
+  },
+};
+
+export const UnRelacionadoAbreEnUnModalYDeAhiAlCostado: Story = {
+  render: () => <App />,
+  play: async ({ canvasElement }) => {
+    const canvas = await openGlobexInvoice(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
     // The customer opens in a modal — its own record nobody wrote, with its invoices.
     await userEvent.click(canvas.getByRole("button", { name: "Abrir en un modal" }));
     const modal = await canvas.findByRole("dialog", { name: "Globex Bolivia" });
