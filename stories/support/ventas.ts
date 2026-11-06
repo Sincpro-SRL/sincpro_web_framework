@@ -1,4 +1,4 @@
-import { defineMeta, entity, field } from "@sincpro/web-framework";
+import { defineMeta, entity, field } from "@sincpro/client-framework";
 
 /**
  * A sales domain DECLARED BY HAND — no sincpro_framework behind it. The same thing an app does

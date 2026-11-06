@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 
-import {
-  cachedTransport,
-  type CacheOptions,
-  memoryTransport,
-  pathFor,
-  type Transport,
-} from "@sincpro/web-framework";
+import { memoryTransport, pathFor, type Transport } from "@sincpro/client-framework";
+import { cachedTransport, type CacheOptions } from "@sincpro/web-framework";
 import { test } from "vitest";
 
 import { servidorVentas } from "../stories/support/servidor";

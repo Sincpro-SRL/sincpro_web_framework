@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 
-import {
-  defineMeta,
-  entity,
-  entityFor,
-  field,
-  relationFieldOf,
-} from "@sincpro/web-framework";
+import { defineMeta, entity, field } from "@sincpro/client-framework";
+import { entityFor, relationFieldOf } from "@sincpro/web-framework";
 import { test } from "vitest";
 
 import { personaMeta, personas } from "../stories/support/contactos";

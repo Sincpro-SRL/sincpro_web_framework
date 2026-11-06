@@ -1,5 +1,5 @@
+import { type Entity, type EntityRef } from "@sincpro/client-framework";
 import type { AnyRecord, Criteria, Expression, Grain, Sort } from "@sincpro/criteria";
-import type { Entity, EntityRef } from "@sincpro/web-framework/core/entity";
 
 /**
  * A named way of looking at an entity: «Por cobrar», «Borradores», «Mis tickets».

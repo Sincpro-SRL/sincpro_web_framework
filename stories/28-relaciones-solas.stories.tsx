@@ -1,9 +1,9 @@
+import { memoryTransport } from "@sincpro/client-framework";
 import { useCrumbs, type ViewProps } from "@sincpro/web-composer";
 import {
   dirtyOf,
   EntityList,
   entityView,
-  memoryTransport,
   RecordField,
   SincproApp,
   useListing,

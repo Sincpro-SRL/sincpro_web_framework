@@ -1,8 +1,8 @@
 "use client";
 
+import { type Entity } from "@sincpro/client-framework";
 import type { AnyRecord, Meta } from "@sincpro/criteria";
 import type { ResourceRef, WorkspaceApi } from "@sincpro/web-composer";
-import type { Entity } from "@sincpro/web-framework/core/entity";
 import { useSummaryOf } from "@sincpro/web-framework/react/useSummary";
 import { openOptions, targetsFor } from "@sincpro/web-framework/web/list/openIn";
 import { relationOf } from "@sincpro/web-framework/web/record/summary";

@@ -1,6 +1,6 @@
+import { type Transport } from "@sincpro/client-framework";
 import type { AnyRecord, Criteria } from "@sincpro/criteria";
 import { resumingFrom } from "@sincpro/criteria";
-import type { Transport } from "@sincpro/web-framework/core/transport";
 
 /**
  * Where a record was opened from: the page of the list it was a row of, so the record can go

@@ -1,10 +1,10 @@
-import type { Meta as ModelMeta } from "@sincpro/criteria";
 import {
   completeMeta,
-  factsOf,
   metaFromSchema,
   type SchemaComponents,
-} from "@sincpro/web-framework";
+} from "@sincpro/client-framework";
+import type { Meta as ModelMeta } from "@sincpro/criteria";
+import { factsOf } from "@sincpro/web-framework";
 import { Record } from "@sincpro/web-ui";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";

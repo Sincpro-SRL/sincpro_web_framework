@@ -15,6 +15,10 @@ Requires React 19 or newer.
 
 ## What we believe
 
+> The founding statement is [`MANIFESTO.md`](MANIFESTO.md): what this repository is, what it is
+> not, how it is composed and where it is going. What follows is how those beliefs show in the
+> pieces that exist today.
+
 **An ERP is modular, so its framework must be open.** Somebody will always have the case nobody
 foresaw — a reconciliation screen, a strange relation, a wizard over three entities. They must
 be able to build it here, without asking us and without fighting us. So:
@@ -392,21 +396,22 @@ Three folders, one direction — `make doctor` keeps the arrows:
 | `web/record`    | one record: `RecordField`, `factsOf`, `RelatedList`, `EntityPicker`, `cardOf` | works outside a workspace (no composer)               |
 | `web/workspace` | the composer: `entityView`, `openIn`, `RelatedRecord`, `<SincproApp>`         | where it opens, the application context               |
 
-Everything is imported from `@sincpro/web-framework`. Code that draws nothing — a script, a
-test in Node, a generated client — imports `@sincpro/web-framework/core`, which loads no React.
-
-A fourth folder, `codegen`, is a build step: no screen loads it (`make doctor`).
+Screens import from `@sincpro/web-framework`. What every platform shares — the transport,
+`entity()`, model definitions, `Feature` and `ApplicationService`, the generated client — is
+[@sincpro/client-framework](https://github.com/Sincpro-SRL/sincpro_client_framework)'s, imported
+from there and never re-exported here. `@sincpro/web-framework/core` is the screens' plain logic
+(what a value reads as, a form's defaults, lines), loaded without React.
 
 ### From the contract
 
 A service built on sincpro_framework exports what it publishes — its models and every operation,
 what each one is for its entity and how each wire reaches it — as one client contract per
-bounded context. `sincpro-web generate` writes, from it, what the screens used to declare by
+bounded context. `sincpro-client generate` (@sincpro/client-framework) writes, from it, what the screens used to declare by
 hand:
 
 ```bash
 python -m sincpro_framework.entrypoints export-client-contract app.http:gateways contracts/
-npx sincpro-web generate contracts/project.contract.json --out src/generated/project --base /v1
+npx sincpro-client generate contracts/project.contract.json --out src/generated/project --base /v1
 ```
 
 | File            | What it holds                                                                                       |
@@ -439,7 +444,7 @@ moves to the generated one — is [`docs/ADOPCION.md`](docs/ADOPCION.md) (in Spa
 | `readRoute`, `Transport.read`           | A GET of the context's own (`/me`), neither a page nor a record                              | ✅     |
 | A key alone (`EntityID`), `useNameOf`   | A key that names whose record it is, drawn as a many2one: a picker, and the name when read   | ✅     |
 | `versionsOf`, `onVersionDrift`          | A snapshot behind the server is told once per model — never an error                         | ✅     |
-| `sincpro-web generate`                  | A context's DTOs, client and entities out of its exported client contract                    | ✅     |
+| `sincpro-client generate`               | A context's DTOs, client and entities out of its exported client contract                    | ✅     |
 | `metasOf`, `bodyFor` (`target`)         | Definitions preloaded from that snapshot; a Command's record written where its body names it | ✅     |
 | `useHistory`                            | Business events in `Record.Activity` (comments: backend first)                               | ✅     |
 | `entityView`                            | An entity as a composer view: list, record, ⌘K search                                        | ✅     |

@@ -1,11 +1,12 @@
+import {
+  type CallOptions,
+  type Entity,
+  type Method,
+  type One,
+  type SendOptions,
+  type Transport,
+} from "@sincpro/client-framework";
 import type { Criteria, Page } from "@sincpro/criteria";
-import type { Entity } from "@sincpro/web-framework/core/entity";
-import type {
-  Method,
-  One,
-  SendOptions,
-  Transport,
-} from "@sincpro/web-framework/core/transport";
 
 /**
  * A transport that remembers what it read, for a while, and forgets it when something writes.
@@ -102,20 +103,28 @@ export function cachedTransport(
   };
 
   return {
-    list<T>(route: string, criteria: Criteria<T>, signal?: AbortSignal): Promise<Page<T>> {
+    // A call's own headers (a use case's trace) never change the answer: they travel, and the
+    // answer is kept by the question alone.
+    list<T>(
+      route: string,
+      criteria: Criteria<T>,
+      signal?: AbortSignal,
+      options?: CallOptions,
+    ): Promise<Page<T>> {
       return remembered(`list ${route} ${JSON.stringify(criteria)}`, () =>
-        transport.list<T>(route, criteria, signal),
+        transport.list<T>(route, criteria, signal, options),
       );
     },
-    one<T>(route: string, signal?: AbortSignal): Promise<One<T>> {
-      return remembered(`one ${route}`, () => transport.one<T>(route, signal));
+    one<T>(route: string, signal?: AbortSignal, options?: CallOptions): Promise<One<T>> {
+      return remembered(`one ${route}`, () => transport.one<T>(route, signal, options));
     },
     // A read of the context's own (`GET /me`) is not an entity's: no write forgets it, so it is
     // never kept — it goes to the server every time.
     ...(transport.read === undefined
       ? {}
       : {
-          read: <T>(route: string, signal?: AbortSignal) => transport.read!<T>(route, signal),
+          read: <T>(route: string, signal?: AbortSignal, options?: CallOptions) =>
+            transport.read!<T>(route, signal, options),
         }),
     async send<T>(
       method: Method,

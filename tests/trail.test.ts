@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 
+import { memoryTransport } from "@sincpro/client-framework";
 import type { AnyRecord, Criteria } from "@sincpro/criteria";
-import { memoryTransport, placeOf, stepIn, type Trail } from "@sincpro/web-framework";
+import { placeOf, stepIn, type Trail } from "@sincpro/web-framework";
 import { test } from "vitest";
 
 import { movimientos, TABLAS } from "../stories/support/movimientos";

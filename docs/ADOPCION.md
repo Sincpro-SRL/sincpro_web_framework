@@ -7,19 +7,19 @@ dónde, y cómo se pasa una pantalla escrita a mano a lo generado. El porqué es
 
 ## Qué pone cada pieza
 
-| Pieza                                 | Pone                                                                                                                                                                               |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| sincpro_framework (≥ 3.32)            | El **contrato del cliente** de cada contexto: modelos, operaciones (qué es cada una para su entidad, qué recibe, qué contesta, en qué campo va su registro) y cómo llega cada port |
-| `sincpro-web generate` (este paquete) | Desde ese contrato: `domain.ts` (los DTOs), `client.ts` (cada operación y `clientOf`), `entities.ts` (una `entity<T, C, A>()` por modelo que se lista), `contract.json` (la foto)  |
-| @sincpro/web-framework (runtime)      | El estado y el dibujo: `useListing`, `useRecord`, `useCommand`, `EntityList`, `RecordField`…, sobre el transporte, leyendo la definición VIVA del servidor                         |
-| @sincpro/criteria (≥ 1.1)             | La gramática de lectura y la lectura de las definiciones (un valor que un registro guarda, apuntado por `$ref`, necesita 1.1)                                                      |
-| La aplicación                         | Cómo se ve cada registro (`presented`), sus vistas, lo que el contrato no dice todavía (el historial)                                                                              |
+| Pieza                                                 | Pone                                                                                                                                                                               |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| sincpro_framework (≥ 3.32)                            | El **contrato del cliente** de cada contexto: modelos, operaciones (qué es cada una para su entidad, qué recibe, qué contesta, en qué campo va su registro) y cómo llega cada port |
+| `sincpro-client generate` (@sincpro/client-framework) | Desde ese contrato: `domain.ts` (los DTOs), `client.ts` (cada operación y `clientOf`), `entities.ts` (una `entity<T, C, A>()` por modelo que se lista), `contract.json` (la foto)  |
+| @sincpro/web-framework (runtime)                      | El estado y el dibujo: `useListing`, `useRecord`, `useCommand`, `EntityList`, `RecordField`…, sobre el transporte, leyendo la definición VIVA del servidor                         |
+| @sincpro/criteria (≥ 1.1)                             | La gramática de lectura y la lectura de las definiciones (un valor que un registro guarda, apuntado por `$ref`, necesita 1.1)                                                      |
+| La aplicación                                         | Cómo se ve cada registro (`presented`), sus vistas, lo que el contrato no dice todavía (el historial)                                                                              |
 
 ## El flujo, de punta a punta
 
 ```text
 backend   make contract   →  contracts/<alias>.contract.json   (export-client-contract)
-web       make client     →  src/generated/<alias>/             (sincpro-web generate)
+web       make client     →  src/generated/<alias>/             (sincpro-client generate)
 CI        make verify-client: regenera y falla si algo cambió sin regenerar
 ```
 
@@ -36,7 +36,7 @@ contract:
 CONTEXTS := project auth
 client:
 	@for one in $(CONTEXTS); do \
-		npx sincpro-web generate contracts/$$one.contract.json \
+		npx sincpro-client generate contracts/$$one.contract.json \
 			--out src/generated/$$one --base /v1; \
 	done
 

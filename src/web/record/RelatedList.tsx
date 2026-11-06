@@ -1,8 +1,8 @@
 "use client";
 
+import { type Entity } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
-import type { Entity } from "@sincpro/web-framework/core/entity";
 import { defaultFields } from "@sincpro/web-framework/core/present";
 import type { RecordReading } from "@sincpro/web-framework/react/useRecord";
 import { useRelated } from "@sincpro/web-framework/react/useRelated";

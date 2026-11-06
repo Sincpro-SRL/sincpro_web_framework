@@ -1,5 +1,5 @@
+import { entity } from "@sincpro/client-framework";
 import type { Meta } from "@sincpro/criteria";
-import { entity } from "@sincpro/web-framework";
 
 /**
  * forge's `Tenant` EXACTLY as sincpro_framework 3.27 described it — copied from `GET /v1/tenants`

@@ -1,5 +1,6 @@
+import { entity } from "@sincpro/client-framework";
 import type { Criteria } from "@sincpro/criteria";
-import { CommandButton, entity, EntityPicker, lookupOf } from "@sincpro/web-framework";
+import { CommandButton, EntityPicker, lookupOf } from "@sincpro/web-framework";
 import { Field } from "@sincpro/web-ui";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";

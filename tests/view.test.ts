@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 
+import { type Transport } from "@sincpro/client-framework";
 import type { ViewProps } from "@sincpro/web-composer";
-import { entityView, type Transport } from "@sincpro/web-framework";
+import { entityView } from "@sincpro/web-framework";
 import { test } from "vitest";
 
 import { facturaMeta, facturas } from "../stories/support/ventas";

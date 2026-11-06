@@ -1,10 +1,10 @@
+import { memoryTransport } from "@sincpro/client-framework";
 import type { ViewProps } from "@sincpro/web-composer";
 import { useCrumbs, useWorkspace } from "@sincpro/web-composer";
 import {
   EntityList,
   entityView,
   factsOf,
-  memoryTransport,
   Refused,
   SincproApp,
   useListing,

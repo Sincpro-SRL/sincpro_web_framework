@@ -1,7 +1,7 @@
+import { memoryTransport } from "@sincpro/client-framework";
 import { useCrumbs, type ViewProps } from "@sincpro/web-composer";
 import {
   entityView,
-  memoryTransport,
   RelatedRecord,
   SincproApp,
   useRecord,

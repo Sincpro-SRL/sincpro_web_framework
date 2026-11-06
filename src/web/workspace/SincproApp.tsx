@@ -1,5 +1,6 @@
 "use client";
 
+import { type Entity, type Transport } from "@sincpro/client-framework";
 import type { Meta } from "@sincpro/criteria";
 import {
   Composer,
@@ -17,8 +18,6 @@ import {
   installFrameworkCopy,
   SPANISH_FRAMEWORK_COPY,
 } from "@sincpro/web-framework/core/copy";
-import type { Entity } from "@sincpro/web-framework/core/entity";
-import type { Transport } from "@sincpro/web-framework/core/transport";
 import { FrameworkProvider } from "@sincpro/web-framework/react/context";
 import { webUiSkin } from "@sincpro/web-framework/web/workspace/skin";
 import { installCopy, SPANISH_COPY, ToastProvider } from "@sincpro/web-ui";

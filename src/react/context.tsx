@@ -1,11 +1,14 @@
 "use client";
 
+import {
+  type Entity,
+  type MetaStore,
+  metaStore,
+  type Transport,
+} from "@sincpro/client-framework";
 import type { Meta } from "@sincpro/criteria";
-import type { Entity } from "@sincpro/web-framework/core/entity";
-import { type MetaStore, metaStore } from "@sincpro/web-framework/core/metas";
 import { entityFor } from "@sincpro/web-framework/core/relation";
 import type { Trail } from "@sincpro/web-framework/core/trail";
-import type { Transport } from "@sincpro/web-framework/core/transport";
 import { installTimeZone } from "@sincpro/web-framework/core/zone";
 import { createContext, type ReactNode, useContext, useMemo, useRef, useState } from "react";
 

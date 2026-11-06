@@ -1,9 +1,9 @@
 "use client";
 
+import { type Entity } from "@sincpro/client-framework";
 import { type AnyRecord, choicesOf } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { errorAt } from "@sincpro/web-framework/core/edit";
-import type { Entity } from "@sincpro/web-framework/core/entity";
 import { editableLines } from "@sincpro/web-framework/core/lines";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
 import { relationFieldOf } from "@sincpro/web-framework/core/relation";

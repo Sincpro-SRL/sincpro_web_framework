@@ -1,5 +1,6 @@
 "use client";
 
+import { type CommandBodies, type Entity, listRoute } from "@sincpro/client-framework";
 import {
   type AnyRecord,
   type Count,
@@ -15,11 +16,6 @@ import {
   type Sort,
 } from "@sincpro/criteria";
 import { useReading } from "@sincpro/criteria-react";
-import {
-  type CommandBodies,
-  type Entity,
-  listRoute,
-} from "@sincpro/web-framework/core/entity";
 import { isList, type ListDefinition, scopeOf } from "@sincpro/web-framework/core/list";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useListScope } from "@sincpro/web-framework/react/scope";

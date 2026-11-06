@@ -1,8 +1,8 @@
+import { type Method } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
 import {
   dirtyOf,
   type LineAdding,
-  type Method,
   RecordField,
   type RecordReading,
   useRecord,

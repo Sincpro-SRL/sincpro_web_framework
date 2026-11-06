@@ -1,3 +1,4 @@
+import { memoryTransport } from "@sincpro/client-framework";
 import type { Criteria } from "@sincpro/criteria";
 import type { ViewProps } from "@sincpro/web-composer";
 import { useCrumbs } from "@sincpro/web-composer";
@@ -8,7 +9,6 @@ import {
   entityView,
   factsOf,
   listView,
-  memoryTransport,
   SincproApp,
   textOf,
   useListing,

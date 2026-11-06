@@ -1224,3 +1224,24 @@ quién es`; tests `codegen`, `command`, `entity`, `rest`, `relation`, `contract`
 - **Rendimiento medido**: formatear 2 000 filas × 8 campos bajó de 153 ms a 22 ms con un
   formateador `Intl` por idioma; las columnas se memorizan; el texto del buscador espera una
   pausa de 200 ms; la meta se pide una vez por entidad (`meta: false` después).
+
+## Partido en capas: @sincpro/client-framework (2026-11-06)
+
+Lo que comparte toda plataforma salió de este paquete a
+[@sincpro/client-framework](https://github.com/Sincpro-SRL/sincpro_client_framework) (0.1.0): el
+transporte (REST, memoria, `readRoute`), `entity()` con sus comandos tipados, el contrato del
+cliente, las definiciones de modelo (`defineMeta`, `metaFromSchema`, `metaStore`), los ids y el
+generador (`sincpro-client generate`, antes `sincpro-web`). Allá también nacieron `Feature` y
+`ApplicationService` con interceptores: un span por caso de uso y la traza en cada pedido. Este
+paquete los importa de ahí y no los re-exporta (`tests/index.test.ts`).
+
+- Se quedan aquí, porque son de la pantalla: `explain` (`core/explain.ts`: un rechazo en palabras
+  de la tabla de copy) y `cachedTransport`, que ahora pasa los headers de cada llamada
+  (`CallOptions`) y guarda por la pregunta.
+- Sobre `@sincpro/criteria` 2.0 (`selection` en lugar de `where`): el código no usaba `.where()`.
+- Los tests del transporte, la entidad, la memoria, la meta, el cable, el contrato y el
+  generador viven ahora en client-framework; aquí quedan los de la pantalla.
+- **Queda:** los nombres propios con `where` (`ListDefinition.where`, el corte de
+  `ListScopeProvider`, `listing.where`) por alinear a `selection`; y la suite completa sigue
+  fallando de vez en cuando bajo carga (la historia 30, ya anotada, y en una corrida 09 y 29),
+  aunque cada una pasa sola.

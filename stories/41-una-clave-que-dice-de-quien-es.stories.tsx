@@ -1,4 +1,5 @@
-import { defineMeta, entity, field, RecordField, useRecord } from "@sincpro/web-framework";
+import { defineMeta, entity, field } from "@sincpro/client-framework";
+import { RecordField, useRecord } from "@sincpro/web-framework";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 

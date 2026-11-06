@@ -1,15 +1,16 @@
 "use client";
 
-import type { AnyRecord } from "@sincpro/criteria";
 import {
   bodyFor,
   type CommandAnswers,
   type CommandBodies,
   type Entity,
   pathFor,
+  type RetryKeys,
+  retryKeys,
   type WriteRoute,
-} from "@sincpro/web-framework/core/entity";
-import { type RetryKeys, retryKeys } from "@sincpro/web-framework/core/retry";
+} from "@sincpro/client-framework";
+import type { AnyRecord } from "@sincpro/criteria";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useCallback, useEffect, useRef, useState } from "react";
 

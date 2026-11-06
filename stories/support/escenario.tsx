@@ -1,13 +1,13 @@
-import type { AnyRecord, Criteria, Meta, Problem } from "@sincpro/criteria";
 import {
   type Draft,
   type Entity,
-  FrameworkProvider,
   memoryTransport,
   type Method,
   restTransport,
   type Transport,
-} from "@sincpro/web-framework";
+} from "@sincpro/client-framework";
+import type { AnyRecord, Criteria, Meta, Problem } from "@sincpro/criteria";
+import { FrameworkProvider } from "@sincpro/web-framework";
 import { type ReactNode, useMemo, useState } from "react";
 
 import { type Call, restServer } from "./rest";

@@ -1,9 +1,9 @@
+import { memoryTransport } from "@sincpro/client-framework";
 import { Destination, type ResourceRef, type ViewProps } from "@sincpro/web-composer";
 import {
   EntityList,
   entityView,
   factsOf,
-  memoryTransport,
   SincproApp,
   useFollowed,
   useListing,

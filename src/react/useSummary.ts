@@ -1,7 +1,7 @@
 "use client";
 
+import { type Entity } from "@sincpro/client-framework";
 import type { AnyRecord, Meta } from "@sincpro/criteria";
-import type { Entity } from "@sincpro/web-framework/core/entity";
 import { type RecordSummary, summaryOf } from "@sincpro/web-framework/core/summary";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useCallback } from "react";

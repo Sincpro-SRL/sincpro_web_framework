@@ -1,12 +1,6 @@
+import { type ClientContract, metasOf, type Method } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
-import {
-  type ClientContract,
-  CommandButton,
-  EntityList,
-  metasOf,
-  type Method,
-  useListing,
-} from "@sincpro/web-framework";
+import { CommandButton, EntityList, useListing } from "@sincpro/web-framework";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 

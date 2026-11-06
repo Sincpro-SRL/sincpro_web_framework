@@ -1,5 +1,5 @@
+import { defineMeta, entity, field } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
-import { defineMeta, entity, field } from "@sincpro/web-framework";
 
 /**
  * Two hundred thousand ledger movements — the set the scale stories run on. Generated once per

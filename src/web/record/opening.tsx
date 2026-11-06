@@ -1,7 +1,7 @@
 "use client";
 
+import { type Entity, type EntityRef } from "@sincpro/client-framework";
 import { type AnyRecord, type Criteria, type Expression, merge } from "@sincpro/criteria";
-import type { Entity, EntityRef } from "@sincpro/web-framework/core/entity";
 import { isList, type ListDefinition, scopeOf } from "@sincpro/web-framework/core/list";
 import type { OpenTarget } from "@sincpro/web-ui";
 import { createContext, type ReactNode, useContext } from "react";

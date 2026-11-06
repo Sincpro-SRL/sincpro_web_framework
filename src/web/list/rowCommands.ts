@@ -1,8 +1,7 @@
 "use client";
 
+import { bodyFor, type CommandBodies, pathFor, retryKeys } from "@sincpro/client-framework";
 import { type AnyRecord, type Expression, matches } from "@sincpro/criteria";
-import { bodyFor, type CommandBodies, pathFor } from "@sincpro/web-framework/core/entity";
-import { retryKeys } from "@sincpro/web-framework/core/retry";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
 import type { RowAction } from "@sincpro/web-ui";

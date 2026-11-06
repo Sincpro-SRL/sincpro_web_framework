@@ -1,9 +1,9 @@
 "use client";
 
+import { type Entity } from "@sincpro/client-framework";
 import type { AnyRecord, Criteria } from "@sincpro/criteria";
 import { nameOf } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
-import type { Entity } from "@sincpro/web-framework/core/entity";
 import { isList, type ListDefinition } from "@sincpro/web-framework/core/list";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useListing } from "@sincpro/web-framework/react/useListing";

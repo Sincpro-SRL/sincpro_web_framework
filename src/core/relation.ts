@@ -1,6 +1,5 @@
+import { type Entity, entityKeyOf, kindOf } from "@sincpro/client-framework";
 import type { FieldMeta, Meta } from "@sincpro/criteria";
-import { entityKeyOf, kindOf } from "@sincpro/web-framework/core/contract";
-import type { Entity } from "@sincpro/web-framework/core/entity";
 
 /**
  * Which record a field of a form is about, read from the model — so a form draws a many2one

@@ -1,3 +1,4 @@
+import type { SummaryFields, SummaryPart } from "@sincpro/client-framework";
 import type { AnyRecord, Meta } from "@sincpro/criteria";
 import { textOf } from "@sincpro/web-framework/core/present";
 
@@ -15,20 +16,6 @@ import { textOf } from "@sincpro/web-framework/core/present";
  * …). The name is the model's own `display`. When the backend publishes these parts in its
  * model definition, they are read from there and the convention steps aside.
  */
-export type SummaryPart =
-  | "description"
-  | "state"
-  | "type"
-  | "image"
-  | "createdAt"
-  | "createdBy"
-  | "updatedAt"
-  | "updatedBy";
-
-/** Which field of the entity plays each part, when it is not the conventional one.
- *  `person`: its records are people or companies — a round face, initials without a photo. */
-export type SummaryFields = Partial<Record<SummaryPart, string>> & { person?: boolean };
-
 export type RecordSummary = {
   id: string;
   name: string;

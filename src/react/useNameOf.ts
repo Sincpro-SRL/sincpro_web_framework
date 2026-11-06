@@ -1,7 +1,7 @@
 "use client";
 
+import { type Entity, listRoute } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
-import { type Entity, listRoute } from "@sincpro/web-framework/core/entity";
 import { lookupOf } from "@sincpro/web-framework/core/lookup";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useEffect, useState } from "react";
