@@ -1,16 +1,16 @@
 "use client";
 
-import { type AnyRecord, matching, type Meta } from "@sincpro/criteria";
-import type { SearchHit, ViewProps, ViewSpec, WorkspaceApi } from "@sincpro/web-composer";
 import {
   type Entity,
   listRoute,
   NEW_PARAM,
   scopeOfRef,
-} from "@sincpro/web-framework/core/entity";
+  type Transport,
+} from "@sincpro/client-framework";
+import { type AnyRecord, matching, type Meta } from "@sincpro/criteria";
+import type { SearchHit, ViewProps, ViewSpec, WorkspaceApi } from "@sincpro/web-composer";
 import type { ListDefinition } from "@sincpro/web-framework/core/list";
 import { lookupOf } from "@sincpro/web-framework/core/lookup";
-import type { Transport } from "@sincpro/web-framework/core/transport";
 import { ListScopeProvider } from "@sincpro/web-framework/react/scope";
 import { useListing } from "@sincpro/web-framework/react/useListing";
 import { EntityList } from "@sincpro/web-framework/web/list/EntityList";

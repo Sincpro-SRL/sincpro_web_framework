@@ -1,7 +1,7 @@
 "use client";
 
+import { type Entity } from "@sincpro/client-framework";
 import type { AnyRecord, Criteria } from "@sincpro/criteria";
-import type { Entity } from "@sincpro/web-framework/core/entity";
 import { type HistoryEntry, historyOf } from "@sincpro/web-framework/core/history";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { type DependencyList, useEffect, useState } from "react";

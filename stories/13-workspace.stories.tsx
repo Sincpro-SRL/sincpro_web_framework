@@ -1,3 +1,4 @@
+import { restTransport } from "@sincpro/client-framework";
 import {
   Composer,
   type ResourceRef,
@@ -16,7 +17,6 @@ import {
   FrameworkProvider,
   RecordField,
   Refused,
-  restTransport,
   useListing,
   useRecord,
   useRecordInWorkspace,

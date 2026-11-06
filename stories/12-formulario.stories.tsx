@@ -1,6 +1,6 @@
+import { entity } from "@sincpro/client-framework";
 import {
   dirtyOf,
-  entity,
   EntityPicker,
   frameworkCopy,
   RecordField,

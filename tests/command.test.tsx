@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 
+import { entity } from "@sincpro/client-framework";
 import {
   CommandButton,
-  entity,
   useCommand,
   useListing,
   useRowCommands,

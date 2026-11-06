@@ -1,11 +1,11 @@
-import type { AnyRecord } from "@sincpro/criteria";
 import {
   defineMeta,
   entity,
   field,
   type MemoryTable,
   type Method,
-} from "@sincpro/web-framework";
+} from "@sincpro/client-framework";
+import type { AnyRecord } from "@sincpro/criteria";
 
 import { type Producto, productoMeta, productos } from "./contactos";
 

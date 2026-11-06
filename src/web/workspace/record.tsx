@@ -1,10 +1,10 @@
 "use client";
 
+import { type Entity, TRAIL_PARAM } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
 import { labelOf, nameOf } from "@sincpro/criteria";
 import { useCrumbs, type ViewProps } from "@sincpro/web-composer";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
-import { type Entity, TRAIL_PARAM } from "@sincpro/web-framework/core/entity";
 import { formOf } from "@sincpro/web-framework/core/form";
 import { placeOf, stepIn } from "@sincpro/web-framework/core/trail";
 import { useFramework } from "@sincpro/web-framework/react/context";

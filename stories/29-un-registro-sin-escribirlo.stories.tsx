@@ -1,4 +1,5 @@
-import { entityView, memoryTransport, SincproApp } from "@sincpro/web-framework";
+import { memoryTransport } from "@sincpro/client-framework";
+import { entityView, SincproApp } from "@sincpro/web-framework";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";

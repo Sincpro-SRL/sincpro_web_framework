@@ -1,14 +1,12 @@
+import { entity, isEntityId, restTransport } from "@sincpro/client-framework";
 import {
   dirtyOf,
-  entity,
   EntityPicker,
   explain,
   FrameworkProvider,
-  isEntityId,
   RecordField,
   type RecordReading,
   Refused,
-  restTransport,
   useRecord,
 } from "@sincpro/web-framework";
 import { Button, Callout, Record, Skeleton } from "@sincpro/web-ui";

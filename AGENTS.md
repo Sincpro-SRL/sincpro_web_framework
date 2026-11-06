@@ -1,12 +1,14 @@
 # AGENTS.md — working on @sincpro/web-framework
 
-Rules for any agent (or person) changing this package. Read the README for the idea and
-[`docs/PURPOSE.md`](docs/PURPOSE.md) for what it is for; this file is how to keep it.
+Rules for any agent (or person) changing this package. Read [`MANIFESTO.md`](MANIFESTO.md) for
+what this repository is, is not and is going to be, [`docs/PURPOSE.md`](docs/PURPOSE.md) for what
+each piece is for, and [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) for how an application is
+built; this file is how to keep it.
 
 ## Before you change anything
 
-- **Read `docs/PURPOSE.md`.** It is the yardstick: a piece that serves nothing on that page does
-  not go in. If you think it should, change that page first and say why.
+- **Read `MANIFESTO.md`, then `docs/PURPOSE.md`.** They are the yardstick: a piece that serves
+  nothing there does not go in. If you think it should, change the manifesto first and say why.
 - **Find the use case.** Every change starts from one, and every use case is a story in
   `stories/` with a `play`. If yours is not there, write the story first; it will fail, and
   that is the point.
@@ -34,25 +36,24 @@ Rules for any agent (or person) changing this package. Read the README for the i
 
 ## Where things go
 
-| Folder               | What                                                                     | May import                                |
-| -------------------- | ------------------------------------------------------------------------ | ----------------------------------------- |
-| `src/core/`          | transport, entity, model definition, text of a value                     | `@sincpro/criteria` only                  |
-| `src/react/`         | hooks and the provider — state, no drawing                               | `core/`, React, `@sincpro/criteria-react` |
-| `src/web/list/`      | a collection: `EntityList`, `EntitySearchBar`, columns, search model     | everything above, web-ui, composer        |
-| `src/web/record/`    | one record: fields, facts, relations, picker, commands                   | everything above, web-ui — NOT composer   |
-| `src/web/workspace/` | the composer: views, skin, `useRecordInWorkspace`, `<SincproApp>`        | everything above, web-ui, composer        |
-| `src/codegen/`       | the generator: DTOs, client and entities out of a client contract        | `core/`, Node — nothing imports it        |
-| `stories/`           | the use cases, one scenario per story, with `play`                       | the package's public entry only           |
-| `stories/support/`   | fake domains: `ventas` (by hand), `forge` (copied from a real service)   | —                                         |
-| `tests/`             | vitest (`model` project, Node) over `core/`, `react/` and `codegen/`     | —                                         |
-| `docs/`              | `PURPOSE.md`, `ROADMAP.md`, `ADOPCION.md` (how an app adopts it), `prd/` | —                                         |
+| Folder               | What                                                                                                                                      | May import                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `src/core/`          | the screens' plain logic: text of a value, form defaults, lines, trail, `explain`, the cache                                              | `@sincpro/criteria`, `@sincpro/client-framework` |
+| `src/react/`         | hooks and the provider — state, no drawing                                                                                                | `core/`, React, `@sincpro/criteria-react`        |
+| `src/web/list/`      | a collection: `EntityList`, `EntitySearchBar`, columns, search model                                                                      | everything above, web-ui, composer               |
+| `src/web/record/`    | one record: fields, facts, relations, picker, commands                                                                                    | everything above, web-ui — NOT composer          |
+| `src/web/workspace/` | the composer: views, skin, `useRecordInWorkspace`, `<SincproApp>`                                                                         | everything above, web-ui, composer               |
+| `stories/`           | the use cases, one scenario per story, with `play`                                                                                        | the package's public entry only                  |
+| `stories/support/`   | fake domains: `ventas` (by hand), `forge` (copied from a real service)                                                                    | —                                                |
+| `tests/`             | vitest (`model` project, Node) over `core/` and `react/`                                                                                  | —                                                |
+| `docs/`              | `PURPOSE.md`, `ROADMAP.md`, `ADOPCION.md` (how an app adopts it), `ARQUITECTURA.md` (how any app is built: the framework of work), `prd/` | —                                                |
 
 ## Hard rules (the build enforces them)
 
 - **Levels do not climb** (`make doctor`): `core/` imports no React, no DOM, no UI and touches
   no `window`/`document`; `react/` imports no `react-dom` and no `@sincpro/web-ui`; `web/record/`
-  imports no composer (a form must work outside a workspace). Nothing in `core/`, `react/` or
-  `web/` imports `codegen/`, and only `codegen/` imports `node:` — it is a build step.
+  imports no composer (a form must work outside a workspace). Nothing in `src/` imports `node:`,
+  and @sincpro/client-framework is imported by its public entry only, never a path inside it.
 - **Built for millions.** Never filter, order, count or group on the page; never grow a page
   without a ceiling (`pages` is the default paging); never fetch a whole table to search it.
   A new collection piece proves it on story 15's 200 000 rows.
@@ -218,20 +219,18 @@ Rules for any agent (or person) changing this package. Read the README for the i
   `entity<T, C>` types each Command's body (`CommandBodies`); `useCommand(issues, "send")` infers
   `C` and the name. `useCommand<Issue, Answer>(…)` falls back to the loose default (TypeScript
   never infers part of a list), so a screen that wants the check writes no type argument.
-- **What the generator writes is compared byte for byte.** `stories/support/forge-contract/`
-  holds forge's client contracts as they came (`export-client-contract`) and the `domain.ts`,
-  `client.ts` and `entities.ts` written from each; all stay out of prettier and eslint, and
-  story 40 runs on them. After changing the generator on purpose, run `make codegen-fixtures`
-  and read the diff. An application keeps its generated folder out of its formatters the same
-  way, or `make verify-client` fails on what a formatter rewrote.
-- **A module name the generator WRITES is built in parts** (`codegen/names.ts`, `FRAMEWORK`):
-  the build's `tsc-alias` rewrites this package's specifiers inside strings too, and the
-  generated files came out importing `"../index.js"`. Read the built output, not the source.
+- **The transport, the entity and the generator are @sincpro/client-framework's.** Import them
+  from there, never re-export them here (`tests/index.test.ts` pins it): one door, or two versions
+  meet in one screen. `stories/support/forge-contract/` holds forge's contracts and what that
+  generator writes from them, out of prettier and eslint; story 40 runs on them. After upgrading
+  @sincpro/client-framework, run `make codegen-fixtures` and read the diff.
+- **A transport here forwards a call's own headers** (`CallOptions`): `cachedTransport` hands
+  them down and keeps answers by the question alone — the headers are a use case's trace.
 - **A Command's record goes where its body names it** (`target`, `bodyFor`): `run(id, body)`
   writes the id in that field and `pathFor` takes it from there, whether the path carries it
   (`/issues/{issue_id}/messages`) or not (`POST /issues` with `project_id`). A generated entity
   types the body without that field, so the screen never writes the key twice.
-- **In a record every field comes but a related one** (`codegen/domain.ts`, `optional`): a
+- **In a record every field comes but a related one** (the generator's `optional`): a
   model's contract lists as required only what has no default — in forge, nothing —, while the
   server writes the whole record. A relation comes only when the read expands it.
 - **A key alone is a relation with `held: false`** (`relationFieldOf`): `EntityID[Tenant]` has no

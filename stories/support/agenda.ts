@@ -1,11 +1,11 @@
-import type { AnyRecord } from "@sincpro/criteria";
 import {
   defineMeta,
   entity,
   field,
   type MemoryTable,
   type Method,
-} from "@sincpro/web-framework";
+} from "@sincpro/client-framework";
+import type { AnyRecord } from "@sincpro/criteria";
 
 /**
  * An appointment at an instant: what the server keeps is UTC (`2026-03-12T14:30:00Z`), what a

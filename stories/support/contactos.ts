@@ -1,4 +1,4 @@
-import { defineMeta, entity, field } from "@sincpro/web-framework";
+import { defineMeta, entity, field } from "@sincpro/client-framework";
 
 /**
  * Three entities that say different amounts about themselves, to see one summary drawn over

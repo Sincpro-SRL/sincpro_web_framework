@@ -1142,15 +1142,20 @@
     estree-walker "^2.0.2"
     picomatch "^4.0.2"
 
-"@sincpro/criteria-react@^1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/criteria-react/-/criteria-react-1.1.0.tgz#66751127bdf2c5a6f5b39b7e3b08b033ab2e9fe2"
-  integrity sha512-0+gu6sWU7j5M1gIYfz5TXj9CPWuQsVW79pywixv4PdGATaACXD5X0AaefZ+gqNO8RAxfadbCc02lBKbvEBznnQ==
+"@sincpro/client-framework@^0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/client-framework/-/client-framework-0.1.0.tgz#5d6829b1d5b58551a592733b1d07528728dcc341"
+  integrity sha512-PqlCpydrmZD70iNWmNyvcm2F2c4ntkDIRtOEj/VAiMC3LTOVcJfvjTDkhEIyyx2uI4w8cbh1T1Nih8qcYZefMg==
 
-"@sincpro/criteria@^1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/criteria/-/criteria-1.1.0.tgz#061ceec66a83da4a4c0eb9aeeff177a064615fc7"
-  integrity sha512-91qWAGFHjt9p4UgAGZgJFEnPEIq7c7Z9d7H8cXqWOqRcRDwphm/ri95/tu5WrEy2KfrxfkKxqdHqaI4agEFyVQ==
+"@sincpro/criteria-react@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/criteria-react/-/criteria-react-2.0.0.tgz#294545cff71afb558a07234cb69e89340c068084"
+  integrity sha512-G+pAxIDZ89himsZuZIO9aiYKGffZTy9Zt6Bc8/9vB1hYTKuAzGRsaHahWHfPVyNk3S/PWh7x03EFByLZelcWCA==
+
+"@sincpro/criteria@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/criteria/-/criteria-2.0.0.tgz#672cfe03889a771663a91939e4c56d6075578bea"
+  integrity sha512-gJmlSn4g3qlV/OZpy/iyvgXV+lB4UPIspGogru2jT/wFdlPQUB3WR/guTyVxGwWdR7v0QiKOZzgExce9B1wo2A==
 
 "@sincpro/web-composer@^1.5.0":
   version "1.5.0"

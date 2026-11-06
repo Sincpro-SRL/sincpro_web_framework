@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 
+import { defineMeta, field } from "@sincpro/client-framework";
 import {
-  defineMeta,
-  field,
   installTimeZone,
   instantOf,
   textOf,

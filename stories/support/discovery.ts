@@ -1,5 +1,5 @@
+import { type MemoryTable } from "@sincpro/client-framework";
 import type { Contract, ContractProperty, Meta } from "@sincpro/criteria";
-import type { MemoryTable } from "@sincpro/web-framework";
 
 /**
  * The discovery document a running sincpro_framework service publishes, written from the

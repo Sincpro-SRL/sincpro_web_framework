@@ -10,11 +10,18 @@ import { test } from "vitest";
 // what this proves is that the entries load, not how fast.
 
 test("the package entry loads", () => {
-  assert.equal(typeof entry.entity, "function");
   assert.equal(typeof entry.EntityList, "function");
+  assert.equal(typeof entry.useListing, "function");
 });
 
-test("the core entry holds the transport and the entity, for code that draws nothing", () => {
-  assert.equal(typeof core.restTransport, "function");
-  assert.equal(typeof core.entity, "function");
+test("the core entry holds the screens' plain logic, for code that draws nothing", () => {
+  assert.equal(typeof core.textOf, "function");
+  assert.equal(typeof core.explain, "function");
+});
+
+test("what every platform shares is @sincpro/client-framework's, never re-exported here", () => {
+  // One place for the transport and the entity: an application imports them from there, and a
+  // second door here would let two versions meet in one screen.
+  assert.equal("entity" in entry, false);
+  assert.equal("restTransport" in core, false);
 });

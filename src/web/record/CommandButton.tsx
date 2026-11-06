@@ -1,12 +1,12 @@
 "use client";
 
+import {
+  type CommandAnswers,
+  type CommandBodies,
+  type Entity,
+} from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
-import type {
-  CommandAnswers,
-  CommandBodies,
-  Entity,
-} from "@sincpro/web-framework/core/entity";
 import { type AnswerOf, useCommand } from "@sincpro/web-framework/react/useCommand";
 import { Refused } from "@sincpro/web-framework/web/Refused";
 import { Button, Dialog } from "@sincpro/web-ui";

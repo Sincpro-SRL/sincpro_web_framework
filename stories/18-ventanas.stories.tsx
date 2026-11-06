@@ -1,3 +1,4 @@
+import { memoryTransport } from "@sincpro/client-framework";
 import { Destination, useCrumbs, type ViewProps } from "@sincpro/web-composer";
 import {
   chooserIn,
@@ -5,7 +6,6 @@ import {
   EntityList,
   EntityPicker,
   entityView,
-  memoryTransport,
   RecordField,
   Refused,
   SincproApp,

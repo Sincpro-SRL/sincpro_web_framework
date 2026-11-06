@@ -1,5 +1,16 @@
 "use client";
 
+import {
+  type Draft,
+  type Entity,
+  type EntityRef,
+  newEntityId,
+  pathFor,
+  retryKeys,
+  startingValuesOf,
+  TransportError,
+  WITH_PARAM,
+} from "@sincpro/client-framework";
 import type { AnyRecord, Meta } from "@sincpro/criteria";
 import {
   type Advice,
@@ -15,17 +26,7 @@ import {
   missingOf,
   needsPreview,
 } from "@sincpro/web-framework/core/edit";
-import {
-  type Entity,
-  type EntityRef,
-  pathFor,
-  startingValuesOf,
-  WITH_PARAM,
-} from "@sincpro/web-framework/core/entity";
-import { newEntityId } from "@sincpro/web-framework/core/ids";
 import { linesAnswered } from "@sincpro/web-framework/core/lines";
-import { retryKeys } from "@sincpro/web-framework/core/retry";
-import { type Draft, TransportError } from "@sincpro/web-framework/core/transport";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

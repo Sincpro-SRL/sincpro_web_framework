@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 
-import { entityView, lookupOf, memoryTransport, presented } from "@sincpro/web-framework";
+import { memoryTransport } from "@sincpro/client-framework";
+import { entityView, lookupOf, presented } from "@sincpro/web-framework";
 import { test } from "vitest";
 
 import {

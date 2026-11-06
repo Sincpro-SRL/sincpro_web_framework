@@ -1,19 +1,16 @@
 /**
- * The plain logic: no React, no DOM, no design system — so it is tested in Node, fast, with
- * no browser. The transport, the entity, the model definition and what a value reads as.
- * `make doctor` keeps it that way.
+ * The plain logic of the screens: no React, no DOM, no design system — so it is tested in Node,
+ * fast, with no browser. What a value reads as, what a form sends, how lines are edited, a
+ * record's place in its list, a failure in a person's words. `make doctor` keeps it that way.
+ *
+ * Context: the transport, the entity, the client contract and the model definitions are
+ * @sincpro/client-framework's — the same on every platform — and are imported from there.
  */
 export {
   type CachedTransport,
   cachedTransport,
   type CacheOptions,
 } from "@sincpro/web-framework/core/cache";
-export {
-  type ClientContract,
-  entityKeyOf,
-  metasOf,
-  versionsOf,
-} from "@sincpro/web-framework/core/contract";
 export {
   ENGLISH_FRAMEWORK_COPY,
   type FrameworkCopy,
@@ -40,31 +37,9 @@ export {
   pathOf,
   type ServerFieldState,
 } from "@sincpro/web-framework/core/edit";
-export {
-  bodyFor,
-  type CommandAnswers,
-  type CommandBodies,
-  type CommandRoute,
-  type Entity,
-  entity,
-  type EntityRef,
-  type EntityRoutes,
-  listRoute,
-  NEW_PARAM,
-  pathFor,
-  PICK_PARAM,
-  QUERY_PARAM,
-  SCOPE_PARAM,
-  scopeOfRef,
-  startingValuesOf,
-  TRAIL_PARAM,
-  WITH_PARAM,
-  type WriteRoute,
-  writeRoute,
-} from "@sincpro/web-framework/core/entity";
+export { explain } from "@sincpro/web-framework/core/explain";
 export { type FormLayout, formOf } from "@sincpro/web-framework/core/form";
 export { type HistoryEntry, historyOf } from "@sincpro/web-framework/core/history";
-export { isEntityId, newEntityId } from "@sincpro/web-framework/core/ids";
 export {
   addingOf,
   type AddingRule,
@@ -91,19 +66,6 @@ export {
 export { lookupOf, type LookupOption } from "@sincpro/web-framework/core/lookup";
 export { detailOf, measuresOf, sumsOf } from "@sincpro/web-framework/core/measure";
 export {
-  type MemoryOptions,
-  type MemoryTable,
-  memoryTransport,
-} from "@sincpro/web-framework/core/memory";
-export {
-  defineMeta,
-  field,
-  type FieldOptions,
-  type MetaSpec,
-  type Words,
-} from "@sincpro/web-framework/core/meta";
-export { type MetaStore, metaStore } from "@sincpro/web-framework/core/metas";
-export {
   BOOKKEEPING,
   defaultFields,
   type FieldView,
@@ -118,36 +80,11 @@ export {
   relationFieldOf,
 } from "@sincpro/web-framework/core/relation";
 export {
-  type RestOptions,
-  restTransport,
-  urlOf,
-  type VersionDrift,
-} from "@sincpro/web-framework/core/rest";
-export { type RetryKeys, retryKeys, unanswered } from "@sincpro/web-framework/core/retry";
-export {
-  completeMeta,
-  type JsonSchema,
-  metaFromSchema,
-  type SchemaComponents,
-} from "@sincpro/web-framework/core/schema";
-export {
   type RecordSummary,
-  type SummaryFields,
   summaryFieldsOf,
   summaryOf,
-  type SummaryPart,
 } from "@sincpro/web-framework/core/summary";
 export { placeOf, stepIn, type Trail } from "@sincpro/web-framework/core/trail";
-export {
-  type Draft,
-  explain,
-  type Method,
-  type One,
-  readRoute,
-  type SendOptions,
-  type Transport,
-  TransportError,
-} from "@sincpro/web-framework/core/transport";
 export {
   installTimeZone,
   instantOf,

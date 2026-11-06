@@ -1,3 +1,4 @@
+import { memoryTransport } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
 import { Composer, useCrumbs, useWorkspace, type ViewProps } from "@sincpro/web-composer";
 import { createRegistry } from "@sincpro/web-composer/domain";
@@ -6,7 +7,6 @@ import {
   entityView,
   factsOf,
   FrameworkProvider,
-  memoryTransport,
   Refused,
   textOf,
   useListing,

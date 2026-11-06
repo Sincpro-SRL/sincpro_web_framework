@@ -1,9 +1,9 @@
+import {
+  type CommandAnswers,
+  type CommandBodies,
+  type Entity,
+} from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
-import type {
-  CommandAnswers,
-  CommandBodies,
-  Entity,
-} from "@sincpro/web-framework/core/entity";
 import { isList, type ListDefinition } from "@sincpro/web-framework/core/list";
 import type { PickerItem, RecordCard, RowOf } from "@sincpro/web-ui";
 import type { ComponentProps } from "react";

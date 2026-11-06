@@ -1,7 +1,7 @@
 "use client";
 
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
-import { explain } from "@sincpro/web-framework/core/transport";
+import { explain } from "@sincpro/web-framework/core/explain";
 import { Button, Failed } from "@sincpro/web-ui";
 
 /**

@@ -1,17 +1,17 @@
 "use client";
 
-import { type AnyRecord, type Criteria, nameOf } from "@sincpro/criteria";
-import { RecordLink, useCrumbs, type WorkspaceApi } from "@sincpro/web-composer";
-import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import {
   type CommandBodies,
   PICK_PARAM,
   QUERY_PARAM,
   TRAIL_PARAM,
-} from "@sincpro/web-framework/core/entity";
+} from "@sincpro/client-framework";
+import { type AnyRecord, type Criteria, nameOf } from "@sincpro/criteria";
+import { RecordLink, useCrumbs, type WorkspaceApi } from "@sincpro/web-composer";
+import { frameworkCopy } from "@sincpro/web-framework/core/copy";
+import { explain } from "@sincpro/web-framework/core/explain";
 import type { GroupLevel, NamedFilter } from "@sincpro/web-framework/core/list";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
-import { explain } from "@sincpro/web-framework/core/transport";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useGroups } from "@sincpro/web-framework/react/useGroups";
 import type { Listing } from "@sincpro/web-framework/react/useListing";

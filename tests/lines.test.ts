@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
 
+import { defineMeta, field } from "@sincpro/client-framework";
 import {
   addingOf,
   blankLine,
-  defineMeta,
   editableLines,
-  field,
   lineFields,
   lineKey,
   linesAnswered,

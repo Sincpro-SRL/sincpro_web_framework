@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 
+import { memoryTransport } from "@sincpro/client-framework";
 import type { AnyRecord, Bucket } from "@sincpro/criteria";
-import { detailOf, measuresOf, memoryTransport, sumsOf } from "@sincpro/web-framework";
+import { detailOf, measuresOf, sumsOf } from "@sincpro/web-framework";
 import { test } from "vitest";
 
 import { clienteMeta, facturaMeta, FACTURAS, VENTAS } from "../stories/support/ventas";

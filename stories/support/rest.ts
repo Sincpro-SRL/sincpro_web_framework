@@ -1,10 +1,10 @@
-import type { AnyRecord, Criteria } from "@sincpro/criteria";
 import {
   type MemoryTable,
   memoryTransport,
   type Method,
   TransportError,
-} from "@sincpro/web-framework";
+} from "@sincpro/client-framework";
+import type { AnyRecord, Criteria } from "@sincpro/criteria";
 
 import { discoveryDocument, VERSION } from "./discovery";
 import type { servidorVentas } from "./servidor";

@@ -1,5 +1,6 @@
 "use client";
 
+import { type Entity } from "@sincpro/client-framework";
 import { type AnyRecord, type Meta, nameOf } from "@sincpro/criteria";
 import {
   type ResourceRef,
@@ -7,7 +8,6 @@ import {
   type WorkspaceApi,
 } from "@sincpro/web-composer";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
-import type { Entity } from "@sincpro/web-framework/core/entity";
 import { textOf } from "@sincpro/web-framework/core/present";
 import type { RecordReading } from "@sincpro/web-framework/react/useRecord";
 import { useEffect } from "react";

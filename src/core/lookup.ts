@@ -1,5 +1,6 @@
+import { type SummaryFields } from "@sincpro/client-framework";
 import type { AnyRecord, Meta } from "@sincpro/criteria";
-import { type SummaryFields, summaryFieldsOf } from "@sincpro/web-framework/core/summary";
+import { summaryFieldsOf } from "@sincpro/web-framework/core/summary";
 
 /**
  * A record as a choice: what a many2one select, a «share with» and ⌘K show for it.

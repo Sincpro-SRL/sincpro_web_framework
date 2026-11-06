@@ -1,6 +1,7 @@
+import { type SummaryFields } from "@sincpro/client-framework";
 import type { Meta } from "@sincpro/criteria";
 import { BOOKKEEPING } from "@sincpro/web-framework/core/present";
-import { type SummaryFields, summaryFieldsOf } from "@sincpro/web-framework/core/summary";
+import { summaryFieldsOf } from "@sincpro/web-framework/core/summary";
 
 /**
  * What a record's form shows when the screen names nothing: its fields, and the pages beside

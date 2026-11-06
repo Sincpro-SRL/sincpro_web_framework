@@ -1,10 +1,5 @@
-import {
-  cardOf,
-  type Entity,
-  relationOf,
-  useListing,
-  useSummaryOf,
-} from "@sincpro/web-framework";
+import { type Entity } from "@sincpro/client-framework";
+import { cardOf, relationOf, useListing, useSummaryOf } from "@sincpro/web-framework";
 import { RecordCard, RelationValue, Skeleton } from "@sincpro/web-ui";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";

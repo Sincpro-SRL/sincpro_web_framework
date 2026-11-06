@@ -1,11 +1,11 @@
-import type { AnyRecord } from "@sincpro/criteria";
 import {
   defineMeta,
   type Draft,
   field,
   type Method,
   TransportError,
-} from "@sincpro/web-framework";
+} from "@sincpro/client-framework";
+import type { AnyRecord } from "@sincpro/criteria";
 
 import { CLIENTES, type Factura, FACTURAS, VENTAS } from "./ventas";
 
