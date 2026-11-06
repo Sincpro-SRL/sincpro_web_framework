@@ -174,10 +174,15 @@ export const BuscarEnTodosConUnaTabla: Story = {
     await userEvent.click(await canvas.findByRole("button", { name: "Buscar en todos" }));
     const chooser = await page.findByRole("dialog", { name: "Clientes" });
     // The whole set is searched like any list of records: the bar, its filters and builder.
-    await expect(
-      await within(chooser).findByRole("combobox", { name: "Buscar" }),
-    ).toBeVisible();
-    await expect(within(chooser).getByRole("button", { name: /Filtrar/ })).toBeVisible();
+    // The window fades in: what is in the document is not visible yet on its first frames, so
+    // each look waits for the window to be shown, never asks once.
+    await within(chooser).findByRole("combobox", { name: "Buscar" });
+    await waitFor(() =>
+      expect(within(chooser).getByRole("combobox", { name: "Buscar" })).toBeVisible(),
+    );
+    await waitFor(() =>
+      expect(within(chooser).getByRole("button", { name: /Filtrar/ })).toBeVisible(),
+    );
     // A table, with the columns asked for. The window fades in: its headers are in the document
     // before they are visible, and on a loaded runner the first look can land in between.
     await waitFor(() =>
@@ -282,9 +287,10 @@ export const DesdeUnaListaConDominio: Story = {
     // Its chooser carries the list's name and columns.
     await userEvent.click(canvas.getByRole("button", { name: "Buscar en todos" }));
     const chooser = await page.findByRole("dialog", { name: "Clientes activos" });
-    await expect(
-      await within(chooser).findByRole("columnheader", { name: /NIT/ }),
-    ).toBeVisible();
+    // The window fades in: wait for its headers to be shown, never one look.
+    await waitFor(() =>
+      expect(within(chooser).getByRole("columnheader", { name: /NIT/ })).toBeVisible(),
+    );
     await expect(within(chooser).queryByText(INACTIVO.name)).toBeNull();
   },
 };

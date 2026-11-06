@@ -76,6 +76,12 @@ doctor:
 	if $(SCAN) 'from "node:' src | $(NOT_COMMENT); then \
 		echo >&2 "✘ node: in src/ — the runtime runs in a browser"; found=1; \
 	fi; \
+	if $(SCAN) 'from "@opentelemetry/|from "@sentry/|import\("@opentelemetry/|import\("@sentry/' src | grep -vE '^src/(telemetry|errors)/' | $(NOT_COMMENT); then \
+		echo >&2 "✘ a vendor's SDK outside telemetry/ or errors/ — those are optional entries"; found=1; \
+	fi; \
+	if $(SCAN) 'from "$(PACKAGE)/(telemetry|errors)' src | grep -vE '^src/(telemetry|errors)/' | $(NOT_COMMENT); then \
+		echo >&2 "✘ telemetry/ or errors/ imported by the package — an application picks them, nothing loads them"; found=1; \
+	fi; \
 	if $(SCAN) 'from "@sincpro/client-framework/' src | $(NOT_COMMENT); then \
 		echo >&2 "✘ a path inside @sincpro/client-framework — import its public entry"; found=1; \
 	fi; \

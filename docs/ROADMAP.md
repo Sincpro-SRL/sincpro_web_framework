@@ -1245,3 +1245,24 @@ paquete los importa de ahí y no los re-exporta (`tests/index.test.ts`).
   `ListScopeProvider`, `listing.where`) por alinear a `selection`; y la suite completa sigue
   fallando de vez en cuando bajo carga (la historia 30, ya anotada, y en una corrida 09 y 29),
   aunque cada una pasa sola.
+
+## Hacia la 2.0: `selection`, servicios desde la pantalla y telemetría opcional (2026-11-06)
+
+- **`selection` en todo**, como criteria 2.0: `NamedFilter.selection`, `ListScope.selection`,
+  `listing.selection` / `filter(selection)`. La barra usa la API nueva de web-ui (`selectionOf`,
+  `toggleNamed({ selection })`, `BuiltCriteria.selection`), que escribe un filtro por relación en
+  la forma de criteria (`{ through, selection }`): el formato viejo `{ through, match, where }` el
+  backend lo rechazaba, y la conversión `as Expression` lo escondía.
+- **`useService(servicio)`**: una pantalla corre un caso de uso de la aplicación (`Feature` o
+  `ApplicationService` de client-framework) y obtiene `run`, `busy`, `answer` y `error`. La traza y
+  el reporte son del servicio. Historia 42.
+- **`./telemetry` (`browserTracer`) y `./errors` (`glitchtipReporter`)**: opcionales, armados con
+  la configuración de la aplicación (endpoint OTLP, DSN), su SDK cargado después del primer
+  render y como peer opcional. Sin ellos nada se rompe. Envuelven los adaptadores de
+  client-framework (`./opentelemetry`, `./sentry`), que sirven igual en mobile y en Node.
+- **Historias intermitentes, leídas en el código**: 09 y 30 preguntaban una vez si algo era
+  visible dentro de una ventana o un popover que todavía aparecía; ahora esperan. La 29 recorre
+  casi diez escenarios en un `play` y se queda sin tiempo bajo carga: **queda partirla**.
+- **Depende de publicar**: web-ui 2.0 (`selection` en la barra, y el agrupamiento del
+  constructor con la forma de criteria) y client-framework con los adaptadores y el reporte
+  único de un error.

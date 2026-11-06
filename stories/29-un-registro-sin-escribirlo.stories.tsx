@@ -67,10 +67,12 @@ export const DeLaListaAlRegistroYSusRelaciones: Story = {
     await waitFor(() => expect(cliente).toHaveValue("Globex Bolivia"));
     // Its lines in a page of their own, as the table the record brought.
     await userEvent.click(await canvas.findByRole("tab", { name: /Líneas/ }));
-    await expect(await canvas.findByRole("columnheader", { name: /Producto/ })).toBeVisible();
+    await waitFor(() =>
+      expect(canvas.getByRole("columnheader", { name: /Producto/ })).toBeVisible(),
+    );
     // A list of words is chips, and a new one is typed in.
     const etiquetas = await canvas.findByRole("combobox", { name: "Etiquetas" });
-    await expect(canvas.getByText("exportación")).toBeVisible();
+    await waitFor(() => expect(canvas.getByText("exportación")).toBeVisible());
     await userEvent.type(etiquetas, "mayorista{Enter}");
     await expect(await canvas.findByText("mayorista")).toBeVisible();
     // Editing shows «save / discard»; saving keeps the record.

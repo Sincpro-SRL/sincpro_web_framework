@@ -14,7 +14,7 @@ import { createContext, type ReactNode, useContext } from "react";
  * that entity only — a list of another entity inside the same view is not touched. Like any
  * scope it narrows what is offered; the server still decides what may be stored.
  */
-export type ListScope = { key: string; where: Expression };
+export type ListScope = { key: string; selection: Expression };
 
 const Scope = createContext<ListScope | null>(null);
 
@@ -31,5 +31,5 @@ export function ListScopeProvider({
 /** The cut the screen gave for the lists of `key`, or none. */
 export function useListScope(key: string): Expression | undefined {
   const scope = useContext(Scope);
-  return scope !== null && scope.key === key ? scope.where : undefined;
+  return scope !== null && scope.key === key ? scope.selection : undefined;
 }

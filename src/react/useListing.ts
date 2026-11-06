@@ -65,9 +65,9 @@ export type Listing<T, C extends CommandBodies = CommandBodies> = {
   /** Debounced: a request per pause, not per keystroke. `now` asks at once — an explicit
    *  Enter does not wait for a pause. */
   search: (text: string, options?: { now?: boolean }) => void;
-  /** What the search bar put; `undefined` is nothing. */
-  where: Expression<T> | undefined;
-  filter: (where: Expression<T> | undefined) => void;
+  /** What the search bar put, as criteria's `selection`; `undefined` is nothing. */
+  selection: Expression<T> | undefined;
+  filter: (selection: Expression<T> | undefined) => void;
   /** The order the server was asked for, by one field then the next; empty is the entity's own
    *  default. */
   order: readonly Sort[];
@@ -121,7 +121,7 @@ const TYPING_PAUSE = 200;
 
 type Narrowing<T> = {
   text: string;
-  where: Expression<T> | undefined;
+  selection: Expression<T> | undefined;
   order: readonly Sort[];
 };
 
@@ -180,7 +180,7 @@ export function useListing<T extends AnyRecord, C extends CommandBodies = Comman
 
   const [narrowing, setNarrowing] = useState<Narrowing<T>>({
     text: "",
-    where: undefined,
+    selection: undefined,
     order: [],
   });
   const typing = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -190,7 +190,8 @@ export function useListing<T extends AnyRecord, C extends CommandBodies = Comman
     let criteria: Criteria<T> = base;
     const found = searchOver<T>(meta, next.text);
     if (found !== undefined) criteria = merge<T>(criteria, { selection: found });
-    if (next.where !== undefined) criteria = merge<T>(criteria, { selection: next.where });
+    if (next.selection !== undefined)
+      criteria = merge<T>(criteria, { selection: next.selection });
     if (next.order.length > 0) criteria = merge<T>(criteria, { order: [...next.order] });
     return criteria;
   };
@@ -264,8 +265,8 @@ export function useListing<T extends AnyRecord, C extends CommandBodies = Comman
     reload: () => void reading.reload(),
     text: narrowing.text,
     search: (text, options) => narrow({ text }, options?.now !== true),
-    where: narrowing.where,
-    filter: (where) => narrow({ where }, false),
+    selection: narrowing.selection,
+    filter: (selection) => narrow({ selection }, false),
     order: narrowing.order,
     orderBy: (order) =>
       narrow(

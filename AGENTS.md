@@ -179,6 +179,18 @@ built; this file is how to keep it.
   `loading` only on the FIRST reading: refining keeps the rows on screen until the server
   answers. Passing every reading's status made the rows vanish under the pointer, and a play
   that clicked one failed on a slower CI only.
+- **A window, a dialog or a popover animates in: never ask once whether something in it is
+  visible.** It is in the document before it is shown, and on a loaded runner a single
+  `expect(…).toBeVisible()` lands on its first frame (opacity 0) and fails at once — stories 09,
+  29 and 30 did, in full runs only. Wait for it: `await waitFor(() => expect(…).toBeVisible())`.
+- **A long play runs out of time before it fails an assertion.** A story is one scenario; a play
+  that walks ten (search, open, edit, save, a modal, its rows…) passes alone and times out under
+  load. Split it.
+- **Telemetry and error reporting are optional entries** (`./telemetry`, `./errors`): nothing
+  else imports them (`make doctor`), their SDKs are optional peers loaded with `import()`, and
+  without them — or if they fail to load — use cases run untraced and nothing breaks. They build
+  what the application asks for from its own settings; an application may hand its own tracer or
+  reporter to `createRuntime` instead.
 - **A play waits up to 5 s** (`configure({ asyncUtilTimeout })` in `.storybook/preview.ts`).
   On the CI runner every story file shares one Chrome, and a 250 ms fake-server timer can take
   over a second: with Testing Library's default (1 s) plays failed there and never locally.

@@ -73,7 +73,10 @@ export const EnElSelector: Story = {
     await userEvent.click(await canvas.findByRole("combobox", { name: "Cliente" }));
     // The option says what the entity declared: its NIT where the key used to be, its city aside.
     const globex = await page.findByRole("option", { name: new RegExp(GLOBEX.name) });
-    await expect(within(globex).getByText(`NIT ${GLOBEX.tax_id}`)).toBeVisible();
+    // The popover animates in: the option is in the document before it is shown.
+    await waitFor(() =>
+      expect(within(globex).getByText(`NIT ${GLOBEX.tax_id}`)).toBeVisible(),
+    );
     await expect(within(globex).getByText(GLOBEX.city)).toBeVisible();
     // What the default drew instead — the key beside the name — gave way.
     await expect(within(globex).queryByText(GLOBEX.id)).toBeNull();
@@ -83,7 +86,9 @@ export const EnElSelector: Story = {
     // The tags field lists the same datum under the name (web-ui 1.5 `TagOption.meta`)…
     await userEvent.type(canvas.getByLabelText("Avisar a"), GLOBEX.name.slice(0, 3));
     const ofrecido = await page.findByRole("option", { name: new RegExp(GLOBEX.name) });
-    await expect(within(ofrecido).getByText(`NIT ${GLOBEX.tax_id}`)).toBeVisible();
+    await waitFor(() =>
+      expect(within(ofrecido).getByText(`NIT ${GLOBEX.tax_id}`)).toBeVisible(),
+    );
     await userEvent.click(ofrecido);
     // …and the chip, recognised by its name, does not carry it.
     await userEvent.keyboard("{Escape}");

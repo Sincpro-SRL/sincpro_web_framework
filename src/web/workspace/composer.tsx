@@ -140,7 +140,7 @@ export function entityView<T extends AnyRecord>(
         cut === undefined ? (
           <List {...props} />
         ) : (
-          <ListScopeProvider value={{ key: entity.key, where: cut }}>
+          <ListScopeProvider value={{ key: entity.key, selection: cut }}>
             <List {...props} />
           </ListScopeProvider>
         );

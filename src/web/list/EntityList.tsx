@@ -573,7 +573,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
             ? null
             : [failure.heading, failure.sentence].filter(Boolean).join(". "),
       }}
-      filtered={listing.where !== undefined || listing.text !== ""}
+      filtered={listing.selection !== undefined || listing.text !== ""}
       empty={{
         sentence: empty ?? copy.empty,
         whenFiltered: { sentence: copy.emptyFiltered },
