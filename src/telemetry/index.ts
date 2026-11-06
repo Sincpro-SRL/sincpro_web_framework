@@ -7,7 +7,7 @@ import type { Attributes, Span, Tracer } from "@sincpro/client-framework";
  *     // the application — domains/common/infrastructure/telemetry.ts
  *     import { browserTracer } from "@sincpro/web-framework/telemetry";
  *     const tracer = browserTracer({ endpoint: settings.otlp, service: "forge-web", release });
- *     const runtime = createRuntime({ tracer, reporter, context });
+ *     configureProcess({ tracer, reporter });              // entrypoints/main.tsx
  *
  * Context: optional on every count. It is an entry of its own that nothing else in this package
  * imports, and its SDK (`@opentelemetry/sdk-trace`, `@opentelemetry/exporter-trace-otlp-http`,

@@ -4,11 +4,19 @@
 [`sincpro_framework`](https://github.com/Sincpro-SRL/sincpro_framework) already resolves on the
 server — entities, criteria, commands, drafts, events — and puts it on screen with
 [`@sincpro/web-ui`](https://github.com/Sincpro-SRL/sincpro_web_ui), opened where
-[`@sincpro/web-composer`](https://github.com/Sincpro-SRL/sincpro_web_composer) says. An
-application declares its entities and names its fields; the rest follows.
+[`@sincpro/web-composer`](https://github.com/Sincpro-SRL/sincpro_web_composer) says. What every
+client shares — the transport, the entities, the generated client, the application's use cases
+traced and reported — is
+[`@sincpro/client-framework`](https://github.com/Sincpro-SRL/sincpro_client_framework)'s; this
+package is the screens. An application declares its entities and names its fields; the rest
+follows. Every Sincpro framework speaks one
+[ubiquitous language](https://github.com/Sincpro-SRL/sincpro_client_framework/blob/main/docs/UBIQUITOUS_LANGUAGE.md):
+a bounded context, a Feature, the process, the context mean the same here, on the phone and on
+the server.
 
 ```bash
-yarn add @sincpro/web-framework @sincpro/web-ui @sincpro/web-composer @sincpro/criteria @sincpro/criteria-react react react-dom
+yarn add @sincpro/web-framework @sincpro/client-framework @sincpro/web-ui @sincpro/web-composer \
+  @sincpro/criteria @sincpro/criteria-react react react-dom
 ```
 
 Requires React 19 or newer.
@@ -56,44 +64,82 @@ be able to build it here, without asking us and without fighting us. So:
 
 ## The stack
 
-| Project                 | Brings                                                                                                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `sincpro_framework`     | Entities, criteria, reads (`Get`, `LiteralSearch`, `Search`, `Preview`), commands and dry runs, drafts, events, permissions, protocols (REST, JSON-RPC, gRPC, MCP) |
-| `@sincpro/criteria`     | The contract with the server: `Criteria`, `Meta`, `Page`, `Problem`                                                                                                |
-| `@sincpro/web-ui`       | What a screen looks like: `List`, `Record`, `SearchBar`, `Picker`, `Activity`                                                                                      |
-| `@sincpro/web-composer` | Where it opens and the context: page, peek, window, panels, shared selection, ⌘K, shortcuts                                                                        |
-| **this package**        | The glue: entity + model definition + state + actions, drawn with web-ui, opened with composer                                                                     |
-| Your application        | What an invoice is                                                                                                                                                 |
+| Project                     | Brings                                                                                                                                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `sincpro_framework`         | Entities, criteria, reads (`Get`, `LiteralSearch`, `Search`, `Preview`), commands and dry runs, drafts, events, permissions, protocols (REST, JSON-RPC, gRPC, MCP)                         |
+| `@sincpro/criteria`         | The contract with the server: `Criteria`, `Meta`, `Page`, `Problem`                                                                                                                        |
+| `@sincpro/client-framework` | What every client shares — web, mobile, a server-side render, a script: the transport, `entity()`, the generated client, `Feature` and `ApplicationService` traced and reported by default |
+| `@sincpro/web-ui`           | What a screen looks like: `List`, `Record`, `SearchBar`, `Picker`, `Activity`                                                                                                              |
+| `@sincpro/web-composer`     | Where it opens and the context: page, peek, window, panels, shared selection, ⌘K, shortcuts                                                                                                |
+| **this package**            | The screens: state, lists, records, pickers and commands drawn with web-ui, opened with composer; optional browser telemetry and error reporting                                           |
+| Your application            | What an invoice is                                                                                                                                                                         |
 
 ## How it fits together
 
-Three packages, one direction. **web-ui draws and tells** («they pressed this name, and asked
-for a modal»); it never imports composer and never knows where anything opens. **Composer
-decides where** — page, modal, preview, side panel, window, the breadcrumb, the phone — and never
-draws a record. **This package connects them**, from what the server publishes about each model.
+Four packages, one direction. **client-framework talks to the server** and runs the
+application's logic — the same on every platform. **web-ui draws and tells** («they pressed this
+name, and asked for a modal»); it never imports composer and never knows where anything opens.
+**Composer decides where** — page, modal, preview, side panel, window, the breadcrumb, the phone —
+and never draws a record. **This package connects them on the web**, from what the server
+publishes about each model.
 
 ```mermaid
 flowchart LR
   subgraph server["sincpro_framework · the backend"]
-    api["entities · criteria · commands<br/>drafts · events · model definition"]
+    api["entities · criteria · commands · drafts<br/>events · client contract · its traces"]
   end
-  subgraph fw["@sincpro/web-framework · connects"]
+  criteria["@sincpro/criteria<br/>Criteria · Meta · Page · Problem"]
+  subgraph cf["@sincpro/client-framework · every platform"]
     direction TB
-    core["core/<br/>Transport · entity() · Meta<br/>textOf · summaryOf"]
-    react["react/<br/>useListing · useRecord<br/>useLookup · useSummaryOf"]
-    web["web/<br/>EntityList · EntityPicker · RelatedRecord<br/>openIn · entityView · SincproApp"]
+    wire["Transport · restTransport · entity()<br/>client contract · model definitions"]
+    services["UseBoundedContext · Feature · ApplicationService<br/>configureProcess · processContext · ContextStore<br/>a span, a report, a context per run"]
+    generator["sincpro-client generate<br/>domain · client · entities"]
+  end
+  subgraph fw["@sincpro/web-framework · the web"]
+    direction TB
+    core["core/<br/>textOf · summaryOf · forms · lines · explain"]
+    react["react/<br/>useListing · useRecord · useCommand<br/>useLookup · useService · useContextValues"]
+    web["web/<br/>EntityList · EntityRecord · RecordField<br/>EntityPicker · entityView · SincproApp"]
+    optional["./telemetry · ./errors<br/>optional: OpenTelemetry · GlitchTip"]
     core --> react --> web
   end
-  ui["@sincpro/web-ui · draws and tells<br/>List · Record · Picker<br/>RelationValue · RecordCard"]
-  composer["@sincpro/web-composer · decides where<br/>page · modal · preview · side · window<br/>crumbs · ⌘K · phone"]
-  app["your application<br/>entity() + its screens"]
+  ui["@sincpro/web-ui · draws and tells<br/>List · Record · Picker · SearchBar"]
+  composer["@sincpro/web-composer · decides where<br/>page · modal · preview · side · window"]
+  app["your application<br/>entrypoints · bounded contexts<br/>(generated · services · components)"]
 
-  api <-->|"criteria over the wire<br/>(@sincpro/criteria)"| core
+  api <-->|"criteria and traceparent<br/>over the wire"| wire
+  criteria --> cf
+  cf --> fw
   web -->|"props read from the model"| ui
-  ui -->|"gestures: onOpenIn(to), onChoose,<br/>onBrowseAll, onCreate"| web
-  web -->|"api.open · api.pick · api.setTitle"| composer
-  composer -->|"mounts the entity's view"| web
-  app -->|"declares"| fw
+  ui -->|"gestures"| web
+  web -->|"api.open · api.pick"| composer
+  composer -->|"mounts the view"| web
+  generator -.->|"writes"| app
+  app -->|"its services and entities"| cf
+  app -->|"its screens"| fw
+```
+
+What happens when a screen runs one of the application's use cases — one trace from the click to
+the database:
+
+```mermaid
+sequenceDiagram
+  actor person as Person
+  participant screen as Screen<br/>(useService)
+  participant service as CloseAndNotify<br/>(ApplicationService)
+  participant feature as Issues<br/>(Feature)
+  participant client as Generated client<br/>(bound transport)
+  participant server as sincpro_framework
+
+  person->>screen: presses «Close»
+  screen->>service: run(input) — busy
+  service->>service: interceptor opens project/CloseAndNotify
+  service->>feature: this.feature.Issues.close(…)
+  feature->>feature: child span project/Issues.close
+  feature->>client: this.client.closeIssue(…)
+  client->>server: POST … traceparent, sincpro-context
+  server-->>client: answer (the server's span is a child of the client's)
+  client-->>screen: answer — or a failure: refused (shown) / unexpected (reported once)
 ```
 
 What happens when a person presses the customer of an invoice:
@@ -144,10 +190,12 @@ flowchart LR
 @source "./";
 ```
 
-**2. The transport** — the one door to the backend. The session is the application's: it puts
-its headers here.
+**2. The transport** — the one door to the backend, from @sincpro/client-framework. The session
+is the application's: it puts its headers here.
 
 ```ts
+import { restTransport } from "@sincpro/client-framework";
+
 export const transport = restTransport({
   base: "/v1",
   headers: () => ({ Authorization: `Bearer ${session.token}` }),
@@ -161,9 +209,13 @@ document again, revalidated by its `ETag`. A form computes a published formula i
 server for a preview only when a change reaches something it cannot answer.
 
 **3. The entities** — declared once: where each is read and written, and its key in the
-workspace (`domain:kind`). `summary` only when its fields are not the conventional ones.
+workspace (`domain:kind`). `summary` only when its fields are not the conventional ones. A service
+on sincpro_framework does not write them: `sincpro-client generate` does, from its contract
+(«From the contract», below).
 
 ```ts
+import { entity } from "@sincpro/client-framework";
+
 export const customers = entity<Customer>("sales:customer", {
   list: "/customers",
   summary: { image: "logo", person: true },
@@ -309,7 +361,40 @@ const summarize = useSummaryOf(customers);
 />;
 ```
 
-A domain with no sincpro_framework behind it declares its model by hand and is drawn the same
+**7. The application's logic** lives in its services — `Feature` and `ApplicationService` of
+each bounded context, set up with @sincpro/client-framework the way sincpro_framework sets one up
+(its dependencies, its services, `project.Issues.close(input)`; see its README) — and a screen
+only runs them. The process is where the application injects its telemetry, its error reporting
+and where the context lives, once, in `main`; without them, everything runs the same:
+
+```ts
+// entrypoints/main.tsx
+import { configureProcess, processContext } from "@sincpro/client-framework";
+import { glitchtipReporter } from "@sincpro/web-framework/errors"; // optional
+import { browserTracer } from "@sincpro/web-framework/telemetry"; // optional
+
+configureProcess({
+  tracer: browserTracer({ endpoint: settings.otlp, service: "my-app", release }),
+  reporter: glitchtipReporter({ dsn: settings.glitchtip, release }),
+});
+processContext.set({ tenant_id: session.tenant }); // every use case runs with it and sends it
+```
+
+```tsx
+function CloseButton({ issueId }: { issueId: string }) {
+  const close = useService(project.Issues.close); // run · busy · answer · error
+  return (
+    <>
+      <Button disabled={close.busy} onClick={() => close.run({ issue_id: issueId })}>
+        Close
+      </Button>
+      {close.error ? <Refused error={close.error} /> : null}
+    </>
+  );
+}
+```
+
+A bounded context with no sincpro_framework behind it declares its model by hand and is drawn the same
 way:
 
 ```ts
@@ -331,30 +416,33 @@ const tickets = defineMeta({
 Each answers one question, and each comes in the three levels — use the component, drop to the
 hook and draw your own, or go straight to the loose piece.
 
-| Question                         | Declarative                                             | Hook                                  | Loose piece                          |
-| -------------------------------- | ------------------------------------------------------- | ------------------------------------- | ------------------------------------ |
-| Where is the data?               | `entity()`                                              | —                                     | `restTransport`, `memoryTransport`   |
-| What is each field?              | `Meta` from the server, or `defineMeta`                 | —                                     | `textOf`, `viewOf`, `metaFromSchema` |
-| What is a record, at any size?   | `cardOf`, `relationOf`                                  | `useSummaryOf`                        | `summaryOf`                          |
-| How does a record look?          | `presented(entity, { option, row, card })`              | —                                     | `presentationOf`                     |
-| N records: search, filter, page  | `EntityList`, `EntitySearchBar`                         | `useListing`, `useGroups`             | `transport.list(route, criteria)`    |
-| A named slice (to collect, …)    | `defineList` + `listView`                               | `useListing(list)`                    | `scopeOf`                            |
-| A record's whole screen          | `EntityRecord`, `entityView` without `record`           | —                                     | `formOf`                             |
-| Previous / next from a record    | `EntityRecord` (from a list)                            | —                                     | `placeOf`, `stepIn` (`Trail`)        |
-| How much each group adds up      | `EntityList sums`                                       | `useGroups` (`sums`)                  | `sumsOf`, `detailOf`                 |
-| One record: read, edit, save     | `RecordField`, `factsOf`, `RecordLines`                 | `useRecord`                           | `transport.one`, `transport.send`    |
-| Its lines: add, edit, remove     | `RecordField name="lines"` (`LineItems`)                | `useRecord` (`edit.cell`, `errorAt`)  | `lineKey`, `editableLines`, `pathOf` |
-| Its relations, inside it         | `RelatedList`                                           | `useRelated`                          | `relatedOf`                          |
-| Choose one (literal search)      | `EntityPicker`, `chooserIn`                             | `useLookup`                           | `lookupOf` + criteria's `matching`   |
-| Choose several (many2many)       | `EntityTags`                                            | `useLookup` (`values`)                | `lookupOf`                           |
-| A relation, from the model alone | `RecordField name="customer_id"`                        | `useEntityFor`                        | `relationFieldOf`, `entityFor`       |
-| Open it where it belongs         | `RelatedRecord`, `entityView`, `EntityList openTargets` | —                                     | `openIn`, `targetsFor`, `OpenInMenu` |
-| Look at the set several ways     | `EntityList views` (table, rows, board, sheet)          | —                                     | web-ui's `List.*`                    |
-| Cross it by two fields           | `EntityList pivot`                                      | `usePivot`                            | `pivotOf`                            |
-| Order by several fields          | the bar's criteria builder                              | `listing.orderBy([...])`              | criteria's `order`                   |
-| Act on it (with a dry run)       | `CommandButton`, `commands` on rows                     | `useCommand`                          | `transport.send`                     |
-| What happened to it              | `Record.Activity` fed by `useHistory`                   | `useHistory`                          | `historyOf`                          |
-| The application context          | `SincproApp`                                            | `useRecordInWorkspace`, `useFollowed` | `FrameworkProvider`, `webUiSkin`     |
+| Question                         | Declarative                                                 | Hook                                  | Loose piece                              |
+| -------------------------------- | ----------------------------------------------------------- | ------------------------------------- | ---------------------------------------- |
+| Where is the data?               | `entity()` (client-framework)                               | —                                     | `restTransport`, `memoryTransport`       |
+| The application's logic          | its `Feature`s and `ApplicationService`s (client-framework) | `useService`                          | `project.Issues.close(…)`                |
+| What every use case runs with    | `processContext`, `project.context` (client-framework)      | `useContextValues`                    | `ContextStore`                           |
+| What happened, what broke        | `./telemetry`, `./errors` (optional)                        | —                                     | `configureProcess({ tracer, reporter })` |
+| What is each field?              | `Meta` from the server, or `defineMeta`                     | —                                     | `textOf`, `viewOf`, `metaFromSchema`     |
+| What is a record, at any size?   | `cardOf`, `relationOf`                                      | `useSummaryOf`                        | `summaryOf`                              |
+| How does a record look?          | `presented(entity, { option, row, card })`                  | —                                     | `presentationOf`                         |
+| N records: search, filter, page  | `EntityList`, `EntitySearchBar`                             | `useListing`, `useGroups`             | `transport.list(route, criteria)`        |
+| A named slice (to collect, …)    | `defineList` + `listView`                                   | `useListing(list)`                    | `scopeOf`                                |
+| A record's whole screen          | `EntityRecord`, `entityView` without `record`               | —                                     | `formOf`                                 |
+| Previous / next from a record    | `EntityRecord` (from a list)                                | —                                     | `placeOf`, `stepIn` (`Trail`)            |
+| How much each group adds up      | `EntityList sums`                                           | `useGroups` (`sums`)                  | `sumsOf`, `detailOf`                     |
+| One record: read, edit, save     | `RecordField`, `factsOf`, `RecordLines`                     | `useRecord`                           | `transport.one`, `transport.send`        |
+| Its lines: add, edit, remove     | `RecordField name="lines"` (`LineItems`)                    | `useRecord` (`edit.cell`, `errorAt`)  | `lineKey`, `editableLines`, `pathOf`     |
+| Its relations, inside it         | `RelatedList`                                               | `useRelated`                          | `relatedOf`                              |
+| Choose one (literal search)      | `EntityPicker`, `chooserIn`                                 | `useLookup`                           | `lookupOf` + criteria's `matching`       |
+| Choose several (many2many)       | `EntityTags`                                                | `useLookup` (`values`)                | `lookupOf`                               |
+| A relation, from the model alone | `RecordField name="customer_id"`                            | `useEntityFor`                        | `relationFieldOf`, `entityFor`           |
+| Open it where it belongs         | `RelatedRecord`, `entityView`, `EntityList openTargets`     | —                                     | `openIn`, `targetsFor`, `OpenInMenu`     |
+| Look at the set several ways     | `EntityList views` (table, rows, board, sheet)              | —                                     | web-ui's `List.*`                        |
+| Cross it by two fields           | `EntityList pivot`                                          | `usePivot`                            | `pivotOf`                                |
+| Order by several fields          | the bar's criteria builder                                  | `listing.orderBy([...])`              | criteria's `order`                       |
+| Act on it (with a dry run)       | `CommandButton`, `commands` on rows                         | `useCommand`                          | `transport.send`                         |
+| What happened to it              | `Record.Activity` fed by `useHistory`                       | `useHistory`                          | `historyOf`                              |
+| The application context          | `SincproApp`                                                | `useRecordInWorkspace`, `useFollowed` | `FrameworkProvider`, `webUiSkin`         |
 
 The rules behind them, in short:
 
@@ -386,15 +474,16 @@ Not yet: a new record does not take the `params` it was opened with as its initi
 
 ### Inside
 
-Three folders, one direction — `make doctor` keeps the arrows:
+Three levels, one direction, and two optional entries — `make doctor` keeps the arrows:
 
-| Folder          | Knows                                                                         | Why apart                                             |
-| --------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `core`          | transport, cache, entity, model definition, what a value and a record read as | plain logic, tested in Node in milliseconds           |
-| `react`         | `useListing`, `useRecord`, `useRelated`, `useSummaryOf`…, the provider        | state that draws nothing: usable without `EntityList` |
-| `web/list`      | a collection: `EntityList`, `EntitySearchBar`, `columnsOf`                    | N records, any size                                   |
-| `web/record`    | one record: `RecordField`, `factsOf`, `RelatedList`, `EntityPicker`, `cardOf` | works outside a workspace (no composer)               |
-| `web/workspace` | the composer: `entityView`, `openIn`, `RelatedRecord`, `<SincproApp>`         | where it opens, the application context               |
+| Folder                | Knows                                                                            | Why apart                                                                |
+| --------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `core`                | what a value and a record read as, forms, lines, the trail, `explain`, the cache | plain logic, tested in Node in milliseconds                              |
+| `react`               | `useListing`, `useRecord`, `useRelated`, `useSummaryOf`…, the provider           | state that draws nothing: usable without `EntityList`                    |
+| `web/list`            | a collection: `EntityList`, `EntitySearchBar`, `columnsOf`                       | N records, any size                                                      |
+| `web/record`          | one record: `RecordField`, `factsOf`, `RelatedList`, `EntityPicker`, `cardOf`    | works outside a workspace (no composer)                                  |
+| `web/workspace`       | the composer: `entityView`, `openIn`, `RelatedRecord`, `<SincproApp>`            | where it opens, the application context                                  |
+| `telemetry`, `errors` | `browserTracer`, `glitchtipReporter`: built from the application's settings      | optional peers, loaded after the first render; nothing else imports them |
 
 Screens import from `@sincpro/web-framework`. What every platform shares — the transport,
 `entity()`, model definitions, `Feature` and `ApplicationService`, the generated client — is
@@ -425,14 +514,17 @@ What is generated is never edited; a screen extends it (`presented(issues, { row
 with `&`). Keep the folder out of prettier and eslint, and let CI regenerate and compare it.
 At runtime nothing is closed: the transport keeps reading the live definitions. How an
 application adopts it — where each file goes, what is written by hand, how a hand-written screen
-moves to the generated one — is [`docs/ADOPCION.md`](docs/ADOPCION.md) (in Spanish).
+moves to the generated one — is [`docs/ADOPTION.md`](docs/ADOPTION.md).
 
 ## Where it stands
 
 | Piece                                   | What it solves                                                                               | Status |
 | --------------------------------------- | -------------------------------------------------------------------------------------------- | ------ |
-| `restTransport`, `memoryTransport`      | The backend, or the same engine in memory                                                    | ✅     |
-| `defineMeta`, `metaFromSchema`          | A model by hand, or completed from OpenAPI                                                   | ✅     |
+| `restTransport`, `memoryTransport`      | The backend, or the same engine in memory (client-framework)                                 | ✅     |
+| `defineMeta`, `metaFromSchema`          | A model by hand, or completed from OpenAPI (client-framework)                                | ✅     |
+| `useService`                            | A screen runs one of the application's use cases: run, busy, answer, error                   | ✅     |
+| `./telemetry`, `./errors`               | Optional: the application's traces to its OTLP endpoint, its errors to GlitchTip             | ✅     |
+| `selection`                             | Filters named as criteria 2.0 and the backend read them, the search bar's included           | ✅     |
 | `useListing`, `EntityList`              | N records: criteria, search bar, builder, paging                                             | ✅     |
 | `useRecord`, `factsOf`, `RecordLines`   | One record: facts, relations with their real total                                           | ✅     |
 | Preloaded definitions                   | `FrameworkProvider metas`: the models of the discovery document, or of an exported metamodel | ✅     |
@@ -477,13 +569,17 @@ moves to the generated one — is [`docs/ADOPCION.md`](docs/ADOPCION.md) (in Spa
 | `Trail`, `Record.Pager`                 | Previous / next from a record, across the server's pages                                     | ✅     |
 | `EntityList sums`                       | Each group says how much it adds up, summed by the server over all of it                     | ✅     |
 
-What it does **not** do: mobile (`sincpro_mobile` has its own core), sessions and login (the
-application's), routing (composer's), string-named widget registries, technical logs on a
-record's screen, business rules.
+What it does **not** do: mobile screens (`@sincpro/mobile` draws them; what it shares with the
+web is @sincpro/client-framework), sessions and login (the application's), routing (composer's),
+string-named widget registries, technical logs on a record's screen, business rules.
+
+**Still to come** (`docs/prd/PRD_02_how-an-application-is-built.md`): the framework's own reads and writes
+as traced Features, so every screen it draws is traced too — today the application's use cases
+are; the levels of context and the bounded contexts; the extension model.
 
 The full purpose — literal search, drafts, composer context, several entities per screen — is
 in [`docs/PURPOSE.md`](docs/PURPOSE.md); what was found while building and what comes next is in
-[`docs/ROADMAP.md`](docs/ROADMAP.md) (both in Spanish).
+[`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Built for large sets
 

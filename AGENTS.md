@@ -2,13 +2,17 @@
 
 Rules for any agent (or person) changing this package. Read [`MANIFESTO.md`](MANIFESTO.md) for
 what this repository is, is not and is going to be, [`docs/PURPOSE.md`](docs/PURPOSE.md) for what
-each piece is for, and [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) for how an application is
+each piece is for, and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how an application is
 built; this file is how to keep it.
 
 ## Before you change anything
 
 - **Read `MANIFESTO.md`, then `docs/PURPOSE.md`.** They are the yardstick: a piece that serves
   nothing there does not go in. If you think it should, change the manifesto first and say why.
+- **Use the shared words.** Every Sincpro framework speaks one vocabulary, kept in
+  @sincpro/client-framework's `docs/UBIQUITOUS_LANGUAGE.md` (`~/dev/sincpro_client_framework`):
+  a bounded context — never «domain», «framework» or «module» for one —, Feature,
+  ApplicationService, the process, the context, an execution. A new word goes there first.
 - **Find the use case.** Every change starts from one, and every use case is a story in
   `stories/` with a `play`. If yours is not there, write the story first; it will fail, and
   that is the point.
@@ -46,7 +50,7 @@ built; this file is how to keep it.
 | `stories/`           | the use cases, one scenario per story, with `play`                                                                                        | the package's public entry only                  |
 | `stories/support/`   | fake domains: `ventas` (by hand), `forge` (copied from a real service)                                                                    | —                                                |
 | `tests/`             | vitest (`model` project, Node) over `core/` and `react/`                                                                                  | —                                                |
-| `docs/`              | `PURPOSE.md`, `ROADMAP.md`, `ADOPCION.md` (how an app adopts it), `ARQUITECTURA.md` (how any app is built: the framework of work), `prd/` | —                                                |
+| `docs/`              | `PURPOSE.md`, `ROADMAP.md`, `ADOPTION.md` (how an app adopts it), `ARCHITECTURE.md` (how any app is built: the framework of work), `prd/` | —                                                |
 
 ## Hard rules (the build enforces them)
 
@@ -72,9 +76,10 @@ built; this file is how to keep it.
 
 ## Conventions
 
-- Code, comments and this file in English; `docs/` and the stories' prose in Spanish, like the
-  rest of Sincpro's documentation. Comments explain _why_; the `Context:` blocks at the top of
-  files are the design record — keep them true.
+- **Everything in English** — code, identifiers, comments, `docs/`, file names: this package is
+  open source. Spanish only in the stories' prose (titles, on-screen text, descriptions) and in
+  `SPANISH_FRAMEWORK_COPY`. Comments explain _why_; the `Context:` blocks at the top of files are
+  the design record — keep them true.
 - A change ships with a test that fails without it: a test in `tests/` for logic, a story with a
   `play` for a use case.
 - Measure before claiming speed: say the number and how it was taken (see `ROADMAP.md`).
@@ -190,7 +195,7 @@ built; this file is how to keep it.
   else imports them (`make doctor`), their SDKs are optional peers loaded with `import()`, and
   without them — or if they fail to load — use cases run untraced and nothing breaks. They build
   what the application asks for from its own settings; an application may hand its own tracer or
-  reporter to `createRuntime` instead.
+  reporter to `configureProcess` instead.
 - **A play waits up to 5 s** (`configure({ asyncUtilTimeout })` in `.storybook/preview.ts`).
   On the CI runner every story file shares one Chrome, and a 250 ms fake-server timer can take
   over a second: with Testing Library's default (1 s) plays failed there and never locally.
@@ -217,9 +222,11 @@ built; this file is how to keep it.
   `faces`, `RecordLinesEditor look`): a new default piece ships with the prop that replaces it.
   A screen's face goes in as web-ui's `List.Present` written straight into `List` — a slot.
 - **A `datetime` is an instant; a `date` is a day.** The instant is read and typed on the wall
-  clock of the zone the app installs (`FrameworkProvider timeZone`, `installTimeZone`) — never
-  the browser's when one was given; a day is never converted. A test that installs a zone puts
-  it back (`afterEach(() => installTimeZone(undefined))`).
+  clock of the zone the app installs — never the browser's when one was given; a day is never
+  converted. The conversions (`installTimeZone`, `wallTimeOf`, `instantOf`, `dayOf`) are
+  @sincpro/client-framework's — every platform needs them — imported from there and never
+  re-exported here; `FrameworkProvider timeZone` installs the zone THERE. A test that installs a
+  zone puts it back (`afterEach(() => installTimeZone(undefined))`).
 - **A custom record view passes `resource` to `useRecord`, not `resource.id`**: a new record
   opened with `newRef(values)` («Agregar» on a one2many) starts with those values only that way.
 - **`useHistory`, not `useActivity`**: web-ui already exports `useActivity` (the panel's open
@@ -231,6 +238,12 @@ built; this file is how to keep it.
   `entity<T, C>` types each Command's body (`CommandBodies`); `useCommand(issues, "send")` infers
   `C` and the name. `useCommand<Issue, Answer>(…)` falls back to the loose default (TypeScript
   never infers part of a list), so a screen that wants the check writes no type argument.
+- **A bounded context, its services, the process and the context are @sincpro/client-framework's**
+  (`UseBoundedContext`, `configureProcess`, `processContext`): a screen runs a use case with
+  `useService(project.Issues.close)` and reads the context with `useContextValues(level)` — never
+  a second store of the context here, never a wrapper that calls a service outside its bounded
+  context (it would skip the trace). The process is global: a story that needs its own tracer
+  calls `configureProcess` at the start of its `play`.
 - **The transport, the entity and the generator are @sincpro/client-framework's.** Import them
   from there, never re-export them here (`tests/index.test.ts` pins it): one door, or two versions
   meet in one screen. `stories/support/forge-contract/` holds forge's contracts and what that

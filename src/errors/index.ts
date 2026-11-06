@@ -8,7 +8,7 @@ import type { ErrorAbout, ErrorReporter } from "@sincpro/client-framework";
  *     // the application — domains/common/infrastructure/telemetry.ts
  *     import { glitchtipReporter } from "@sincpro/web-framework/errors";
  *     const reporter = glitchtipReporter({ dsn: settings.glitchtip, release, environment });
- *     const runtime = createRuntime({ tracer, reporter, context });
+ *     configureProcess({ tracer, reporter });              // entrypoints/main.tsx
  *
  * Context: optional on every count, like `./telemetry`: an entry of its own, `@sentry/browser`
  * an optional peer, and only a convenience — an application with its own client wraps it with
@@ -17,7 +17,7 @@ import type { ErrorAbout, ErrorReporter } from "@sincpro/client-framework";
  * It never breaks what it serves: the SDK loads after the first render; what is reported before
  * it is there waits (a handful), and if it is not installed or fails, reports are dropped and
  * that is said once on the console. Nothing global: no `Sentry.init`, no handlers on `window` —
- * this client is the reporter's own, and only what the runtime decides is unexpected reaches it.
+ * this client is the reporter's own, and only what the process decides is unexpected reaches it.
  *
  * What it sends is narrow by default, because in an ERP a request body is an invoice and a
  * customer: no breadcrumbs or default integrations, and every event leaves without cookies,

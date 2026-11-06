@@ -3,7 +3,8 @@
  * fast, with no browser. What a value reads as, what a form sends, how lines are edited, a
  * record's place in its list, a failure in a person's words. `make doctor` keeps it that way.
  *
- * Context: the transport, the entity, the client contract and the model definitions are
+ * Context: the transport, the entity, the client contract, the model definitions and the
+ * day/instant conversions (`installTimeZone`, `wallTimeOf`, `instantOf`, `dayOf`) are
  * @sincpro/client-framework's — the same on every platform — and are imported from there.
  */
 export {
@@ -85,9 +86,3 @@ export {
   summaryOf,
 } from "@sincpro/web-framework/core/summary";
 export { placeOf, stepIn, type Trail } from "@sincpro/web-framework/core/trail";
-export {
-  installTimeZone,
-  instantOf,
-  timeZoneNow,
-  wallTimeOf,
-} from "@sincpro/web-framework/core/zone";

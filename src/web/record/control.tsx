@@ -1,8 +1,7 @@
 "use client";
 
-import { type Entity } from "@sincpro/client-framework";
+import { type Entity, instantOf, timeZoneNow, wallTimeOf } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
-import { instantOf, timeZoneNow, wallTimeOf } from "@sincpro/web-framework/core/zone";
 import { EntityPicker } from "@sincpro/web-framework/web/record/EntityPicker";
 import {
   Checkbox,
