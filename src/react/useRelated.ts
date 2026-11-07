@@ -15,9 +15,9 @@ import type { RecordReading } from "@sincpro/web-framework/react/useRecord";
  * big order need more than that page: search in them, order them, walk them. The model says how
  * to ask — the related aggregate's key that points back (`identified_by`), or the two fields of a
  * relation by a business key (`parent_field`, `related_field`) — so the relation is a criteria
- * over the related entity (@sincpro/client-framework's `relatedCriteria`, the backend's
- * `References.criteria()`), answered by the server like any list. The relation's scope is AND-ed with everything else, so no search, filter
- * or page can ever leave it.
+ * over the related entity (@sincpro/client-framework's `relatedCriteria`), answered by the server
+ * like any list. The relation's scope is AND-ed with everything else, so no search, filter or
+ * page can ever leave it.
  *
  *     const facturas = useRelated(cliente, "invoices", invoicesEntity);
  *     <EntityList listing={facturas} embedded />
@@ -36,11 +36,14 @@ export function useRelated<P extends AnyRecord, T extends AnyRecord>(
     own,
     options.criteria,
   );
-  // Until the record and its definition arrive there is no key to ask by: a question that
-  // matches nothing — an empty `in` — never one that would list every orphan.
+  // No key to ask by yet — the record or its definition has not arrived, or the record is new: a
+  // question that matches nothing (an empty `in`), never one that would list every orphan. It is
+  // asked over the field that points back when the definition names it: the related entity has
+  // that one, and it may have no `id`.
+  const nothing = field?.related_field || field?.identified_by || "id";
   const scope: Criteria<T> = asked ?? {
     ...options.criteria,
-    selection: { field: "id", operator: "in", value: [] } as never,
+    selection: { field: nothing, operator: "in", value: [] } as never,
   };
   return useListing(related, { pageSize: 10, ...options, criteria: scope });
 }

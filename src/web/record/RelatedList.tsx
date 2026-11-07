@@ -4,7 +4,7 @@ import { type Entity } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { defaultFields } from "@sincpro/web-framework/core/present";
-import { backReference } from "@sincpro/web-framework/core/relation";
+import { backReference, isKeyValue } from "@sincpro/web-framework/core/relation";
 import type { RecordReading } from "@sincpro/web-framework/react/useRecord";
 import { useRelated } from "@sincpro/web-framework/react/useRelated";
 import { EntityList, type EntityListProps } from "@sincpro/web-framework/web/list/EntityList";
@@ -72,7 +72,7 @@ export function RelatedList<P extends AnyRecord, T extends AnyRecord>({
     entity.create === undefined ||
     !back ||
     record.isNew ||
-    here === undefined ||
+    !isKeyValue(here) ||
     record.edit.state(name).readonly ? null : (
       <Button
         size="sm"

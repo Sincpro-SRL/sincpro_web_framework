@@ -186,8 +186,38 @@ test("a relation of one record is asked by its key — by identity or by a busin
     value: "ACME",
   });
   assert.equal(relatedScope(null, byIdentity, "id"), null);
+  assert.equal(relatedScope(customer, undefined, "id"), null);
   assert.deepEqual(backReference(customer, byCode, "id"), {
     field: "customer_code",
     value: "ACME",
+  });
+  assert.deepEqual(backReference(customer, byIdentity, "id"), {
+    field: "customer_id",
+    value: "c1",
+  });
+});
+
+test("a record with no value in its key yet asks its relation for nothing — never for every orphan", () => {
+  const byIdentity = {
+    type: "one2many",
+    kind: "relation",
+    identified_by: "customer_id",
+  } as never;
+  const byCode = {
+    type: "one2many",
+    kind: "relation",
+    parent_field: "code",
+    related_field: "customer_code",
+  } as never;
+
+  // A new record without an id, and a business key not written yet (null or blank).
+  assert.equal(relatedScope({ name: "nuevo" }, byIdentity, "id"), null);
+  assert.equal(relatedScope({ id: "c1", code: null }, byCode, "id"), null);
+  assert.equal(relatedScope({ id: "c1", code: "" }, byCode, "id"), null);
+  // 0 is a key like any other.
+  assert.deepEqual(relatedScope({ id: 0 }, byIdentity, "id")?.selection, {
+    field: "customer_id",
+    operator: "=",
+    value: 0,
   });
 });
