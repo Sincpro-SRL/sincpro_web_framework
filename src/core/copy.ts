@@ -49,7 +49,9 @@ export type FrameworkCopy = {
     keep: string;
     loading: string;
     /** Under an embedded list the record holds only one page of. */
-    partial: (shown: number, total: number) => string;
+    /** A relation that brought one page of its records: how many it shows, of how many — a
+     *  floor when `exact` is false («at least 1000»). */
+    partial: (shown: number, total: number, exact?: boolean) => string;
     /** The title of a record that does not exist yet, after the model's name. */
     creating: (name: string) => string;
     /** The list's button that opens the form of a new record. */
@@ -124,7 +126,8 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
     missing: (fields) => `Missing: ${fields.join(", ")}.`,
     keep: "Keep draft",
     loading: "Loading the record",
-    partial: (shown, total) => `Showing ${shown} of ${total}.`,
+    partial: (shown, total, exact = true) =>
+      `Showing ${shown} of ${exact ? "" : "at least "}${total}.`,
     creating: (name) => (name ? `${name} · new` : "New"),
     create: "New",
     add: "Add",
@@ -201,7 +204,8 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
     missing: (fields) => `Falta: ${fields.join(", ")}.`,
     keep: "Guardar borrador",
     loading: "Cargando el registro",
-    partial: (shown, total) => `Se muestran ${shown} de ${total}.`,
+    partial: (shown, total, exact = true) =>
+      `Se muestran ${shown} de ${exact ? "" : "al menos "}${total}.`,
     creating: (name) => (name ? `${name} · nuevo` : "Nuevo"),
     create: "Nuevo",
     add: "Agregar",

@@ -127,8 +127,9 @@ export function RecordField<T extends Record<string, unknown>>({
     return bare ? lines : <FormSection title={view.label}>{lines}</FormSection>;
   }
   if (as === undefined && relation?.field.type === "one2many" && target === undefined) {
-    // Editable when the record holds ALL its lines; a page of them stays read only.
-    const whole = editableLines(edit.values[name]);
+    // Editable when the record holds ALL its lines; a page of them stays read only, and so do
+    // the records it only references — nothing it saves writes them.
+    const whole = editableLines(edit.values[name], relation.field);
     const lines =
       whole === null ? (
         <RecordLines record={record.record ?? {}} meta={meta} name={name} locale={locale} />

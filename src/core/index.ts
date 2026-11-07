@@ -47,6 +47,7 @@ export {
   blankLine,
   type Declared,
   editableLines,
+  isReference,
   type LineAdding,
   lineFields,
   lineKey,
@@ -76,7 +77,9 @@ export {
 } from "@sincpro/web-framework/core/present";
 export { type Related, relatedOf } from "@sincpro/web-framework/core/related";
 export {
+  backReference,
   entityFor,
+  relatedScope,
   type RelationField,
   relationFieldOf,
 } from "@sincpro/web-framework/core/relation";

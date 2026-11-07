@@ -113,7 +113,11 @@ export function RecordLines<T extends AnyRecord>({
       </List>
       {related.partial ? (
         <p className="text-meta text-muted">
-          {copy.record.partial(related.items.length, related.count.value)}
+          {copy.record.partial(
+            related.items.length,
+            related.count.value,
+            related.count.exact,
+          )}
         </p>
       ) : null}
     </div>

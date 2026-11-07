@@ -1277,20 +1277,20 @@
     "@sentry/browser-utils" "11.11.0"
     "@sentry/core" "11.11.0"
 
-"@sincpro/client-framework@^0.5.0":
-  version "0.5.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/client-framework/-/client-framework-0.5.0.tgz#42ea1bf2105281fa177b723f289878cd28c3fc27"
-  integrity sha512-CDSlhChccKcq+TMlOvJDbiJzJvxR7e+KhpUk9+r0NzaSGCcEGd9MRWGI4JnwbFitGp0naTo70DKqrudJlGPeQg==
+"@sincpro/client-framework@^0.6.0":
+  version "0.6.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/client-framework/-/client-framework-0.6.0.tgz#c0fe03b472b20e11e9d9328c560886311ee61767"
+  integrity sha512-3mbMqsiIdMV9uu+7TGKq72+iO20GiNsPzLrC6wI2+CjdCqCS+U3V4qGRKeIZfpgq4YzBGr63zocerx/N1J3Qww==
 
-"@sincpro/criteria-react@^2.0.0":
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/criteria-react/-/criteria-react-2.0.0.tgz#294545cff71afb558a07234cb69e89340c068084"
-  integrity sha512-G+pAxIDZ89himsZuZIO9aiYKGffZTy9Zt6Bc8/9vB1hYTKuAzGRsaHahWHfPVyNk3S/PWh7x03EFByLZelcWCA==
+"@sincpro/criteria-react@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/criteria-react/-/criteria-react-2.1.0.tgz#2bdf22a455fa5a00defcb17a197e2b672e97ead4"
+  integrity sha512-IzhviGe8oNV3tfjP+gIx27+vtMoLh3GskTltepH1bx8nwBubBDU0r130Kj7NzY8alQtdP1ZpwoYvL0eGTrxIuA==
 
-"@sincpro/criteria@^2.0.0":
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/criteria/-/criteria-2.0.0.tgz#672cfe03889a771663a91939e4c56d6075578bea"
-  integrity sha512-gJmlSn4g3qlV/OZpy/iyvgXV+lB4UPIspGogru2jT/wFdlPQUB3WR/guTyVxGwWdR7v0QiKOZzgExce9B1wo2A==
+"@sincpro/criteria@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/criteria/-/criteria-2.1.0.tgz#9d1d56e78e7bb76f9e15a5a1c3c5684e254860d7"
+  integrity sha512-rXOCC5MxYTZ1JYiJ++8EJFvkYpMRMZl4JQ9PNgqzYa/StsZjGJsK7mnQAqdJb2TfHuwUys8gMxj9wp4fEZN5ZQ==
 
 "@sincpro/web-composer@^1.6.0":
   version "1.6.0"

@@ -1,5 +1,5 @@
-import { type Entity, entityKeyOf, kindOf } from "@sincpro/client-framework";
-import type { FieldMeta, Meta } from "@sincpro/criteria";
+import { type Entity, entityKeyOf, kindOf, relatedCriteria } from "@sincpro/client-framework";
+import type { AnyRecord, Criteria, FieldMeta, Meta } from "@sincpro/criteria";
 
 /**
  * Which record a field of a form is about, read from the model — so a form draws a many2one
@@ -94,4 +94,40 @@ export function entityFor(
     entities.find((one) => namedBy(one, target)) ??
     (ofKind.length === 1 ? ofKind[0] : undefined)
   );
+}
+
+/**
+ * The criteria a relation of ONE record is listed with, over the related entity — or `null` while
+ * there is no key to ask by (the record or its definition has not arrived): nothing is asked
+ * then, never a question that would match every orphan.
+ *
+ *     relatedScope(customer, meta.fields.invoices, "id", criteria)
+ *       ->  criteria AND customer_id = customer.id          (identified_by)
+ *       ->  criteria AND customer_code = customer.code      (parent_field / related_field)
+ */
+export function relatedScope<T extends AnyRecord>(
+  record: AnyRecord | null,
+  field: FieldMeta | undefined,
+  identity: string,
+  criteria?: Criteria<T>,
+): Criteria<T> | null {
+  if (record === null || field === undefined || !(field.related_field ?? field.identified_by))
+    return null;
+  return relatedCriteria<T>(field, record, identity, criteria);
+}
+
+/**
+ * The field of the related records that points back at a record, and the value it holds for this
+ * one — what a list of them hides as a column and fills on a new one. `null` when the relation
+ * does not say.
+ */
+export function backReference(
+  record: AnyRecord | null,
+  field: FieldMeta | undefined,
+  identity: string,
+): { field: string; value: unknown } | null {
+  const there = field?.related_field ?? field?.identified_by;
+  if (record === null || !there) return null;
+  const here = field?.related_field ? (field.parent_field ?? identity) : identity;
+  return { field: there, value: record[here] };
 }

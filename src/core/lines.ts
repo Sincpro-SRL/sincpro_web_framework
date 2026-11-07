@@ -1,4 +1,4 @@
-import type { AnyRecord, Meta } from "@sincpro/criteria";
+import type { AnyRecord, FieldMeta, Meta } from "@sincpro/criteria";
 import { BOOKKEEPING, defaultFields } from "@sincpro/web-framework/core/present";
 import { relatedOf } from "@sincpro/web-framework/core/related";
 import { relationFieldOf } from "@sincpro/web-framework/core/relation";
@@ -47,10 +47,22 @@ export function linesAnswered(
 }
 
 /**
- * The lines a form can edit, or `null` when it holds only part of them: a list written back
- * whole from one page would delete every line the page did not bring.
+ * Whether a to-many holds other aggregates rather than parts of the record — sincpro_framework's
+ * `References[Invoice]`, or a foreign key declared `owned=False` (`reference: true` on its
+ * definition): listed and searched, never edited as lines, because nothing the record saves
+ * writes them.
  */
-export function editableLines(value: unknown): AnyRecord[] | null {
+export function isReference(field: FieldMeta | undefined): boolean {
+  return (field as { reference?: boolean } | undefined)?.reference === true;
+}
+
+/**
+ * The lines a form can edit, or `null` when it holds only part of them — a list written back
+ * whole from one page would delete every line the page did not bring — or when they are not
+ * the record's to write (`isReference`): the record would save them and nothing would happen.
+ */
+export function editableLines(value: unknown, field?: FieldMeta): AnyRecord[] | null {
+  if (isReference(field)) return null;
   if (Array.isArray(value)) return value as AnyRecord[];
   const related = relatedOf<AnyRecord>(value);
   return related.partial ? null : [...related.items];

@@ -1,3 +1,9 @@
+import {
+  type EntityCollection,
+  isCollection,
+  isPartial,
+  totalOf,
+} from "@sincpro/client-framework";
 import type { Count } from "@sincpro/criteria";
 
 /**
@@ -7,7 +13,11 @@ import type { Count } from "@sincpro/criteria";
  * `{items, count, cursor}` — so a tenant with a thousand members does not answer all of them;
  * an older answer, or a domain declared by hand, sends a bare array. A screen that reads only
  * `items` and counts them shows the first page and calls it the total (forge's console did:
- * `count={repositories.length}`). This reads both shapes and keeps the real count.
+ * `count={repositories.length}`). This reads both shapes and keeps the real count — a floor
+ * («at least 1000») when the backend stopped counting at its cap.
+ *
+ * Built on @sincpro/client-framework's `EntityCollection` (`isCollection`, `isPartial`,
+ * `totalOf`): a screen keeps this shape, with `count` always said.
  *
  *     relatedOf({ items: [a, b], count: { value: 1000, exact: true }, cursor: "x" })
  *       -> { items: [a, b], count: { value: 1000, exact: true }, cursor: "x", partial: true }
@@ -21,9 +31,10 @@ export type Related<T> = {
   partial: boolean;
 };
 
-type Page<T> = { items?: T[]; count?: Count | null; cursor?: string | null };
-
 export function relatedOf<T>(value: unknown): Related<T> {
+  // The shapes, and what «partial» means, are @sincpro/client-framework's — the same rule as the
+  // backend's `is_partial` on every platform. Read without copying: a table reads this for every
+  // one2many cell of a page.
   if (Array.isArray(value))
     return {
       items: value as T[],
@@ -31,16 +42,13 @@ export function relatedOf<T>(value: unknown): Related<T> {
       cursor: null,
       partial: false,
     };
-  if (typeof value === "object" && value !== null && "items" in value) {
-    const page = value as Page<T>;
-    const items = page.items ?? [];
-    const count = page.count ?? { value: items.length, exact: page.cursor == null };
-    return {
-      items,
-      count,
-      cursor: page.cursor ?? null,
-      partial: count.value > items.length || !count.exact || page.cursor != null,
-    };
-  }
-  return { items: [], count: { value: 0, exact: true }, cursor: null, partial: false };
+  if (!isCollection(value))
+    return { items: [], count: { value: 0, exact: true }, cursor: null, partial: false };
+  const page = value as EntityCollection<T>;
+  return {
+    items: (page.items ?? []) as T[],
+    count: totalOf(page),
+    cursor: page.cursor ?? null,
+    partial: isPartial(page),
+  };
 }

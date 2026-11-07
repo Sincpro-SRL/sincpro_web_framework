@@ -176,10 +176,23 @@ await project.sendIssue({ issue_id: "i1", message: "y el reporte" });
 const caller = await auth.getCaller(); // a GET of its own: the transport needs `read`
 ```
 
+## Upgrading from 1.x
+
+What an application sees of web-framework 2 is one move: the transport, the entity and what an
+entity's routes carry are @sincpro/client-framework's, imported from there and never re-exported
+here — `entity`, `Entity`, `Transport`, `restTransport`, `pathFor`, `startingValuesOf`,
+`NEW_PARAM`, `TRAIL_PARAM`. Add `@sincpro/client-framework` and move those names to an import of
+it; criteria 2, web-ui 2.1 and composer 1.6 come with it. forge's console (31 files) went from
+84 type errors to none with that alone — no behaviour written differently, its tests and build
+green (2026-11-06).
+
 ## Moving a hand-written screen to what is generated
 
 1. The backend exports (`make contract`) and the web generates (`make client`).
-2. The hand-written wire types are deleted: they are imported from `generated/<alias>/domain`.
+2. The hand-written wire types are deleted: they are imported from
+   `src/domains/<alias>/generated/domain`. A related record's field is typed
+   `EntityCollection<X>` — a page of it, `{items, count, cursor}`, as a read answers it —: read it
+   with `relatedOf` (or @sincpro/client-framework's `collectionOf`), never as a whole list.
 3. Each hand-written `entity()` is replaced by the generated one, wrapped in `presented()` if it
    had a look of its own. What the generated one lacks (`history`) is added with a spread.
 4. Commands change name: they come from the DTO (`CommandSendIssue` → `sendIssue`). They are
@@ -201,7 +214,8 @@ The generator made them; the team can change them before the refactor:
   stable and easy to search for.
 - **Keys are `string`** in TypeScript, with a note of what they point to. A branded type
   (`IssueId`) would avoid mixing ids, at the cost of `"i1" as IssueId` in tests.
-- **What is generated lives in `src/generated/<alias>/`**, outside the formatters.
+- **What is generated lives in `src/domains/<alias>/generated/`** — a layer of its bounded
+  context, as `sincpro-client check` reads it —, outside the formatters and the linter.
 
 ## Traps
 
