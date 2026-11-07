@@ -3,12 +3,17 @@ import assert from "node:assert/strict";
 import { defineMeta, field } from "@sincpro/client-framework";
 import {
   addingOf,
+  backReference,
   blankLine,
   editableLines,
+  frameworkCopy,
+  isReference,
   lineFields,
   lineKey,
   linesAnswered,
   moved,
+  relatedOf,
+  relatedScope,
   sameLine,
 } from "@sincpro/web-framework";
 import { test } from "vitest";
@@ -123,4 +128,96 @@ test("a control of the screen's own fits a cell; a required field left out of th
     },
   };
   assert.equal(addingOf(required, { declared, shown: ["quantity"] }), "editor");
+});
+
+test("the records a relation only references are never lines to edit, however few came", () => {
+  const references = { type: "one2many", kind: "relation", reference: true } as never;
+  const parts = { type: "one2many", kind: "relation" } as never;
+  const page = (shown: number, count: number) => ({
+    items: Array.from({ length: shown }, (_, i) => ({ id: `I-${i}` })),
+    count: { value: count, exact: true },
+    cursor: null,
+  });
+
+  assert.equal(isReference(references), true);
+  assert.equal(isReference(parts), false);
+  assert.equal(editableLines(page(3, 3), references), null);
+  assert.equal(editableLines([{ id: "I-1" }], references), null);
+  assert.equal(editableLines(page(3, 3), parts)?.length, 3);
+});
+
+test("a count the server stopped at its cap is a floor: «at least», never the total", () => {
+  const related = relatedOf({
+    items: [{ id: "a" }, { id: "b" }],
+    count: { value: 1000, exact: false },
+    cursor: null,
+  });
+
+  assert.equal(related.partial, true);
+  assert.deepEqual(related.count, { value: 1000, exact: false });
+  assert.equal(relatedOf({ items: [{ id: "a" }], cursor: "x" }).count.exact, false);
+  assert.equal(relatedOf({ items: [{ id: "a" }] }).partial, false);
+  assert.equal(frameworkCopy().record.partial(2, 1000, false), "Showing 2 of at least 1000.");
+  assert.equal(frameworkCopy().record.partial(2, 30), "Showing 2 of 30.");
+});
+
+test("a relation of one record is asked by its key — by identity or by a business key — and not before it is known", () => {
+  const customer = { id: "c1", code: "ACME" };
+  const byIdentity = {
+    type: "one2many",
+    kind: "relation",
+    identified_by: "customer_id",
+  } as never;
+  const byCode = {
+    type: "one2many",
+    kind: "relation",
+    parent_field: "code",
+    related_field: "customer_code",
+  } as never;
+
+  assert.deepEqual(relatedScope(customer, byIdentity, "id")?.selection, {
+    field: "customer_id",
+    operator: "=",
+    value: "c1",
+  });
+  assert.deepEqual(relatedScope(customer, byCode, "id")?.selection, {
+    field: "customer_code",
+    operator: "=",
+    value: "ACME",
+  });
+  assert.equal(relatedScope(null, byIdentity, "id"), null);
+  assert.equal(relatedScope(customer, undefined, "id"), null);
+  assert.deepEqual(backReference(customer, byCode, "id"), {
+    field: "customer_code",
+    value: "ACME",
+  });
+  assert.deepEqual(backReference(customer, byIdentity, "id"), {
+    field: "customer_id",
+    value: "c1",
+  });
+});
+
+test("a record with no value in its key yet asks its relation for nothing — never for every orphan", () => {
+  const byIdentity = {
+    type: "one2many",
+    kind: "relation",
+    identified_by: "customer_id",
+  } as never;
+  const byCode = {
+    type: "one2many",
+    kind: "relation",
+    parent_field: "code",
+    related_field: "customer_code",
+  } as never;
+
+  // A new record without an id, and a business key not written yet (null or blank).
+  assert.equal(relatedScope({ name: "nuevo" }, byIdentity, "id"), null);
+  assert.equal(relatedScope({ id: "c1", code: null }, byCode, "id"), null);
+  assert.equal(relatedScope({ id: "c1", code: "" }, byCode, "id"), null);
+  // 0 is a key like any other.
+  assert.deepEqual(relatedScope({ id: 0 }, byIdentity, "id")?.selection, {
+    field: "customer_id",
+    operator: "=",
+    value: 0,
+  });
 });

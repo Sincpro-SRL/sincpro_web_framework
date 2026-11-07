@@ -4,6 +4,7 @@ import { type Entity } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { defaultFields } from "@sincpro/web-framework/core/present";
+import { backReference, isKeyValue } from "@sincpro/web-framework/core/relation";
 import type { RecordReading } from "@sincpro/web-framework/react/useRecord";
 import { useRelated } from "@sincpro/web-framework/react/useRelated";
 import { EntityList, type EntityListProps } from "@sincpro/web-framework/web/list/EntityList";
@@ -45,8 +46,15 @@ export function RelatedList<P extends AnyRecord, T extends AnyRecord>({
     pageSize === undefined ? {} : { pageSize },
   );
   const opening = useRecordOpening();
-  // Every row points back to THIS record: the column that says so is the same on all of them.
-  const back = record.meta?.fields[name]?.identified_by;
+  // Every row points back to THIS record: the column that says so is the same on all of them —
+  // the same key `useRelated` scopes the list by, by identity or by a business key.
+  const identity = record.meta?.get_id || record.meta?.identity || "id";
+  const pointing = backReference(
+    record.record as AnyRecord | null,
+    record.meta?.fields[name],
+    identity,
+  );
+  const back = pointing?.field;
   const own = list.columns;
   const columns = useMemo(
     () =>
@@ -57,15 +65,14 @@ export function RelatedList<P extends AnyRecord, T extends AnyRecord>({
     [own, listing.meta, back],
   );
   const create = opening?.create;
-  // The value the rows point back with — the same key `useRelated` scopes the list by.
-  const identity = record.meta?.get_id || record.meta?.identity || "id";
-  const here = record.record === null ? undefined : (record.record as AnyRecord)[identity];
+  // The value the rows point back with.
+  const here = pointing?.value;
   const adding =
     create === undefined ||
     entity.create === undefined ||
     !back ||
     record.isNew ||
-    here === undefined ||
+    !isKeyValue(here) ||
     record.edit.state(name).readonly ? null : (
       <Button
         size="sm"

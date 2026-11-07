@@ -1444,3 +1444,73 @@ true })` (a project's channels): `RecordField` draws the lines editor over the e
   of their own). Story `46 · Actuar sobre una parte del registro` — forge's `action_table.tsx`.
 - With these three, what forge's `src/shared` still holds is forge's own (its session and access,
   its slugs, its transport) or waits for the backend (a person drawn across bounded contexts, #230).
+
+## forge on 2.1 (2026-11-06)
+
+forge's console (`~/dev/sincpro_forge/web`, 31 files) moved from web-framework 1.0, web-ui 1.11,
+criteria 1 and composer 1.5 to web-framework 2.1, web-ui 2.1, criteria 2, composer 1.6 and
+client-framework 0.5; its backend from sincpro_framework 3.31.1 to 3.32.0. On a branch of forge,
+uncommitted.
+
+- **The upgrade is one move.** 84 type errors, every one of them a name that left this package
+  for @sincpro/client-framework (`entity`, `Transport`, `pathFor`, …). Moving the imports was the
+  whole migration: typecheck, its 9 tests and its build green. Written in `ADOPTION.md`,
+  «Upgrading from 1.x».
+- **The contract comes from forge itself.** `make contract` exports it from the REST gateway forge
+  serves (`export-client-contract sincpro_forge.entrypoints.http:rest web/contracts`) and
+  `make client` generates `src/domains/<context>/generated/`, reproducibly. Its `auth` and
+  `sandbox` are byte for byte `stories/support/forge-contract/`; `project` differs only by its
+  MCP bindings (the fixture was exported with both wires) — the stories run on what forge serves.
+- **The layers, checked on a real application.** `sincpro-client check` found 10 breaks: a
+  `presented()` and the tones (web-ui's) in `adapters/` and `domain/`, and the console importing
+  two bounded contexts' insides. Moved to `components/`, with an `index.ts` per bounded context:
+  none left, and `make doctor` is in forge's `verify-format`. The rule held as written.
+- **sincpro_framework 3.32 closed a workaround of forge's**: `FastApiGateway` points every list
+  at one `Criteria` (`criteria_by_reference`, 2.5 MB per route before, is gone).
+
+What the generated entities still lack against forge's hand-written ones, with its owner:
+
+| #   | Gap                                                                                                                                                                                                                                                                                                                                                                                                           | Owner                                 |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| 1   | ~~An entity edited through `Edit` was generated reading its record without the caller's draft~~ (`one: "/projects/{id}"`): a draft kept on one visit never came back. **Solved** in the generator (`?draft=true` when the entity has `edit` and its `get` takes `draft`), release pending; forge's hand-written entities said it already                                                                      | client-framework                      |
+| 2   | Where an entity's history is: forge writes `history: { route: "/project-events", type: "Project" }`; the contract does not say which list holds an entity's facts, so the generated entity has none. Meanwhile, a spread                                                                                                                                                                                      | sincpro_framework, then the generator |
+| 3   | ~~A related record's shape: the contract typed a `many` relation as an array, a read answered a page~~. **Solved**: sincpro_framework publishes it as the collection a read answers (`{items, count, cursor}`, `reference: true` for one that is not a part), the generator types it `EntityCollection<X>` (from an old contract too), and `relatedOf` is client-framework's `collectionOf`; releases pending | sincpro_framework, then the generator |
+
+Next, in forge: the generated entities in place of the hand-written ones (commands renamed:
+`move` → `setProjectTenant`, `cancel` → `cancelIssue`, …), its wire types once gap 3 is closed,
+and `src/shared`'s `record_screen.tsx`, `value_lines.tsx` and `action_table.tsx` replaced by
+`useRecordScreen`, `field.embedded(…, { many: true })` and `RecordLines rowActions` — then walked
+against a running forge.
+
+## A relation with a million children (2026-11-06)
+
+How a to-many reads, counts and travels at any size — the same words in every repository
+(@sincpro/client-framework's `UBIQUITOUS_LANGUAGE.md`: collection, part and reference, format,
+export). On branches, uncommitted; the client side needs the next releases of criteria and
+client-framework.
+
+- **sincpro_framework**: a to-many is declared `EntityCollection[Line]` — recommended, a list
+  works too —, immutable, edited the way a string is (`append`, `extend`, `remove`, `replace`);
+  a parent's page of children is read with `LATERAL … LIMIT` on PostgreSQL (one parent with
+  1 000 000 children: 376 ms → 6.9 ms for 40 of them), counted to a cap («at least 1000»), and a
+  relation read whole is said in the log past ten thousand, never refused. A search's page
+  travels as JSON or as Parquet (`format`; `auto` past `parquet_above`, a million, for a caller
+  that reads Parquet), the cursor and the count in the file's footer. `Export[Entity, Streamed]`
+  stays the word for «everything, as a file».
+- **@sincpro/criteria**: `restSource({ decode })`, the seam another format plugs into;
+  `FieldMeta.reference`.
+- **@sincpro/client-framework**: `EntityCollection<T>`, `collectionOf` → `HeldCollection` (the same
+  immutable edits), `isPartial`, `countOf`, `relatedCriteria`; `restTransport({ decoders })` and
+  `@sincpro/client-framework/parquet` (`parquetDecoder`, over `hyparquet`): a Parquet page reads as
+  the JSON one, each value as the wire writes it; the generator types a to-many
+  `EntityCollection<X>`, an export as a `Download`.
+- **Here**: `relatedOf` over `collectionOf` (the same rule as the backend's `is_partial`), a
+  relation that only references other aggregates is never offered as lines to edit
+  (`isReference`, `editableLines(value, field)`) — the backend would ignore them on save —,
+  «Showing 2 of at least 1000» when the count is a floor, and `useRelated` asks through
+  `relatedCriteria`, so a relation by a business key (`parent_field`, `related_field`) lists its
+  records.
+
+Next: an «Export» action on `EntityList` when the entity declares `export`, with its story; and
+`FrameworkProvider` documenting `decoders: [parquetDecoder]` for an application whose lists may
+ask for millions.
