@@ -4,9 +4,10 @@ import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 /**
  * A record's history as people read it — its business events, newest first.
  *
- * Context: sincpro_framework keeps every context's facts in one event table, read over
- * `GET /<context>-events`, each fact naming the record it is about (`entity_type`,
- * `entity_id`) and carrying a `label` in every language — the framework's `history_of`.
+ * Context: sincpro_framework keeps every context's facts in one event table, and answers a
+ * record's own with `DomainEvents` (`GET /issues/{id}/events`, the entity's `history`), each
+ * fact naming the record it is about (`entity_type`, `entity_id`) and carrying a `label` in
+ * every language.
  * forge's console read it with a dictionary of field names written by hand; here the words for
  * the rest of a fact come from the events' own model definition, like any other field.
  *

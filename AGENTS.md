@@ -250,8 +250,9 @@ built; this file is how to keep it.
   `C` and the name. `useCommand<Issue, Answer>(…)` falls back to the loose default (TypeScript
   never infers part of a list), so a screen that wants the check writes no type argument.
 - **A bounded context, its services, the process and the context are @sincpro/client-framework's**
-  (`UseBoundedContext`, `configureProcess`, `processContext`): a screen runs a use case with
-  `useService(project.Issues.close)` and reads the context with `useContextValues(level)` — never
+  (`BoundedContext`, `servicesWith`, `configureProcess`, `processContext`): a screen runs a use
+  case with `useService((id) => projectBoundedContext.execute(new CommandCloseIssue(id)))` and
+  reads the context with `useContextValues(level)` — never
   a second store of the context here, never a wrapper that calls a service outside its bounded
   context (it would skip the trace). The process is global: a story that needs its own tracer
   calls `configureProcess` at the start of its `play`.

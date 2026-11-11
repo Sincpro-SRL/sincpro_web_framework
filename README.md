@@ -92,7 +92,7 @@ flowchart LR
   subgraph cf["@sincpro/client-framework · every platform"]
     direction TB
     wire["Transport · restTransport · entity()<br/>client contract · model definitions"]
-    services["UseBoundedContext · Feature · ApplicationService<br/>configureProcess · processContext · ContextStore<br/>a span, a report, a context per run"]
+    services["BoundedContext · Feature · ApplicationService · EventHandler<br/>configureProcess · processContext · ContextStore<br/>a span, a report, a context per run"]
     generator["sincpro-client generate<br/>domain · client · entities"]
   end
   subgraph fw["@sincpro/web-framework · the web"]
@@ -225,7 +225,7 @@ export const invoices = entity<Invoice>("sales:invoice", {
   create: "POST /invoices",
   save: "PUT /invoices/{id}",
   commands: { post: "POST /invoices/{id}/post" },
-  history: { route: "/sales-events", type: "Invoice" },
+  history: "/invoices/{id}/events", // its DomainEvents: a record's facts
 });
 ```
 

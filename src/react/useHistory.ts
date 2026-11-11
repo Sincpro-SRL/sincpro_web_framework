@@ -1,6 +1,6 @@
 "use client";
 
-import { type Entity } from "@sincpro/client-framework";
+import { type Entity, listRoute } from "@sincpro/client-framework";
 import type { AnyRecord, Criteria } from "@sincpro/criteria";
 import { type HistoryEntry, historyOf } from "@sincpro/web-framework/core/history";
 import { useFramework } from "@sincpro/web-framework/react/context";
@@ -9,11 +9,12 @@ import { type DependencyList, useEffect, useState } from "react";
 /**
  * A record's business events, newest first — what `Record.Activity` draws.
  *
- * Context: the history of a record is a criteria over its context's events — `entity_type`
- * and `entity_id` — so it is read like any list, with the same transport. `undefined` while it
- * is not read, or when it cannot be: an empty history says «nothing happened», which is a
- * different claim from «you may not see it». Pass the record among `deps` so a write that
- * reloads it reads its new facts too.
+ * Context: the backend answers a record's events itself — sincpro_framework's `DomainEvents`,
+ * the entity's `history` route (`/issues/{id}/events`), which the generator writes from the
+ * contract — so it is read like any list, with the same transport, newest first. `undefined`
+ * while it is not read, for a record not saved yet, or when it cannot be read: an empty history
+ * says «nothing happened», which is a different claim from «you may not see it». Pass the
+ * record among `deps` so a write that reloads it reads its new facts too.
  *
  * Named after sincpro_framework's `history_of`; web-ui's `useActivity` is something else (the
  * panel's open state).
@@ -30,19 +31,16 @@ export function useHistory<T extends AnyRecord>(
   const history = entity.history;
 
   useEffect(() => {
-    if (history === undefined) return;
+    if (history === undefined || id === "") {
+      setEntries(undefined);
+      return;
+    }
     const aborter = new AbortController();
     const criteria: Criteria = {
-      selection: {
-        all: [
-          { field: "entity_type", operator: "=", value: history.type },
-          { field: "entity_id", operator: "=", value: id },
-        ],
-      },
       order: [{ field: "created_at", descending: true }],
       pagination: { limit: SHOWN },
     };
-    transport.list<AnyRecord>(history.route, criteria, aborter.signal).then(
+    transport.list<AnyRecord>(listRoute(history, { id }), criteria, aborter.signal).then(
       (page) => aborter.signal.aborted || setEntries(historyOf(page.rows, page.meta, locale)),
       () => aborter.signal.aborted || setEntries(undefined),
     );
