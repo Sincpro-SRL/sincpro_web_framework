@@ -2,6 +2,7 @@ import {
   defineMeta,
   type Draft,
   field,
+  type MemoryTable,
   type Method,
   TransportError,
 } from "@sincpro/client-framework";
@@ -14,12 +15,17 @@ import { CLIENTES, type Factura, FACTURAS, VENTAS } from "./ventas";
  * memory: a save checks the version it was read at (409 when someone saved first), a Command
  * may be run dry (`dry_run: true` answers what it would do), a `Preview` says what the record
  * becomes, a draft is kept per record with its own version, and every change leaves a business
- * event in `/ventas-events` with its label. The customers speak sincpro_framework's `Edit`, a
+ * event with its label, which each invoice answers at `/facturas/{id}/events` (sincpro_framework's
+ * `DomainEvents`). The customers speak sincpro_framework's `Edit`, a
  * new one created under the id the client minted.
  *
  * Each call to `servidorVentas()` starts from fresh copies: one story's writes never leak into
  * another's.
  */
+/** Where an invoice's events are read: what `facturas.history` names. */
+const EVENTS = "/facturas/{id}/events";
+const OF_ONE = /^\/facturas\/([^/{}]+)\/events$/;
+
 export const eventoMeta = defineMeta({
   aggregate: "VentaEvento",
   identity: "id",
@@ -395,13 +401,27 @@ export function servidorVentas() {
     });
   }
 
-  return {
-    tables: {
+  // An invoice's events, as `DomainEvents` answers them: the template is listed — the discovery
+  // document says which model the route answers — and each invoice's route reads its own.
+  const tables = new Proxy(
+    {
       ...VENTAS,
       "/clientes": { meta: VENTAS["/clientes"].meta, rows: clientes },
       "/facturas": { meta: VENTAS["/facturas"].meta, rows: facturas },
-      "/ventas-events": { meta: eventoMeta, rows: eventos },
+      [EVENTS]: { meta: eventoMeta, rows: [] },
     },
+    {
+      get(listed, route): MemoryTable | undefined {
+        const number = typeof route === "string" ? OF_ONE.exec(route)?.[1] : undefined;
+        if (number === undefined) return Reflect.get(listed, route);
+        const id = decodeURIComponent(number);
+        return { meta: eventoMeta, rows: eventos.filter((one) => one["entity_id"] === id) };
+      },
+    },
+  );
+
+  return {
+    tables,
     handle,
     draft: (route: string) =>
       drafts.get(decodeURIComponent(route.split("/")[2] ?? "")) ?? null,

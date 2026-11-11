@@ -91,16 +91,17 @@ src/generated/
 
 ## What is generated and what is written
 
-| Generated (left alone)                                              | Written (in `src/domains/`)                                                                    |
-| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| The wire types: each model, value, DTO and answer                   | A type with what the contract does not say yet: `type Issue = dto.Issue & { … }`               |
-| Each entity's routes (list, record, edit, preview) and its commands | How it looks: `presented(issues, { row, card, option })`                                       |
-| In which field each command's record goes (`target`)                | The history: `{ ...issues, history: { route: "/project-events", type: "Issue" } }`             |
-| The typed bodies and answers of each command                        | A screen's views, tones, empty words                                                           |
-| The client without a screen (`clientOf`)                            | No routes: a generated route that does not work is a contract bug — it is fixed in the backend |
+| Generated (left alone)                                                                           | Written (in `src/domains/`)                                                                    |
+| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| The wire types: each model, value, DTO and answer                                                | A type with what the contract does not say yet: `type Issue = dto.Issue & { … }`               |
+| Each entity's routes (list, record, edit, preview) and its commands                              | How it looks: `presented(issues, { row, card, option })`                                       |
+| In which field each command's record goes (`target`)                                             | A screen's views, tones, empty words                                                           |
+| The typed bodies and answers of each command, and what a caller sends of a model (`<Name>Input`) | —                                                                                              |
+| Each entity's `history`: the record's events (`DomainEvents`)                                    | —                                                                                              |
+| The client without a screen (`clientOf`)                                                         | No routes: a generated route that does not work is a contract bug — it is fixed in the backend |
 
-A generated entity is a plain object: what the contract does not say (`history`, `summary`,
-`aggregate`) is added with a spread, and the type is kept.
+A generated entity is a plain object: what the contract does not say (`summary`, `aggregate`) is
+added with a spread, and the type is kept.
 
 ## How to use what is generated
 

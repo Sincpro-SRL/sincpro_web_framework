@@ -96,12 +96,14 @@ test("a write forgets every collection its route names, not only the first", asy
   assert.deepEqual(asked, ["/tenants/acme/members", "/projects", "/tenants/acme/members"]);
 });
 
-test("a write under an entity forgets its history too", async () => {
-  const { transport, asked } = anyServer({ entities: [facturas] });
-  await transport.list("/ventas-events", {});
+test("a write under an entity forgets its history too, wherever its events live", async () => {
+  // A record's events on a route of their own, not under the entity's list.
+  const elsewhere = { ...facturas, history: "/factura-events/{id}" };
+  const { transport, asked } = anyServer({ entities: [elsewhere] });
+  await transport.list("/factura-events/F-2026-0007", {});
   const confirm = facturas.commands["confirmar"]!;
   await transport.send(confirm.method, pathFor(confirm, "F-2026-0007"), {});
-  await transport.list("/ventas-events", {});
+  await transport.list("/factura-events/F-2026-0007", {});
   assert.equal(asked.length, 2, "the events were asked again");
 });
 

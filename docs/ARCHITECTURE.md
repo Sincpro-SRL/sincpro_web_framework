@@ -32,8 +32,8 @@ What each package gives and what the application writes:
 flowchart LR
   subgraph cf["@sincpro/client-framework · every platform"]
     direction TB
-    cf1["UseBoundedContext · addDependency · register"]
-    cf2["Feature · ApplicationService<br/>one span and one report per use case"]
+    cf1["BoundedContext · addDependency · feature / appService / handler"]
+    cf2["Feature · ApplicationService · EventHandler<br/>one span and one report per use case"]
     cf3["configureProcess · processContext<br/>ContextStore · Tracer · ErrorReporter"]
     cf4["Transport · entity() · sincpro-client generate"]
   end
@@ -177,22 +177,24 @@ The rule to decide: if swapping it for an equivalent one changes the business's 
 an adapter; if it is wiring, a client with no business in it, or something non-functional, it is
 infrastructure.
 
-| Where                    | What                                                                                                                                                                                                                                                                                                                                                          | In forge                                                    |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `common/infrastructure/` | The **raw client** (the transport with its base, headers and auth), the session and who is calling (`/me`), where the context lives (the platform's `ContextStore`), telemetry and error reporting (their adapters and configuration), the `QueryClient`                                                                                                      | `access.py`, `context_store.py`, `database.py`, `events.py` |
-| `<ctx>/infrastructure/`  | `dependencies.ts`: the type of what each service may use (`ProjectDependencies`: the generated client, the session, another bounded context's service through its `index.ts`) and `registerDependencies` with `addDependency`. `bounded_context.ts`: its `Feature` and its `ApplicationService` typed with that type, and `configProjectBoundedContext(name)` | `dependencies.py`, `framework.py`                           |
+| Where                       | What                                                                                                                                                                                                                                                                                                                                                    | In forge                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `common/infrastructure/`    | The **raw client** (the transport with its base, headers and auth), the session and who is calling (`/me`), where the context lives (the platform's `ContextStore`), telemetry and error reporting (their adapters and configuration), the `QueryClient`                                                                                                | `access.py`, `context_store.py`, `database.py`, `events.py` |
+| `<context>/infrastructure/` | `dependencies.ts`: the type of what each service may use (`ProjectDependencies`: the generated client, the session, another bounded context) and `registerDependencies` with `addDependency`. `framework.ts`: `servicesWith<ProjectDependencies>()` — its `Feature`, `ApplicationService` and `EventHandler` — and the instance `projectBoundedContext` | `dependencies.py`, `framework.py`                           |
 
 ## 6. The services: `Feature` and `ApplicationService`
 
 **All of the application's logic lives in services**, of two kinds — those of sincpro_framework
 and of mobile — and each bounded context is assembled as in the backend:
 
-- **`Feature`**: a facade over one part of the domain. Each public method is a use case.
+- **`Feature`**: one use case, for the Command (or the N DTOs) it is registered for.
 - **`ApplicationService`**: composes Features of **its own** bounded context
-  (`this.feature.Issues.close(…)`). Never another ApplicationService.
+  (`this.featureBus.execute(new CommandX(…))`). Never another ApplicationService.
+- **`EventHandler`**: the entrypoint an event reaches (`@projectBoundedContext.handler([...])`);
+  it translates the event into Commands and decides nothing.
 
-Their dependencies are typed properties (`this.client`, `this.session`): the bounded context
-hands them in on each call, typed with its `DependencyContextType`.
+Their dependencies are typed properties (`this.client`, `this.session`) that no service declares:
+the bounded context hands them in on each run, typed by `servicesWith<ProjectDependencies>()`.
 
 ```ts
 // domains/project/infrastructure/dependencies.ts — what each service may use
@@ -200,79 +202,65 @@ export interface ProjectDependencies {
   client: ProjectClient;
   session: Session;
 }
-export function registerDependencies(bc: UseBoundedContext<ProjectDependencies>) {
-  bc.addDependency("client", clientOf(transport));
-  bc.addDependency("session", session);
-  return bc;
+export function registerDependencies(boundedContext: BoundedContext<ProjectDependencies>) {
+  boundedContext.addDependency("client", clientOf(operations));
+  boundedContext.addDependency("session", session);
+  return boundedContext;
 }
 
-// domains/project/infrastructure/bounded_context.ts
-export class Feature extends BaseFeature<ProjectDependencies> {}
-export class ApplicationService extends BaseApplicationService<
-  ProjectDependencies,
-  ProjectFeatures
-> {}
-export function configProjectBoundedContext(name: string) {
-  return registerDependencies(new UseBoundedContext<ProjectDependencies>(name));
-}
+// domains/project/infrastructure/framework.ts
+export const { Feature, ApplicationService, EventHandler } =
+  servicesWith<ProjectDependencies>();
+export const projectBoundedContext = registerDependencies(
+  new BoundedContext<ProjectDependencies>("project"),
+);
 
-// domains/project/services/issues.ts
-export class Issues extends Feature {
-  close(input: dto.CommandCloseIssue) {
+// domains/project/services/issue/close_issue.feature.ts
+@projectBoundedContext.feature(CommandCloseIssue)
+export class CloseIssue extends Feature<CommandCloseIssue, ResponseCloseIssue> {
+  execute(command: CommandCloseIssue) {
     this.session.require(); // the client's validation lives in the service
-    return this.client.closeIssue(input);
+    return this.client.closeIssue(command);
   }
 }
 
-// domains/project/services/close_and_notify.ts
-export class CloseAndNotify extends ApplicationService {
-  async execute(input: dto.CommandCloseIssue) {
-    await this.feature.Issues.close(input); // child span
-    return this.feature.Notices.tell(input); // child span
+// domains/project/services/issue/close_and_notify.app-service.ts
+@projectBoundedContext.appService(CommandCloseAndNotify)
+export class CloseAndNotify extends ApplicationService<CommandCloseAndNotify, void> {
+  async execute(command: CommandCloseAndNotify) {
+    await this.featureBus.execute(new CommandCloseIssue(command.issue_id)); // child span
+    await this.featureBus.execute(new CommandTellWatchers(command.issue_id)); // child span
   }
 }
 
-// domains/project/services/index.ts
-export const features = { Issues, Notices };
-export const applicationServices = { CloseAndNotify };
-export type ProjectFeatures = typeof features;
-
-// domains/project/index.ts
-export const project = configProjectBoundedContext("project").register({
-  features,
-  applicationServices,
-});
+// domains/project/services/index.ts imports every service: each registers itself
 ```
 
-From anywhere — a screen, another bounded context, a test — it is used by name:
-`await project.Issues.close(input)`; in a screen, `useService(project.Issues.close)`. `project`
-only holds references (each service is created once, the first time it is asked for) and is not
-frozen: `project.with({ client })` and `project.scoped({ company_id })` give a variant that shares
-everything else.
+From anywhere — a screen, another bounded context, a test — a use case runs through its bounded
+context: `await projectBoundedContext.execute(new CommandCloseIssue("acme-3"))`; in a screen,
+`useService((issue_id: string) => projectBoundedContext.execute(new CommandCloseIssue(issue_id)))`.
+`projectBoundedContext.scoped({ company_id })` gives a bus with that context, sharing everything
+else.
 
-**No bus, with interceptors** — like `@sincpro/mobile`: every public method of a service goes
-through the bounded context's interceptors, and that gives **by default**, without the author
-writing anything:
+Every run goes through the bounded context's pipeline, and that gives **by default**, without the
+author writing anything:
 
-1. **the trace**: one span per use case, `<bounded context>/<Service>.<method>`
-   (`project/Issues.close`), with `sincpro.*` attributes like the backend's; the transport writes
+1. **the trace**: one span per use case, `<bounded context>/<Service>` (`project/CloseIssue`),
+   with `sincpro.*` attributes like the backend's; the generated client, bound to the run, writes
    `traceparent` and the backend continues the SAME trace (§8);
 2. **the error**: the unexpected is reported with its `trace_id`; what the server already
    explained (a validation, a conflict) is not (§8);
-3. **the context**: a snapshot of its levels per call (§7).
+3. **the context**: a snapshot of its levels per run (§7).
 
-One difference from mobile, on purpose: mobile keeps the active span in a **global stack** (push
-in `before`, pop when the promise ends). With two async calls at once they cross — the second
-takes the first as its parent and the first, when it ends, pops the second's entry. In a web
-workspace several views ask at once, so here **each call carries its own execution**: an
-ApplicationService's call gives its Features its span as their parent. The API for the author is
-the same; the fix goes back to mobile.
+Each run carries its own execution — never a global stack —: an ApplicationService's run is the
+parent of the Features it composes, even with several views asking at once.
 
 The rules are those of `sincpro_framework_use_cases`, without exception:
 
-- Reusing a use case is **calling it through its bounded context** (`this.feature.Issues`,
-  `project.Issues`); never a function exported from another service («helper», `existing_*`,
-  `*_command(…)`), because it skips the trace and the error.
+- Reusing a use case is **executing its Command through its bounded context**
+  (`this.featureBus.execute(…)`, `projectBoundedContext.execute(…)`); never a function exported
+  from another service («helper», `existing_*`, `*_command(…)`), because it skips the trace and
+  the error.
 - `domain/` receives no adapters: a lookup that two Features share is an adapter in the
   dependencies.
 - A service does not import React: it is tested in Node with `memoryTransport`, without drawing

@@ -1,12 +1,12 @@
 import {
-  ApplicationService,
+  BoundedContext,
+  Command,
   configureProcess,
-  Feature,
   memoryTransport,
   processContext,
+  servicesWith,
   type Transport,
   TransportError,
-  UseBoundedContext,
 } from "@sincpro/client-framework";
 import { memoryReporter, memoryTracer } from "@sincpro/client-framework/testing";
 import { Refused, useContextValues, useService } from "@sincpro/web-framework";
@@ -20,7 +20,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          "La lógica de una aplicación vive en los **servicios** de cada bounded context — `Feature` y `ApplicationService` de @sincpro/client-framework, armados como en sincpro_framework — y la pantalla sólo los corre: `useService(project.CloseIssue.execute)` da `run`, `busy`, `answer` y `error`, sin escribir a mano el estado de cada pantalla. La traza y el reporte son del bounded context: cada caso de uso es un span `<bounded context>/<Service>.<method>`, las Features que compone son hijas, y sólo se reporta lo que nadie esperaba — un rechazo que el servidor explicó (un 409) se muestra, no se reporta. El contexto (la empresa, el tenant) es del proceso: los servicios lo leen en `this.context` y una pantalla con `useContextValues`.",
+          "La lógica de una aplicación vive en los **casos de uso** de cada bounded context — `Feature` y `ApplicationService` de @sincpro/client-framework, armados como en sincpro_framework: un Command, el servicio registrado para él y las dependencias heredadas (`servicesWith`) — y la pantalla sólo los corre: `useService((closing) => projectBoundedContext.execute(new CommandCloseIssue(closing.issue_id)))` da `run`, `busy`, `answer` y `error`, sin escribir a mano el estado de cada pantalla. La traza y el reporte son del bounded context: cada caso de uso es un span `<bounded context>/<Service>`, las Features que compone son hijas, y sólo se reporta lo que nadie esperaba — un rechazo que el servidor explicó (un 409) se muestra, no se reporta. El contexto (la empresa, el tenant) es del proceso: los servicios lo leen en `this.context` y una pantalla con `useContextValues`.",
       },
     },
   },
@@ -37,34 +37,61 @@ type ProjectDependencies = { transport: Transport };
 /** What «project» runs with besides: `this.context.company_id`. */
 type ProjectContext = { company_id: number };
 
-class Issues extends Feature<ProjectDependencies, ProjectContext> {
-  preview(closing: Closing) {
+const { Feature, ApplicationService } = servicesWith<ProjectDependencies, ProjectContext>();
+
+class CommandPreviewClosing extends Command<{ warnings: string[] }> {
+  constructor(readonly issue_id: string) {
+    super();
+  }
+}
+
+class CommandClose extends Command<{ state: string; company: number | undefined }> {
+  constructor(readonly issue_id: string) {
+    super();
+  }
+}
+
+class CommandCloseIssue extends Command<{
+  closed: boolean;
+  warnings: string[];
+  company?: number | undefined;
+}> {
+  constructor(readonly issue_id: string) {
+    super();
+  }
+}
+
+class PreviewClosing extends Feature<CommandPreviewClosing, { warnings: string[] }> {
+  execute(command: CommandPreviewClosing) {
     return this.transport.send<{ warnings: string[] }>(
       "POST",
-      `/issues/${closing.issue_id}/close/preview`,
-      closing,
+      `/issues/${command.issue_id}/close/preview`,
+      { issue_id: command.issue_id },
     );
   }
+}
 
-  async close(closing: Closing) {
+class Close extends Feature<CommandClose, { state: string; company: number | undefined }> {
+  async execute(command: CommandClose) {
     const done = await this.transport.send<{ state: string }>(
       "POST",
-      `/issues/${closing.issue_id}/close`,
-      closing,
+      `/issues/${command.issue_id}/close`,
+      { issue_id: command.issue_id },
     );
     return { ...done, company: this.context.company_id };
   }
 }
 
 class CloseIssue extends ApplicationService<
-  ProjectDependencies,
-  { Issues: typeof Issues },
-  ProjectContext
+  CommandCloseIssue,
+  { closed: boolean; warnings: string[]; company?: number | undefined }
 > {
-  async execute(closing: Closing) {
-    const preview = await this.feature.Issues.preview(closing);
+  async execute(command: CommandCloseIssue) {
+    const preview = await this.featureBus.execute(
+      new CommandPreviewClosing(command.issue_id),
+    );
     if (preview.warnings.length > 0) return { closed: false, warnings: preview.warnings };
-    const done = await this.feature.Issues.close(closing);
+    const done = await this.featureBus.execute(new CommandClose(command.issue_id));
     return { closed: done.state === "closed", warnings: [], company: done.company };
   }
 }
@@ -80,18 +107,24 @@ function application(answer: (route: string) => unknown) {
     {},
     { latency: 150, handle: (_method, route) => answer(route) },
   );
-  const project = new UseBoundedContext<ProjectDependencies, ProjectContext>("project")
-    .addDependency("transport", transport)
-    .register({ features: { Issues }, applicationServices: { CloseIssue } });
+  const projectBoundedContext = new BoundedContext<ProjectDependencies, ProjectContext>(
+    "project",
+  );
+  projectBoundedContext.addDependency("transport", transport);
+  projectBoundedContext.feature(CommandPreviewClosing)(PreviewClosing);
+  projectBoundedContext.feature(CommandClose)(Close);
+  projectBoundedContext.appService(CommandCloseIssue)(CloseIssue);
   // The process is the page's: each story starts it with its own tracer and reporter.
   const start = () => configureProcess({ tracer, reporter });
-  return { tracer, reporter, project, start };
+  const closeIssue = (closing: Closing) =>
+    projectBoundedContext.execute(new CommandCloseIssue(closing.issue_id));
+  return { tracer, reporter, closeIssue, start };
 }
 
-type Project = ReturnType<typeof application>["project"];
+type Project = Pick<ReturnType<typeof application>, "closeIssue">;
 
 function Screen({ project }: { project: Project }) {
-  const close = useService(project.CloseIssue.execute);
+  const close = useService(project.closeIssue);
   return (
     <div className="flex max-w-md flex-col gap-3 p-6">
       <Button disabled={close.busy} onClick={() => void close.run({ issue_id: "acme-3" })}>
@@ -108,7 +141,7 @@ const closable = application((route) =>
 );
 
 export const LaPantallaCorreElServicioYQuedaTrazado: Story = {
-  render: () => <Screen project={closable.project} />,
+  render: () => <Screen project={closable} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     closable.start();
@@ -116,12 +149,12 @@ export const LaPantallaCorreElServicioYQuedaTrazado: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Cerrar la incidencia" }));
     await expect(await canvas.findByRole("button", { name: "Cerrando…" })).toBeDisabled();
     await expect(await canvas.findByText("Cerrada")).toBeVisible();
-    // One trace: the use case, and the two Feature methods it ran under it.
+    // One trace: the use case, and the two Features it ran under it.
     const [parent, ...children] = closable.tracer.spans;
     await expect(parent?.name).toBe("project/CloseIssue");
     await expect(children.map((one) => one.name)).toEqual([
-      "project/Issues.preview",
-      "project/Issues.close",
+      "project/PreviewClosing",
+      "project/Close",
     ]);
     for (const child of children) await expect(child.parentSpanId).toBe(parent?.spanId);
     await expect(closable.reporter.reports).toHaveLength(0);
@@ -143,7 +176,7 @@ const refused = application((route) => {
 });
 
 export const UnRechazoSeMuestraYNoSeReporta: Story = {
-  render: () => <Screen project={refused.project} />,
+  render: () => <Screen project={refused} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     refused.start();
@@ -164,7 +197,7 @@ const broken = application(() => {
 });
 
 export const LoQueNadieEsperabaSeReportaConSuTraza: Story = {
-  render: () => <Screen project={broken.project} />,
+  render: () => <Screen project={broken} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     broken.start();
@@ -175,7 +208,7 @@ export const LoQueNadieEsperabaSeReportaConSuTraza: Story = {
     await waitFor(() => expect(broken.tracer.spans[0]?.outcome).toBe("failed"));
     await expect(broken.reporter.reports).toHaveLength(1);
     const [report] = broken.reporter.reports;
-    await expect(report?.about.useCase).toBe("project.Issues.preview");
+    await expect(report?.about.useCase).toBe("project.PreviewClosing");
     await expect(report?.about.traceId).toBe(broken.tracer.spans[0]?.traceId);
     // The screen still answers: it says what failed, it does not break.
     await expect(
@@ -186,7 +219,7 @@ export const LoQueNadieEsperabaSeReportaConSuTraza: Story = {
 
 function ScreenWithCompany({ project }: { project: Project }) {
   const { company_id } = useContextValues<ProjectContext>(processContext);
-  const close = useService(project.CloseIssue.execute);
+  const close = useService(project.closeIssue);
   return (
     <div className="flex max-w-md flex-col gap-3 p-6">
       <p className="text-meta">{`Empresa ${company_id ?? "—"}`}</p>
@@ -208,7 +241,7 @@ const withCompany = application((route) =>
 );
 
 export const ElContextoLoVeLaPantallaYLoUsaElServicio: Story = {
-  render: () => <ScreenWithCompany project={withCompany.project} />,
+  render: () => <ScreenWithCompany project={withCompany} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     withCompany.start();

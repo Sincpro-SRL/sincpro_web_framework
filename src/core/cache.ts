@@ -24,8 +24,8 @@ import type { Criteria, Page } from "@sincpro/criteria";
  *
  * A write forgets every collection its route NAMES, not only the first: «leave a tenant»
  * (`POST /users/{email}/tenants/{tenant}/leave`) changes the tenant's members as much as the
- * user. And an entity's business events live on a route of their own (`/project-events`): with
- * `entities`, a write under an entity's list also forgets its history.
+ * user. And a record's business events live on a route of their own (`/issues/{id}/events`):
+ * with `entities`, a write under an entity's list also forgets its history, wherever it lives.
  *
  *     const transport = cachedTransport(restTransport({ base: "/v1" }), { ttl: 30_000 });
  *     transport.invalidate("/facturas");   // forget an entity by hand (a push from the server)
@@ -64,7 +64,8 @@ function touchedBy(route: string, entities: readonly Entity[]): string[] {
   const segments = path.split("/").filter((one) => one !== "");
   const history = entities
     .filter((one) => one.history !== undefined && under(path, pathOf(one.list)))
-    .map((one) => pathOf(one.history?.route ?? ""));
+    // The route up to its first key: `/issue-events/{id}` forgets `/issue-events`.
+    .map((one) => pathOf(one.history ?? "").split("/{")[0] ?? "");
   return [...segments.map((one) => `/${one}`), ...history];
 }
 

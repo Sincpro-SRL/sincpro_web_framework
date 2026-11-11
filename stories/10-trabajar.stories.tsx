@@ -188,6 +188,10 @@ export const ConfirmarYSuHistoria: Story = {
     await waitFor(() =>
       expect(canvas.getAllByText("Factura confirmada").length).toBeGreaterThan(0),
     );
+    // Its history is the invoice's own events (`/facturas/{id}/events`): its creation is there.
+    await waitFor(() =>
+      expect(canvas.getAllByText("Factura creada").length).toBeGreaterThan(0),
+    );
   },
 };
 
