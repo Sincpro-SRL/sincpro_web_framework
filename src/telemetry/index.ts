@@ -1,4 +1,9 @@
-import type { Attributes, Span, Tracer } from "@sincpro/client-framework";
+import {
+  type Attributes,
+  identityOf,
+  type Span,
+  type Tracer,
+} from "@sincpro/client-framework";
 
 /**
  * A `Tracer` for the browser, built from the application's own settings: OpenTelemetry's SDK
@@ -6,8 +11,9 @@ import type { Attributes, Span, Tracer } from "@sincpro/client-framework";
  *
  *     // the application — domains/common/infrastructure/telemetry.ts
  *     import { browserTracer } from "@sincpro/web-framework/telemetry";
- *     const tracer = browserTracer({ endpoint: settings.otlp, service: "forge-web", release });
- *     configureProcess({ tracer, reporter });              // entrypoints/main.tsx
+ *     const release = "forge-web:1.4.0";                   // the backend's APP_RELEASE
+ *     const tracer = browserTracer({ endpoint: settings.otlp, release });
+ *     configureProcess({ identity: { release }, tracer, reporter });   // entrypoints/main.tsx
  *
  * Context: optional on every count. It is an entry of its own that nothing else in this package
  * imports, and its SDK (`@opentelemetry/sdk-trace`, `@opentelemetry/exporter-trace-otlp-http`,
@@ -25,10 +31,14 @@ import type { Attributes, Span, Tracer } from "@sincpro/client-framework";
 export type BrowserTracerOptions = {
   /** The application's OTLP/HTTP traces endpoint (`https://collector.example.com/v1/traces`). */
   endpoint: string;
-  /** `service.name`: what this application is called in the traces. */
-  service: string;
-  /** `service.version`: the release running. */
+  /**
+   * `<name>:<version>` as deployed — the backend's `APP_RELEASE`, the same text
+   * `configureProcess({ identity })` takes. The resource's `release`, and `service.name` and
+   * `service.version` read out of it with the backend's rules (`identityOf`).
+   */
   release?: string;
+  /** `service.name`, when it is not the release's name. One of the two is needed. */
+  service?: string;
   /** `deployment.environment.name`: `production`, `staging`… */
   environment?: string;
   /** Headers the endpoint asks for. Never a secret: whatever ships to a browser is public. */
@@ -53,6 +63,22 @@ const SILENT: Span = {
   end: () => undefined,
 };
 
+/**
+ * Who sends the traces, with sincpro_framework's keys: `service.name` and `service.version` read
+ * out of the release (`sincpro-forge-web:1.4.0` → `sincpro-forge-web`, `1.4.0`), the release
+ * itself, the environment and the application's own attributes.
+ */
+export function tracerResource(options: BrowserTracerOptions): Attributes {
+  const identity = options.release ? identityOf(options.release) : undefined;
+  return {
+    "service.name": options.service ?? identity?.serviceName ?? "unknown_service",
+    ...(identity?.serviceVersion ? { "service.version": identity.serviceVersion } : {}),
+    ...(identity ? { release: identity.release } : {}),
+    ...(options.environment ? { "deployment.environment.name": options.environment } : {}),
+    ...options.attributes,
+  };
+}
+
 export function browserTracer(options: BrowserTracerOptions): BrowserTracer {
   let ready: Tracer | null = null;
   let flush: () => Promise<void> = () => Promise.resolve();
@@ -74,21 +100,15 @@ export function browserTracer(options: BrowserTracerOptions): BrowserTracer {
         url: options.endpoint,
         ...(options.headers ? { headers: { ...options.headers } } : {}),
       });
+      const resource = tracerResource(options);
       const provider = new TracerProvider({
-        resource: resourceFromAttributes({
-          "service.name": options.service,
-          ...(options.release ? { "service.version": options.release } : {}),
-          ...(options.environment
-            ? { "deployment.environment.name": options.environment }
-            : {}),
-          ...options.attributes,
-        }),
+        resource: resourceFromAttributes(resource),
         sampler: new ParentBasedSampler({
           root: new TraceIdRatioBasedSampler(options.sampling ?? 1),
         }),
         spanProcessors: [new BatchSpanProcessor({ exporter })],
       });
-      ready = openTelemetryTracer(provider.getTracer(options.service));
+      ready = openTelemetryTracer(provider.getTracer(String(resource["service.name"])));
       flush = () => provider.forceFlush();
       // A page that is hidden may never come back: what is buffered goes now.
       const leave = () => void flush().catch(() => undefined);

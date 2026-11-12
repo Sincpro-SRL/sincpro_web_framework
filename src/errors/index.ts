@@ -8,7 +8,7 @@ import type { ErrorAbout, ErrorReporter } from "@sincpro/client-framework";
  *     // the application — domains/common/infrastructure/telemetry.ts
  *     import { glitchtipReporter } from "@sincpro/web-framework/errors";
  *     const reporter = glitchtipReporter({ dsn: settings.glitchtip, release, environment });
- *     configureProcess({ tracer, reporter });              // entrypoints/main.tsx
+ *     configureProcess({ identity: { release }, tracer, reporter });   // entrypoints/main.tsx
  *
  * Context: optional on every count, like `./telemetry`: an entry of its own, `@sentry/browser`
  * an optional peer, and only a convenience — an application with its own client wraps it with
@@ -27,6 +27,7 @@ import type { ErrorAbout, ErrorReporter } from "@sincpro/client-framework";
 export type GlitchtipOptions = {
   /** The application's DSN. Public by nature: it ships to the browser. */
   dsn: string;
+  /** `<name>:<version>`, the same text as `configureProcess({ identity })`: GlitchTip's release. */
   release?: string;
   environment?: string;
   /** Fraction of errors sent, 0 to 1. Default 1. */
