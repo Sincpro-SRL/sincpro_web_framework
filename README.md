@@ -373,8 +373,10 @@ import { configureProcess, processContext } from "@sincpro/client-framework";
 import { glitchtipReporter } from "@sincpro/web-framework/errors"; // optional
 import { browserTracer } from "@sincpro/web-framework/telemetry"; // optional
 
+const release = "my-app:1.0.0"; // <name>:<version>, the backend's APP_RELEASE
 configureProcess({
-  tracer: browserTracer({ endpoint: settings.otlp, service: "my-app", release }),
+  identity: { release }, // + tenant, when the deployment serves one
+  tracer: browserTracer({ endpoint: settings.otlp, release }),
   reporter: glitchtipReporter({ dsn: settings.glitchtip, release }),
 });
 processContext.set({ tenant_id: session.tenant }); // every use case runs with it and sends it
