@@ -1277,7 +1277,7 @@
     "@sentry/browser-utils" "11.11.0"
     "@sentry/core" "11.11.0"
 
-"@sincpro/client-framework@^1.11.0":
+"@sincpro/client-framework@^1.10.0":
   version "1.10.0"
   resolved "https://registry.yarnpkg.com/@sincpro/client-framework/-/client-framework-1.10.0.tgz#3463a8aeafc8f8091c13a9ba987412adf375162a"
   integrity sha512-cGzTqzTzlZn0l/KtMh3l7X6E9dZpR/SlJzt5RSOGolrGtiPN6eVrUvoxxczvQg8LUR8pKoCnQd/OKBuPYzf96g==
