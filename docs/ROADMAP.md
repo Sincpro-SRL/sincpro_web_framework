@@ -1515,3 +1515,40 @@ client-framework.
 Next: an «Export» action on `EntityList` when the entity declares `export`, with its story; and
 `FrameworkProvider` documenting `decoders: [parquetDecoder]` for an application whose lists may
 ask for millions.
+
+## Every screen follows every write (2026-11-12)
+
+forge's console moved its actions to client-framework Features (use cases over the generated
+client). Those write through `restOperations`, not through the screens' transport. So
+`<SincproApp>`'s cache never heard them, and a screen that reloaded after «Cancel» read the old
+issue for up to 30 s. forge worked around it by putting one cache under both doors
+(Sincpro-SRL/sincpro_forge#23). Lists open beside never learned anything at all.
+
+- **@sincpro/client-framework** (Sincpro-SRL/sincpro_client_framework#42): every write a transport
+  of the framework sends is announced on the process's change feed (`processChanges`: `{ method,
+route }`), whoever sent it. A preview or a dry run announces nothing (`changeOf`).
+- **Here**:
+  - **The rule.** What a write touches moved from the cache to `core/changes` (`touchedBy`,
+    `touches`), and the cache, the readings and the names share it.
+  - **The cache.** `cachedTransport.changed(change)` forgets as a write through it does, and
+    `<SincproApp>` follows the feed with it. The cache is `bindableTransport`: since
+    client-framework 1.8 a run binds only what says it may, and a context read through the cache
+    lost its `sincpro-context`. Story 43's own transport says it too.
+  - **The readings.** `useWrites(route)` counts the writes that touch a route, and every reading
+    adds it to what it reads by, as it adds the company: `useListing`, `useRecord` (only with
+    nothing typed: losing an edit is never the framework's decision), `useHistory`, `useGroups`,
+    `usePivot`, `useNameOf`. Story 47.
+  - **Actions.** `ServiceButton`: a use case as an action, with `CommandButton`'s gesture drawn
+    once (`ActionButton`). Its dry run is the use case's own (`rehearse`). Story 48
+    (Sincpro-SRL/sincpro_web_framework#28).
+  - **N records** (Sincpro-SRL/sincpro_web_framework#29). Names are asked through one book per
+    transport and company (`nameBook`): the keys asked in one tick go in one request per entity
+    (`in`, in slices of 100), and are forgotten when a write touches their entity. The cache
+    shares a question already flying: the request is cancelled only when every reader gave up,
+    and a write while it flies keeps its answer from being stored. The ROADMAP's «asking for a
+    name per row does not scale» is solved by batching, without waiting for the server to expand
+    names.
+
+Next: server-pushed changes, the same feed fed by sincpro_framework#201
+(Sincpro-SRL/sincpro_client_framework#44); a cross-tab feed over `BroadcastChannel` when two tabs
+must agree.

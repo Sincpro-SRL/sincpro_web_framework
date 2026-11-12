@@ -28,6 +28,7 @@ import {
 } from "@sincpro/web-framework/core/edit";
 import { linesAnswered } from "@sincpro/web-framework/core/lines";
 import { useFramework } from "@sincpro/web-framework/react/context";
+import { useWrites } from "@sincpro/web-framework/react/useWrites";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /**
@@ -268,14 +269,17 @@ export function useRecord<T extends AnyRecord>(
   }, []);
 
   const reload = useCallback(() => setRound((n) => n + 1), []);
-  // Another company (the process's context changed): a record with nothing typed reads again;
-  // one being edited keeps what was typed — losing it is never the framework's decision.
-  const askedIn = useRef(context);
+  // Another company (the process's context changed), or a write to it — anyone's: a use case, a
+  // panel beside —: a record with nothing typed reads again; one being edited keeps what was
+  // typed — losing it is never the framework's decision, and its save still meets the version
+  // it read (a 409 when someone saved). Its own save reads it again by itself.
+  const writes = useWrites(isNew ? undefined : entity.one(id));
+  const askedFor = useRef({ context, writes });
   useEffect(() => {
-    if (askedIn.current === context) return;
-    askedIn.current = context;
+    if (askedFor.current.context === context && askedFor.current.writes === writes) return;
+    askedFor.current = { context, writes };
     if (Object.keys(typedNow.current).length === 0) reload();
-  }, [context, reload]);
+  }, [context, writes, reload]);
   const record = useMemo(() => (state.record ?? {}) as AnyRecord, [state.record]);
   const values = useMemo(
     () => ({ ...record, ...computed, ...typed }),

@@ -5,6 +5,7 @@ import type { GroupLevel } from "@sincpro/web-framework/core/list";
 import { measuresOf, sumsOf } from "@sincpro/web-framework/core/measure";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
+import { useWrites } from "@sincpro/web-framework/react/useWrites";
 import { useEffect, useState } from "react";
 
 /**
@@ -58,6 +59,8 @@ export function usePivot<T extends AnyRecord>(
   const sums = measures.join(",");
   const shape = axes === null ? "" : JSON.stringify([axes.rows, axes.columns]);
   const waiting = axes !== null && axes.measures === undefined && listing.meta === null;
+  // Written by anyone — a save, a use case, a panel beside: the crossing is counted again.
+  const writes = useWrites(listing.route);
 
   useEffect(() => {
     if (shape === "") {
@@ -97,7 +100,7 @@ export function usePivot<T extends AnyRecord>(
       },
     );
     return () => aborter.abort();
-  }, [transport, listing.route, question, shape, sums, waiting, context]);
+  }, [transport, listing.route, question, shape, sums, waiting, context, writes]);
 
   return { ...state, measures };
 }

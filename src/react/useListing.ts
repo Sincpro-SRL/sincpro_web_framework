@@ -19,6 +19,7 @@ import { useReading } from "@sincpro/criteria-react";
 import { isList, type ListDefinition, scopeOf } from "@sincpro/web-framework/core/list";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useListScope } from "@sincpro/web-framework/react/scope";
+import { useWrites } from "@sincpro/web-framework/react/useWrites";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /**
@@ -185,14 +186,16 @@ export function useListing<T extends AnyRecord, C extends CommandBodies = Comman
   });
   const typing = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => void (typing.current && clearTimeout(typing.current)), []);
-  // Another company (the process's context changed): the same question read again — its filter,
-  // order and page kept, never a reading started over.
-  const askedIn = useRef(context);
+  // Another company (the process's context changed), or a write to what it lists — anyone's: a
+  // save, a use case, a panel beside —: the same question read again, its filter, order and page
+  // kept, never a reading started over.
+  const writes = useWrites(route);
+  const askedFor = useRef({ context, writes });
   useEffect(() => {
-    if (askedIn.current === context) return;
-    askedIn.current = context;
+    if (askedFor.current.context === context && askedFor.current.writes === writes) return;
+    askedFor.current = { context, writes };
     void reading.reload();
-  }, [context, reading]);
+  }, [context, writes, reading]);
 
   const narrowed = (next: Narrowing<T>): Criteria<T> => {
     let criteria: Criteria<T> = base;

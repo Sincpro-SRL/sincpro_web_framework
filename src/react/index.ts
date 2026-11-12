@@ -44,3 +44,4 @@ export {
 export { useRelated } from "@sincpro/web-framework/react/useRelated";
 export { type ServiceState, useService } from "@sincpro/web-framework/react/useService";
 export { useSummaryOf } from "@sincpro/web-framework/react/useSummary";
+export { useWrites } from "@sincpro/web-framework/react/useWrites";

@@ -396,6 +396,30 @@ function CloseButton({ issueId }: { issueId: string }) {
 }
 ```
 
+Or the button that draws it — `CommandButton`'s gesture for a use case: off while it runs, a
+refusal where it happened, and an action that destroys asks first what it would do (the use case
+run dry) and shows it:
+
+```tsx
+<ServiceButton
+  label="Cancel"
+  run={() => projectBoundedContext.execute(new CommandCancelIssue(issue.id))}
+  rehearse={() => projectBoundedContext.execute(new CommandCancelIssue(issue.id, true))}
+/>
+```
+
+**What a use case wrote, every screen sees.** Each write a transport of the framework sends is
+announced on the process's change feed (`processChanges`, client-framework) — a screen's save, a
+use case's generated client, a panel beside. The cache forgets what it touched, and every reading
+on screen — `useListing`, `useRecord`, `useHistory`, `useGroups`, `usePivot`, `useNameOf` — reads
+again, keeping its filter, order and page; a record being edited keeps what was typed. A screen
+never calls `reload()` after an action. A reading of an application's own follows the same feed:
+
+```ts
+const writes = useWrites(route); // how many times what lies at `route` was written
+useEffect(() => { … }, [route, writes]);
+```
+
 A bounded context with no sincpro_framework behind it declares its model by hand and is drawn the same
 way:
 
@@ -442,7 +466,8 @@ hook and draw your own, or go straight to the loose piece.
 | Look at the set several ways     | `EntityList views` (table, rows, board, sheet)              | —                                     | web-ui's `List.*`                        |
 | Cross it by two fields           | `EntityList pivot`                                          | `usePivot`                            | `pivotOf`                                |
 | Order by several fields          | the bar's criteria builder                                  | `listing.orderBy([...])`              | criteria's `order`                       |
-| Act on it (with a dry run)       | `CommandButton`, `commands` on rows                         | `useCommand`                          | `transport.send`                         |
+| Act on it (with a dry run)       | `ServiceButton` (a use case), `CommandButton`, row commands | `useService`, `useCommand`            | `transport.send`                         |
+| Read again when it was written   | every reading of this package, by itself                    | `useWrites`                           | `processChanges` (client-framework)      |
 | What happened to it              | `Record.Activity` fed by `useHistory`                       | `useHistory`                          | `historyOf`                              |
 | The application context          | `SincproApp`                                                | `useRecordInWorkspace`, `useFollowed` | `FrameworkProvider`, `webUiSkin`         |
 
@@ -461,15 +486,16 @@ The rules behind them, in short:
 
 There is no store of ours to learn: each kind of state already has its owner.
 
-| State                                        | Lives in                                                  | Read with                          |
-| -------------------------------------------- | --------------------------------------------------------- | ---------------------------------- |
-| Who answers, language, known models          | `FrameworkProvider` (this package)                        | the hooks, through context         |
-| What the backend sees on every request       | `processContext` (client-framework), as `sincpro-context` | the backend's `use_context()`      |
-| What an opening carries (company, a default) | composer: the reference's `params`                        | `api.self.params`, `api.setParams` |
-| The record a modal covers                    | composer: `api.over`                                      | `api.over`                         |
-| What a chooser was asked                     | composer: `pick(…, { question })`                         | `api.choosing`                     |
-| What the user is on, what is selected        | composer: `api.context`                                   | `useWorkspaceContext(api)`         |
-| A screen's list, record, groups              | the hooks                                                 | `useListing`, `useRecord`, …       |
+| State                                        | Lives in                                                   | Read with                            |
+| -------------------------------------------- | ---------------------------------------------------------- | ------------------------------------ |
+| Who answers, language, known models          | `FrameworkProvider` (this package)                         | the hooks, through context           |
+| What the backend sees on every request       | `processContext` (client-framework), as `sincpro-context`  | the backend's `use_context()`        |
+| What an opening carries (company, a default) | composer: the reference's `params`                         | `api.self.params`, `api.setParams`   |
+| The record a modal covers                    | composer: `api.over`                                       | `api.over`                           |
+| What a chooser was asked                     | composer: `pick(…, { question })`                          | `api.choosing`                       |
+| What the user is on, what is selected        | composer: `api.context`                                    | `useWorkspaceContext(api)`           |
+| A screen's list, record, groups              | the hooks                                                  | `useListing`, `useRecord`, …         |
+| What anyone wrote                            | `processChanges` (client-framework): every write announced | `useWrites`, the hooks by themselves |
 
 Not yet: a new record does not take the `params` it was opened with as its initial values
 (`ROADMAP.md`, «Estado y contexto»).
@@ -520,56 +546,58 @@ moves to the generated one — is [`docs/ADOPTION.md`](docs/ADOPTION.md).
 
 ## Where it stands
 
-| Piece                                   | What it solves                                                                               | Status |
-| --------------------------------------- | -------------------------------------------------------------------------------------------- | ------ |
-| `restTransport`, `memoryTransport`      | The backend, or the same engine in memory (client-framework)                                 | ✅     |
-| `defineMeta`, `metaFromSchema`          | A model by hand, or completed from OpenAPI (client-framework)                                | ✅     |
-| `useService`                            | A screen runs one of the application's use cases: run, busy, answer, error                   | ✅     |
-| `./telemetry`, `./errors`               | Optional: the application's traces to its OTLP endpoint, its errors to GlitchTip             | ✅     |
-| `selection`                             | Filters named as criteria 2.0 and the backend read them, the search bar's included           | ✅     |
-| `useListing`, `EntityList`              | N records: criteria, search bar, builder, paging                                             | ✅     |
-| `useRecord`, `factsOf`, `RecordLines`   | One record: facts, relations with their real total                                           | ✅     |
-| Preloaded definitions                   | `FrameworkProvider metas`: the models of the discovery document, or of an exported metamodel | ✅     |
-| `useLookup`, `EntityPicker`             | Literal search: a many2one select, ⌘K                                                        | ✅     |
-| `useRecord` + `RecordField`, `dirtyOf`  | Editing: hints evaluated live, preview, save with version (409), server drafts               | ✅     |
-| `useCommand`, `CommandButton`           | An entity's actions, with a dry run before what destroys                                     | ✅     |
-| `entity<T, C>` (`CommandBodies`)        | Typed Commands: a name the entity does not declare, or a wrong body, does not compile        | ✅     |
-| `entity<T, C, A>` (`CommandAnswers`)    | What each Command answers, typed: `run(…)` returns it with no type argument written          | ✅     |
-| `readRoute`, `Transport.read`           | A GET of the context's own (`/me`), neither a page nor a record                              | ✅     |
-| A key alone (`EntityID`), `useNameOf`   | A key that names whose record it is, drawn as a many2one: a picker, and the name when read   | ✅     |
-| `versionsOf`, `onVersionDrift`          | A snapshot behind the server is told once per model — never an error                         | ✅     |
-| `sincpro-client generate`               | A context's DTOs, client and entities out of its exported client contract                    | ✅     |
-| `metasOf`, `bodyFor` (`target`)         | Definitions preloaded from that snapshot; a Command's record written where its body names it | ✅     |
-| `useHistory`                            | Business events in `Record.Activity` (comments: backend first)                               | ✅     |
-| `entityView`                            | An entity as a composer view: list, record, ⌘K search                                        | ✅     |
-| `<SincproApp>`                          | The application context in one place, the workspace dressed as web-ui (`webUiSkin`)          | ✅     |
-| `useRecordInWorkspace`                  | A record tells the workspace its real name and its unsaved work (composer 1.0)               | ✅     |
-| Paging by pages, ceiling on «more»      | One page on screen, walked by the server's cursor: a million rows never freeze it            | ✅     |
-| `cachedTransport`                       | Repeated reads from memory, forgotten when a write touches the entity (on in `SincproApp`)   | ✅     |
-| `EntitySearchBar`                       | The search bar + criteria builder as a loose piece, for any `List`                           | ✅     |
-| `EntityList` views                      | The same set as table, rows or board                                                         | ✅     |
-| `useRelated`, `RelatedList`             | A record's relation as a live list: searched and paged by the server, inside a form          | ✅     |
-| `EntityPicker` chooser                  | «see all…» opens the whole set, searched on the server: a many2one over millions             | ✅     |
-| `useRecord(entity, "")`, `create`       | A new record: the model's defaults, saved to `create` (or `edit`), then it IS that record    | ✅     |
-| `retryKeys`, `Idempotency-Key`          | A Command or a create retried after a lost answer runs once, not twice                       | ✅     |
-| `entity.newRef()`, «New» in the list    | The record's form with no id, in a page or a window; replaced by the record once created     | ✅     |
-| `EntityPicker criteria`                 | A many2one narrowed by another field: the invoices OF the chosen customer                    | ✅     |
-| `chooserIn`, `entity.chooserRef()`      | «see all…» as the composer's chooser: a row answers (`api.pick`)                             | ✅     |
-| `EntityPicker` / `EntityTags` in a view | Open and choose in the workspace by themselves; the chooser carries the picker's cut         | ✅     |
-| `newEntityId`, `edit` on a new record   | A new record born under a UUID v7 minted here: its draft and its save go through `Edit`      | ✅     |
-| `useGroups`, «Group by»                 | Groups counted by the server over the whole set; a group's rows read when it is opened       | ✅     |
-| `defineList`, `listView`                | A named list (a fixed scope, its columns and filters) as data, and as a workspace view       | ✅     |
-| `EntityPicker` `browse`, `columns`      | The chooser always a click away, as a table searched literally by the server                 | ✅     |
-| `useFollowed`                           | A detail panel follows the record the person is on, without knowing the list                 | ✅     |
-| `commands`, `useRowCommands`            | An entity's Commands on each row, idempotent, offered only where `when` holds                | ✅     |
-| `summaryOf`, `cardOf`, `relationOf`     | Any record at any size: name, description, state, type, picture, who made and changed it     | ✅     |
-| `openIn`, `RelatedRecord`               | A related record opens in a modal; «Abrir en…» for the rest; never a modal over a modal      | ✅     |
-| Literal search everywhere               | Picker: the first ten, the server's search as you type; tables: «Buscar «X»» on Enter        | ✅     |
-| `EntityTags`                            | A many2many as chips over thousands: the server's search, faces, the chosen never again      | ✅     |
-| `RecordField` + `entities`              | A many2one / one2many drawn from the model alone, opened where the view says                 | ✅     |
-| `EntityRecord`, `formOf`                | Any entity's record screen without writing it                                                | ✅     |
-| `Trail`, `Record.Pager`                 | Previous / next from a record, across the server's pages                                     | ✅     |
-| `EntityList sums`                       | Each group says how much it adds up, summed by the server over all of it                     | ✅     |
+| Piece                                   | What it solves                                                                                  | Status |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------- | ------ |
+| `restTransport`, `memoryTransport`      | The backend, or the same engine in memory (client-framework)                                    | ✅     |
+| `defineMeta`, `metaFromSchema`          | A model by hand, or completed from OpenAPI (client-framework)                                   | ✅     |
+| `useService`                            | A screen runs one of the application's use cases: run, busy, answer, error                      | ✅     |
+| `./telemetry`, `./errors`               | Optional: the application's traces to its OTLP endpoint, its errors to GlitchTip                | ✅     |
+| `selection`                             | Filters named as criteria 2.0 and the backend read them, the search bar's included              | ✅     |
+| `useListing`, `EntityList`              | N records: criteria, search bar, builder, paging                                                | ✅     |
+| `useRecord`, `factsOf`, `RecordLines`   | One record: facts, relations with their real total                                              | ✅     |
+| Preloaded definitions                   | `FrameworkProvider metas`: the models of the discovery document, or of an exported metamodel    | ✅     |
+| `useLookup`, `EntityPicker`             | Literal search: a many2one select, ⌘K                                                           | ✅     |
+| `useRecord` + `RecordField`, `dirtyOf`  | Editing: hints evaluated live, preview, save with version (409), server drafts                  | ✅     |
+| `useCommand`, `CommandButton`           | An entity's actions, with a dry run before what destroys                                        | ✅     |
+| `ServiceButton`                         | A use case as an action: the same gesture, its dry run the use case's own                       | ✅     |
+| `useWrites`, the change feed            | Every reading on screen reads again when anyone writes what it shows — a use case included      | ✅     |
+| `entity<T, C>` (`CommandBodies`)        | Typed Commands: a name the entity does not declare, or a wrong body, does not compile           | ✅     |
+| `entity<T, C, A>` (`CommandAnswers`)    | What each Command answers, typed: `run(…)` returns it with no type argument written             | ✅     |
+| `readRoute`, `Transport.read`           | A GET of the context's own (`/me`), neither a page nor a record                                 | ✅     |
+| A key alone (`EntityID`), `useNameOf`   | A key that names whose record it is, drawn as a many2one; names asked in one request per entity | ✅     |
+| `versionsOf`, `onVersionDrift`          | A snapshot behind the server is told once per model — never an error                            | ✅     |
+| `sincpro-client generate`               | A context's DTOs, client and entities out of its exported client contract                       | ✅     |
+| `metasOf`, `bodyFor` (`target`)         | Definitions preloaded from that snapshot; a Command's record written where its body names it    | ✅     |
+| `useHistory`                            | Business events in `Record.Activity` (comments: backend first)                                  | ✅     |
+| `entityView`                            | An entity as a composer view: list, record, ⌘K search                                           | ✅     |
+| `<SincproApp>`                          | The application context in one place, the workspace dressed as web-ui (`webUiSkin`)             | ✅     |
+| `useRecordInWorkspace`                  | A record tells the workspace its real name and its unsaved work (composer 1.0)                  | ✅     |
+| Paging by pages, ceiling on «more»      | One page on screen, walked by the server's cursor: a million rows never freeze it               | ✅     |
+| `cachedTransport`                       | Repeated reads from memory and shared in flight, forgotten when anyone writes the entity        | ✅     |
+| `EntitySearchBar`                       | The search bar + criteria builder as a loose piece, for any `List`                              | ✅     |
+| `EntityList` views                      | The same set as table, rows or board                                                            | ✅     |
+| `useRelated`, `RelatedList`             | A record's relation as a live list: searched and paged by the server, inside a form             | ✅     |
+| `EntityPicker` chooser                  | «see all…» opens the whole set, searched on the server: a many2one over millions                | ✅     |
+| `useRecord(entity, "")`, `create`       | A new record: the model's defaults, saved to `create` (or `edit`), then it IS that record       | ✅     |
+| `retryKeys`, `Idempotency-Key`          | A Command or a create retried after a lost answer runs once, not twice                          | ✅     |
+| `entity.newRef()`, «New» in the list    | The record's form with no id, in a page or a window; replaced by the record once created        | ✅     |
+| `EntityPicker criteria`                 | A many2one narrowed by another field: the invoices OF the chosen customer                       | ✅     |
+| `chooserIn`, `entity.chooserRef()`      | «see all…» as the composer's chooser: a row answers (`api.pick`)                                | ✅     |
+| `EntityPicker` / `EntityTags` in a view | Open and choose in the workspace by themselves; the chooser carries the picker's cut            | ✅     |
+| `newEntityId`, `edit` on a new record   | A new record born under a UUID v7 minted here: its draft and its save go through `Edit`         | ✅     |
+| `useGroups`, «Group by»                 | Groups counted by the server over the whole set; a group's rows read when it is opened          | ✅     |
+| `defineList`, `listView`                | A named list (a fixed scope, its columns and filters) as data, and as a workspace view          | ✅     |
+| `EntityPicker` `browse`, `columns`      | The chooser always a click away, as a table searched literally by the server                    | ✅     |
+| `useFollowed`                           | A detail panel follows the record the person is on, without knowing the list                    | ✅     |
+| `commands`, `useRowCommands`            | An entity's Commands on each row, idempotent, offered only where `when` holds                   | ✅     |
+| `summaryOf`, `cardOf`, `relationOf`     | Any record at any size: name, description, state, type, picture, who made and changed it        | ✅     |
+| `openIn`, `RelatedRecord`               | A related record opens in a modal; «Abrir en…» for the rest; never a modal over a modal         | ✅     |
+| Literal search everywhere               | Picker: the first ten, the server's search as you type; tables: «Buscar «X»» on Enter           | ✅     |
+| `EntityTags`                            | A many2many as chips over thousands: the server's search, faces, the chosen never again         | ✅     |
+| `RecordField` + `entities`              | A many2one / one2many drawn from the model alone, opened where the view says                    | ✅     |
+| `EntityRecord`, `formOf`                | Any entity's record screen without writing it                                                   | ✅     |
+| `Trail`, `Record.Pager`                 | Previous / next from a record, across the server's pages                                        | ✅     |
+| `EntityList sums`                       | Each group says how much it adds up, summed by the server over all of it                        | ✅     |
 
 What it does **not** do: mobile screens (`@sincpro/mobile` draws them; what it shares with the
 web is @sincpro/client-framework), sessions and login (the application's), routing (composer's),
