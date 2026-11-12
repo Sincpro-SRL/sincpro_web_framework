@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  type ChangeFeed,
   type Entity,
+  processChanges,
   processContext,
   reportError,
   type Transport,
@@ -67,6 +69,7 @@ export function SincproApp({
   workspace: given,
   bar,
   onViewError = reportViewError,
+  changes = processChanges,
 }: {
   transport: Transport;
   /** The entities as composer views — `entityView(…)` — and any other view of the app. */
@@ -104,6 +107,12 @@ export function SincproApp({
    * `view <ref>`; without a reporter configured, nothing is sent.
    */
   onViewError?: OnViewError;
+  /**
+   * Where writes are announced — the process's (`processChanges`, @sincpro/client-framework),
+   * which every transport of the framework writes to, whoever sends: a screen, or a use case's
+   * generated client. The cache forgets what each write touches, and the screens read it again.
+   */
+  changes?: ChangeFeed;
 }) {
   // Installed once, before anything draws: the three tables are module state of their packages.
   useState(() => {
@@ -126,15 +135,21 @@ export function SincproApp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [transport],
   );
-  // What was read in one company is not the other's: a change of context forgets every answer
-  // before the screens read again (`FrameworkProvider` gives them another transport).
+  // What was read in one company is not the other's, and what anyone wrote is no longer what was
+  // read: a change of context forgets every answer, a write what it touched — whoever wrote it, a
+  // use case's client as much as a screen — before the screens read again.
   useEffect(() => {
     if (cache === false) return;
     const forgetting = cached as CachedTransport;
-    return processContext.watch(() => forgetting.invalidate());
+    const unwatch = processContext.watch(() => forgetting.invalidate());
+    const unfollow = changes.follow((change) => forgetting.changed(change));
+    return () => {
+      unwatch();
+      unfollow();
+    };
     // The cache is read once, as `cached` is.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cached]);
+  }, [cached, changes]);
   const own = useWorkspace();
   const workspace = given ?? own;
   const registry = useMemo(() => createRegistry(views), [views]);
@@ -148,6 +163,7 @@ export function SincproApp({
     <FrameworkProvider
       transport={cached}
       locale={language}
+      changes={changes}
       {...(metas === undefined ? {} : { metas })}
       {...(entities === undefined ? {} : { entities })}
       {...(timeZone === undefined ? {} : { timeZone })}

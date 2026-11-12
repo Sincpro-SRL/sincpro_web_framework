@@ -1,5 +1,8 @@
 import {
+  bindableTransport,
   type CallOptions,
+  type Change,
+  changeOf,
   type Entity,
   type Method,
   type One,
@@ -7,6 +10,7 @@ import {
   type Transport,
 } from "@sincpro/client-framework";
 import type { Criteria, Page } from "@sincpro/criteria";
+import { pathOf, touchedBy, under } from "@sincpro/web-framework/core/changes";
 
 /**
  * A transport that remembers what it read, for a while, and forgets it when something writes.
@@ -20,20 +24,32 @@ import type { Criteria, Page } from "@sincpro/criteria";
  *
  * What it keys on is the question as it travels — the route and the criteria — so two
  * different filters, orders or pages never share an answer. A read that fails is not kept.
- * Only completed answers are remembered: a request aborted half-way is simply not cached.
  *
- * A write forgets every collection its route NAMES, not only the first: «leave a tenant»
- * (`POST /users/{email}/tenants/{tenant}/leave`) changes the tenant's members as much as the
- * user. And a record's business events live on a route of their own (`/issues/{id}/events`):
- * with `entities`, a write under an entity's list also forgets its history, wherever it lives.
+ * A question asked again while its answer is on its way joins it: two panels opening one record,
+ * a picker beside a column, are one request. Each reader may give up on its own (its `signal`);
+ * the request is cancelled only when every one of them did. A write while it flies makes its
+ * answer old: it is handed to who waited, never kept, and the next reader asks again.
+ *
+ * Who wrote does not matter. A write through this transport forgets at once; one made elsewhere —
+ * a use case's generated client, another transport — is told with `changed`, which is what the
+ * process's change feed carries (`processChanges`, @sincpro/client-framework). What a write
+ * touches is `touchedBy`'s rule (`core/changes`): every collection its route names, and the
+ * history of each entity it writes under (`entities`).
+ *
+ * A run binds it like any transport of the framework (`bindableTransport`): what a use case reads
+ * through it carries the run's trace and the process's context (`sincpro-context`), whether the
+ * answer comes from memory or from the server.
  *
  *     const transport = cachedTransport(restTransport({ base: "/v1" }), { ttl: 30_000 });
- *     transport.invalidate("/facturas");   // forget an entity by hand (a push from the server)
+ *     processChanges.follow((change) => transport.changed(change));
+ *     transport.invalidate("/facturas");   // forget an entity by hand
  */
 export type CachedTransport = Transport & {
   /** Forget every answer whose route lies under this path: `"/facturas"` forgets the list,
    *  every page and filter of it, and every record under it — not `"/facturas-events"`. */
   invalidate: (path?: string) => void;
+  /** A write made elsewhere: forget what it touched, as a write through here does. */
+  changed: (change: Change) => void;
 };
 
 export type CacheOptions = {
@@ -47,27 +63,15 @@ export type CacheOptions = {
 
 type Entry = { at: number; answer: unknown };
 
-function pathOf(route: string): string {
-  return route.split("?")[0] ?? route;
-}
-
-/** `route` is `path` or lies under it: `"/facturas"` holds `"/facturas/F-1"`, never `"/facturas-events"`. */
-function under(route: string, path: string): boolean {
-  const own = pathOf(route);
-  return own === path || own.startsWith(path.endsWith("/") ? path : `${path}/`);
-}
-
-/** What a write may have changed: every segment of its route as a collection, and the history
- *  of each entity it writes under. A segment that is a key (`/F-1`) forgets nothing. */
-function touchedBy(route: string, entities: readonly Entity[]): string[] {
-  const path = pathOf(route);
-  const segments = path.split("/").filter((one) => one !== "");
-  const history = entities
-    .filter((one) => one.history !== undefined && under(path, pathOf(one.list)))
-    // The route up to its first key: `/issue-events/{id}` forgets `/issue-events`.
-    .map((one) => pathOf(one.history ?? "").split("/{")[0] ?? "");
-  return [...segments.map((one) => `/${one}`), ...history];
-}
+/** One request every reader of the same question waits for. */
+type Flight = {
+  answer: Promise<unknown>;
+  aborter: AbortController;
+  /** Readers still waiting; at none, the request is cancelled. */
+  waiting: number;
+  /** A write landed while it flew: its answer is handed over, never kept. */
+  stale: boolean;
+};
 
 export function cachedTransport(
   transport: Transport,
@@ -75,35 +79,91 @@ export function cachedTransport(
 ): CachedTransport {
   const ttl = options.ttl ?? 30_000;
   const now = options.now ?? (() => Date.now());
+  const entities = options.entities ?? [];
   const entries = new Map<string, Entry>();
+  const flights = new Map<string, Flight>();
 
-  async function remembered<A>(key: string, read: () => Promise<A>): Promise<A> {
+  /** The answer to `key`: kept while fresh; else the request already flying for it; else a new one. */
+  function remembered<A>(
+    key: string,
+    read: (signal: AbortSignal) => Promise<A>,
+    signal?: AbortSignal,
+  ): Promise<A> {
+    if (signal?.aborted) return Promise.reject(signal.reason);
     const kept = entries.get(key);
-    if (kept !== undefined && now() - kept.at < ttl) return kept.answer as A;
-    const answer = await read();
-    entries.set(key, { at: now(), answer });
-    return answer;
+    if (kept !== undefined && now() - kept.at < ttl) return Promise.resolve(kept.answer as A);
+    return awaited(key, flights.get(key) ?? fly(key, read), signal) as Promise<A>;
   }
 
-  const entities = options.entities ?? [];
+  function fly(key: string, read: (signal: AbortSignal) => Promise<unknown>): Flight {
+    const aborter = new AbortController();
+    const flight: Flight = { answer: Promise.resolve(), aborter, waiting: 0, stale: false };
+    flight.answer = read(aborter.signal)
+      .then((answer) => {
+        if (!flight.stale) entries.set(key, { at: now(), answer });
+        return answer;
+      })
+      .finally(() => {
+        if (flights.get(key) === flight) flights.delete(key);
+      });
+    // Every reader may have given up: the cancelled request then has nobody to tell.
+    flight.answer.catch(() => undefined);
+    flights.set(key, flight);
+    return flight;
+  }
 
-  /** Forget every answer under any of `paths` — one walk over the entries, whatever their
-   *  number. A path with a query (`/projects?tenant_id=acme`) forgets its whole collection. */
+  /** `flight`'s answer for one reader, who may give up alone; the last one to go cancels it. */
+  function awaited(key: string, flight: Flight, signal?: AbortSignal): Promise<unknown> {
+    flight.waiting += 1;
+    if (signal === undefined) return flight.answer;
+    return new Promise((resolve, reject) => {
+      const leave = () => {
+        flight.waiting -= 1;
+        if (flight.waiting === 0) {
+          if (flights.get(key) === flight) flights.delete(key);
+          flight.aborter.abort(signal.reason);
+        }
+        reject(signal.reason);
+      };
+      signal.addEventListener("abort", leave, { once: true });
+      flight.answer.then(
+        (answer) => {
+          signal.removeEventListener("abort", leave);
+          resolve(answer);
+        },
+        (error: unknown) => {
+          signal.removeEventListener("abort", leave);
+          reject(error);
+        },
+      );
+    });
+  }
+
+  /** Forget every answer under any of `paths`, and leave behind the ones still flying there —
+   *  one walk over each, whatever their number. A path with a query forgets its collection. */
   const forget = (paths: readonly string[]) => {
     const targets = paths.map(pathOf);
-    for (const key of [...entries.keys()]) {
-      // `list <route> <criteria>` / `one <route>`: the route is the second word.
-      const route = key.split(" ", 2)[1] ?? "";
-      if (targets.some((path) => under(route, path))) entries.delete(key);
+    // `list <route> <criteria>` / `one <route>`: the route is the second word.
+    const touched = (key: string) =>
+      targets.some((path) => under(key.split(" ", 2)[1] ?? "", path));
+    for (const key of [...entries.keys()]) if (touched(key)) entries.delete(key);
+    for (const [key, flight] of [...flights]) {
+      if (!touched(key)) continue;
+      flight.stale = true;
+      flights.delete(key);
     }
   };
 
+  const changed = (change: Change) => forget(touchedBy(change.route, entities));
+
   const invalidate = (path?: string) => {
-    if (path === undefined) return entries.clear();
-    forget([path]);
+    if (path !== undefined) return forget([path]);
+    entries.clear();
+    for (const flight of flights.values()) flight.stale = true;
+    flights.clear();
   };
 
-  return {
+  return bindableTransport({
     // A call's own headers (a use case's trace) never change the answer: they travel, and the
     // answer is kept by the question alone.
     list<T>(
@@ -112,12 +172,18 @@ export function cachedTransport(
       signal?: AbortSignal,
       options?: CallOptions,
     ): Promise<Page<T>> {
-      return remembered(`list ${route} ${JSON.stringify(criteria)}`, () =>
-        transport.list<T>(route, criteria, signal, options),
+      return remembered(
+        `list ${route} ${JSON.stringify(criteria)}`,
+        (flying) => transport.list<T>(route, criteria, flying, options),
+        signal,
       );
     },
     one<T>(route: string, signal?: AbortSignal, options?: CallOptions): Promise<One<T>> {
-      return remembered(`one ${route}`, () => transport.one<T>(route, signal, options));
+      return remembered(
+        `one ${route}`,
+        (flying) => transport.one<T>(route, flying, options),
+        signal,
+      );
     },
     // A read of the context's own (`GET /me`) is not an entity's: no write forgets it, so it is
     // never kept — it goes to the server every time.
@@ -134,15 +200,16 @@ export function cachedTransport(
       signal?: AbortSignal,
       sending?: SendOptions,
     ) {
-      // A preview writes nothing; anything else may have changed what was read.
-      const preview = route.endsWith("/preview");
       try {
         return await transport.send<T>(method, route, body, signal, sending);
       } finally {
-        // Even a refused write may have changed something (a 409 says someone else did).
-        if (!preview) forget(touchedBy(route, entities));
+        // Even a refused write may have changed something (a 409 says someone else did); a
+        // preview or a dry run changes nothing (`changeOf`).
+        const change = changeOf(method, route, body);
+        if (change !== undefined) changed(change);
       }
     },
     invalidate,
-  };
+    changed,
+  });
 }

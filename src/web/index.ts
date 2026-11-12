@@ -49,6 +49,7 @@ export {
 } from "@sincpro/web-framework/web/record/opening";
 export { countOf, factsOf, RecordLines } from "@sincpro/web-framework/web/record/record";
 export { RelatedList } from "@sincpro/web-framework/web/record/RelatedList";
+export { ServiceButton } from "@sincpro/web-framework/web/record/ServiceButton";
 export { cardOf, relationOf } from "@sincpro/web-framework/web/record/summary";
 export { Refused } from "@sincpro/web-framework/web/Refused";
 export {

@@ -1,4 +1,5 @@
 import {
+  bindableTransport,
   type CallOptions,
   configureProcess,
   memoryTransport,
@@ -47,13 +48,14 @@ function serverByCompany() {
     const company = header === undefined ? "1" : String(JSON.parse(header).company_id ?? "1");
     return companies[company] ?? companies["1"]!;
   };
-  const transport: Transport = {
+  // A transport of the platform's own: it says a run may bind it, so the run's context reaches it.
+  const transport: Transport = bindableTransport({
     list: (route, criteria, signal, options) =>
       companyOf(options).list(route, criteria, signal, options),
     one: (route, signal, options) => companyOf(options).one(route, signal, options),
     send: (method, route, body, signal, options) =>
       companyOf(options).send(method, route, body, signal, options),
-  };
+  });
   return { transport, said };
 }
 

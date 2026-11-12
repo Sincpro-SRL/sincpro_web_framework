@@ -5,6 +5,7 @@ import type { GroupLevel } from "@sincpro/web-framework/core/list";
 import { measuresOf, sumsOf } from "@sincpro/web-framework/core/measure";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
+import { useWrites } from "@sincpro/web-framework/react/useWrites";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
@@ -90,6 +91,8 @@ export function useGroups<T extends AnyRecord>(
   const { pagination: _page, ...asked } = listing.question;
   const question = JSON.stringify(asked);
   const route = listing.route;
+  // Written by anyone — a save, a use case, a panel beside: the groups are counted again.
+  const writes = useWrites(route);
   const sums = (options.sums ?? sumsOf(listing.meta)).join(",");
   // What adds up by default is read from the model: without it yet, asking now and again when
   // it arrives would be two questions — and the groups on screen replaced under the pointer.
@@ -125,7 +128,7 @@ export function useGroups<T extends AnyRecord>(
       },
     );
     return () => aborter.abort();
-  }, [transport, route, question, levels, sums, waiting, context]);
+  }, [transport, route, question, levels, sums, waiting, context, writes]);
 
   /** One page of a group: the first (`after` null) or the one the cursor points at. */
   const read = useCallback(

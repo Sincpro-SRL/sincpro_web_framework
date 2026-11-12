@@ -4,6 +4,7 @@ import { type Entity, listRoute } from "@sincpro/client-framework";
 import type { AnyRecord, Criteria } from "@sincpro/criteria";
 import { type HistoryEntry, historyOf } from "@sincpro/web-framework/core/history";
 import { useFramework } from "@sincpro/web-framework/react/context";
+import { useWrites } from "@sincpro/web-framework/react/useWrites";
 import { type DependencyList, useEffect, useState } from "react";
 
 /**
@@ -29,6 +30,10 @@ export function useHistory<T extends AnyRecord>(
   const { transport, locale, context } = useFramework();
   const [entries, setEntries] = useState<HistoryEntry[] | undefined>(undefined);
   const history = entity.history;
+  // A write under the record — anyone's — adds a fact to its history: read it again.
+  const writes = useWrites(
+    history === undefined || id === "" ? undefined : listRoute(history, { id }),
+  );
 
   useEffect(() => {
     if (history === undefined || id === "") {
@@ -46,7 +51,7 @@ export function useHistory<T extends AnyRecord>(
     );
     return () => aborter.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the caller names what reloads it
-  }, [transport, history, id, locale, context, ...deps]);
+  }, [transport, history, id, locale, context, writes, ...deps]);
 
   return entries;
 }

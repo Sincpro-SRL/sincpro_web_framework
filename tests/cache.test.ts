@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-import { memoryTransport, pathFor, type Transport } from "@sincpro/client-framework";
+import { BIND, memoryTransport, pathFor, type Transport } from "@sincpro/client-framework";
 import { cachedTransport, type CacheOptions } from "@sincpro/web-framework";
 import { test } from "vitest";
 
@@ -121,4 +121,93 @@ test("forgetting a list route with its params forgets that collection", async ()
   transport.invalidate("/projects?tenant_id=acme");
   await transport.list("/projects?tenant_id=acme", {});
   assert.equal(asked.length, 2, "the list was asked again");
+});
+
+test("a write made elsewhere — a use case's own client — is told with `changed` and forgets the same", async () => {
+  const { transport, asked } = anyServer({});
+  await transport.list("/issues?project_id=acme", {});
+  await transport.list("/projects", {});
+  // The write went through another transport; the process's change feed tells the cache.
+  transport.changed({ method: "POST", route: "/issues/acme-7/cancel" });
+  await transport.list("/issues?project_id=acme", {});
+  await transport.list("/projects", {});
+  assert.deepEqual(asked, [
+    "/issues?project_id=acme",
+    "/projects",
+    "/issues?project_id=acme",
+  ]);
+});
+
+test("a dry run through the cache changes nothing, as a preview does", async () => {
+  const { transport, asked } = anyServer({});
+  await transport.list("/facturas", {});
+  await transport.send("POST", "/facturas/F-1/cancel", { dry_run: true });
+  await transport.list("/facturas", {});
+  assert.equal(asked.length, 1);
+});
+
+/** A server whose answers wait until the test lets them go, each read counted. */
+function heldServer() {
+  const asked: { route: string; signal: AbortSignal | undefined }[] = [];
+  const pending: (() => void)[] = [];
+  const inner: Transport = {
+    list: (route, _criteria, signal) => {
+      asked.push({ route, signal });
+      return new Promise((answer, refuse) => {
+        signal?.addEventListener("abort", () => refuse(signal.reason));
+        pending.push(() => answer({ rows: [{ id: asked.length }], meta: null } as never));
+      });
+    },
+    one: async () => ({ record: {} }) as never,
+    send: async () => ({}) as never,
+  };
+  const release = () => {
+    for (const answer of pending.splice(0)) answer();
+  };
+  return { transport: cachedTransport(inner, {}), asked, release };
+}
+
+test("the same question asked again while its answer flies joins it: one request", async () => {
+  const { transport, asked, release } = heldServer();
+  const first = transport.list("/facturas", {});
+  const second = transport.list("/facturas", {});
+  release();
+  const [a, b] = await Promise.all([first, second]);
+  assert.equal(asked.length, 1);
+  assert.deepEqual(a, b);
+});
+
+test("a reader who gives up leaves alone; the last one to leave cancels the request", async () => {
+  const { transport, asked, release } = heldServer();
+  const leaving = new AbortController();
+  const staying = transport.list("/facturas", {}, new AbortController().signal);
+  const gone = transport.list("/facturas", {}, leaving.signal);
+  leaving.abort();
+  await assert.rejects(gone);
+  assert.equal(asked[0]?.signal?.aborted, false, "someone still waits: the request goes on");
+  release();
+  await staying;
+
+  const alone = new AbortController();
+  const lonely = transport.list("/clientes", {}, alone.signal);
+  alone.abort();
+  await assert.rejects(lonely);
+  assert.equal(asked[1]?.signal?.aborted, true, "nobody waits: the request is cancelled");
+});
+
+test("a write while a read flies: its answer is handed over but never kept", async () => {
+  const { transport, asked, release } = heldServer();
+  const before = transport.list("/facturas", {});
+  await transport.send("POST", "/facturas/F-1/confirm", {});
+  const after = transport.list("/facturas", {});
+  release();
+  await Promise.all([before, after]);
+  assert.equal(asked.length, 2, "the reader after the write did not join the old answer");
+  await transport.list("/facturas", {});
+  assert.equal(asked.length, 2, "the answer read after the write is the one kept");
+});
+
+test("a run binds the cache like any transport of the framework", () => {
+  const { transport } = anyServer({});
+  assert.equal(typeof (transport as unknown as Record<symbol, unknown>)[BIND], "function");
 });
