@@ -7,9 +7,11 @@ import { useRecordLifecycle } from "@sincpro/web-framework/react/useRecordLifecy
 import { ActionButton } from "@sincpro/web-framework/web/record/ActionButton";
 
 /**
- * The record's own lifecycle as buttons — «Eliminar» when its entity declares sincpro_framework's
- * `Delete` — each asking the server first what it would do (its dry run) and doing it on
- * «Hacerlo». Nothing when the entity declares none, or the record is new.
+ * The record's own lifecycle as buttons — «Mover a la papelera» / «Restaurar» and «Eliminar»,
+ * each when its entity declares sincpro_framework's `Archive`, `Restore`, `Delete` — a deletion
+ * asking the server first what it would do (its dry run) and doing it on «Hacerlo», the trash's
+ * two on the click (they can be undone). Nothing when the entity declares none, or the record is
+ * new.
  *
  *     <Record.Actions>
  *       <RecordLifecycle record={member} onDone={() => api.close()} />
@@ -25,17 +27,25 @@ export function RecordLifecycle<T extends AnyRecord>({
   onDone,
 }: {
   record: RecordReading<T>;
-  /** Done: which action, the record gone. */
-  onDone?: (action: "delete") => void;
+  /** Done: which action — after `delete` and `archive` the record is out of every reading. */
+  onDone?: (action: "delete" | "archive" | "restore") => void;
 }) {
   const lifecycle = useRecordLifecycle(record);
   const copy = frameworkCopy().record;
-  if (lifecycle.delete === undefined) return null;
+  const shown = (["archive", "restore", "delete"] as const).filter(
+    (one) => lifecycle[one] !== undefined,
+  );
+  if (shown.length === 0) return null;
   return (
-    <ActionButton
-      action={lifecycle.delete}
-      label={copy.delete}
-      onDone={() => onDone?.("delete")}
-    />
+    <>
+      {shown.map((one) => (
+        <ActionButton
+          key={one}
+          action={lifecycle[one]!}
+          label={copy[one]}
+          onDone={() => onDone?.(one)}
+        />
+      ))}
+    </>
   );
 }

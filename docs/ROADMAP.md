@@ -1645,6 +1645,19 @@ a body.
   - **client-framework 1.12.** The floor is 1.12. Its generator writes by layer since 1.10
     (`domain/generated`, `adapters/generated`), and the fixtures of story 40 were still the flat
     files of 1.9: `make codegen-fixtures` writes the layered ones now.
-- **Waiting**: the trash in the record and its list (`archive`, `restore` routes on the entity,
-  Sincpro-SRL/sincpro_client_framework#54), `entity.listRef` in place of `scopedRef`, and an
-  `EntityRef` field drawn as a link — the Meta does not mark one yet (asked of sincpro_framework).
+- **client-framework 2.0** (Sincpro-SRL/sincpro_client_framework#55) — and so web-framework 3.0,
+  its floor a major:
+  - **The trash.** `useRecordLifecycle` and `RecordLifecycle` add «Mover a la papelera» on a
+    record outside the trash (`entity.archive`) and «Restaurar» on one in it (`entity.restore`,
+    `archived_at` set), both on the click — they can be undone; `EntityRecord` closes the surface
+    after an archive. `trashOf(entity)` is the entity's own list under `archived_at` not null —
+    the backend's trash is the list route naming it — and each of its rows offers «Restaurar»
+    (`RESTORE`, the entity's `restore` route run by `useRowCommands`). Story 53, whose fake leaves
+    an archived record out of every reading that does not name `archived_at`, as the backend does.
+  - **`entity.listRef(cut, name)`** replaces `scopedRef`; `SCOPE_NAME_PARAM` and `scopeNameOf`
+    are client-framework's (one door). **Removed here: `scopedRef`, `SCOPE_NAME_PARAM`,
+    `scopeNameOf`.**
+  - **`ResourceRef`**: client-framework names the workspace's reference as composer does, and
+    `EntityRef` is sincpro_framework's text `bounded_context.Entity:key`.
+- **Waiting**: an `EntityRef` field drawn as a link, resolved with `Resolve` — the Meta does not
+  mark a field as one yet (asked of sincpro_framework, #261).

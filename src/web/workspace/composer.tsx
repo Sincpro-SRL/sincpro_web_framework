@@ -5,6 +5,7 @@ import {
   isEntityId,
   listRoute,
   NEW_PARAM,
+  scopeNameOf,
   scopeOfRef,
   type Transport,
 } from "@sincpro/client-framework";
@@ -17,7 +18,7 @@ import {
   type ViewSpec,
   type WorkspaceApi,
 } from "@sincpro/web-composer";
-import { type ListDefinition, scopeNameOf } from "@sincpro/web-framework/core/list";
+import type { ListDefinition } from "@sincpro/web-framework/core/list";
 import { lookupOf } from "@sincpro/web-framework/core/lookup";
 import { ListScopeProvider } from "@sincpro/web-framework/react/scope";
 import { useListing } from "@sincpro/web-framework/react/useListing";
@@ -150,7 +151,7 @@ function recordOf<T extends AnyRecord>(
 
 /**
  * What a reference reads as before its view names it — a crumb whose view is not mounted, a
- * record still loading: the list is the view's name (with its cut's, `scopedRef`); a record
+ * record still loading: the list is the view's name (with its cut's, `entity.listRef`); a record
  * its key when the key is something a person reads (`F-2026-0004`), the view's name when it is
  * a machine's (a UUID v7, `isEntityId`).
  */
@@ -177,7 +178,7 @@ export function entityView<T extends AnyRecord>(
       const record =
         props.resource.id !== undefined || props.resource.params?.[NEW_PARAM] !== undefined;
       // A chooser opened by a picker offers only what the picker may choose, and a list opened
-      // under a cut (`scopedRef`) shows only what it cuts: the cut travels in the reference, and
+      // under a cut (`entity.listRef`) shows only what it cuts: the cut travels in the reference, and
       // the list — the application's own too — reads under it.
       const cut = record ? undefined : scopeOfRef(props.resource);
       const list =

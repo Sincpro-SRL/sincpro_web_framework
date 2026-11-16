@@ -22,7 +22,11 @@ import { pilesOf } from "@sincpro/web-framework/web/list/groups";
 import { OpenInMenu, openOptions, targetsFor } from "@sincpro/web-framework/web/list/openIn";
 import { pivotOf } from "@sincpro/web-framework/web/list/pivot";
 import { over, presentationOf } from "@sincpro/web-framework/web/list/presentation";
-import { type RowCommand, useRowCommands } from "@sincpro/web-framework/web/list/rowCommands";
+import {
+  RESTORE,
+  type RowCommand,
+  useRowCommands,
+} from "@sincpro/web-framework/web/list/rowCommands";
 import {
   Button,
   Callout,
@@ -41,6 +45,7 @@ import {
   SearchField,
   Tag,
 } from "@sincpro/web-ui";
+import { RotateCcw } from "lucide-react";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 
 /**
@@ -538,9 +543,27 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   const records = groups.buckets.reduce((sum, bucket) => sum + bucket.count, 0);
 
   // A row's actions: the entity's Commands, then whatever else the screen offers.
-  const rowCommands = useRowCommands(listing, commands);
+  // The trash (`trashOf`): each row is brought back from where it is, with the entity's own
+  // `restore` — it can be undone, so it runs on the click; the list reads again after.
+  const restoring =
+    listing.definition?.trash === true && listing.entity.restore !== undefined;
+  const offered = useMemo(
+    () =>
+      restoring
+        ? [
+            ...commands,
+            {
+              command: RESTORE,
+              label: frameworkCopy().record.restore,
+              icon: RotateCcw,
+            } as unknown as RowCommand<T, C>,
+          ]
+        : commands,
+    [restoring, commands],
+  );
+  const rowCommands = useRowCommands(listing, offered);
   const rowActions =
-    commands.length === 0 && askedRowActions === undefined
+    offered.length === 0 && askedRowActions === undefined
       ? undefined
       : (row: T) => [...rowCommands.rowActions(row), ...(askedRowActions?.(row) ?? [])];
   const refused = rowCommands.error === null ? null : explain(rowCommands.error);

@@ -42,6 +42,9 @@ export type RowCommand<T, C extends CommandBodies = CommandBodies> = {
   };
 }[keyof C & string];
 
+/** The row action of the trash (`trashOf`): the entity's `restore` route, run from the row. */
+export const RESTORE = "restore";
+
 export type RowCommands<T> = {
   rowActions: (row: T) => readonly RowAction[];
   /** The last refusal, until `dismiss`. */
@@ -63,7 +66,11 @@ export function useRowCommands<T extends AnyRecord, C extends CommandBodies = Co
 
   const run = useCallback(
     async (one: RowCommand<T>, row: T) => {
-      const route = entity.commands[one.command];
+      // «Restore» on a row of the trash runs the entity's own `restore` route (`trashOf`), unless
+      // the entity declares a Command of that name.
+      const route =
+        entity.commands[one.command] ??
+        (one.command === RESTORE ? entity.restore : undefined);
       if (route === undefined)
         throw new Error(`${entity.key} declares no command "${one.command}"`);
       const id = String(row[key]);

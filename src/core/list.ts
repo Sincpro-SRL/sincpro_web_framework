@@ -1,5 +1,6 @@
-import { type Entity, type EntityRef, SCOPE_PARAM } from "@sincpro/client-framework";
+import { type Entity, type ResourceRef } from "@sincpro/client-framework";
 import type { AnyRecord, Criteria, Expression, Grain, Sort } from "@sincpro/criteria";
+import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 
 /**
  * A named way of looking at an entity: «Por cobrar», «Borradores», «Mis tickets».
@@ -30,7 +31,7 @@ export type ListDefinition<T extends AnyRecord = AnyRecord> = {
   /** `domain:kind-id` — how the workspace and the definitions store refer to it. */
   key: string;
   /** Where the workspace opens it: a kind of its own, so ⌘K can offer it by name. */
-  ref: () => EntityRef;
+  ref: () => ResourceRef;
   title: string;
   description?: string;
   /** The fixed cut, ANDed under everything a person searches or filters. */
@@ -47,6 +48,8 @@ export type ListDefinition<T extends AnyRecord = AnyRecord> = {
   groupBy?: readonly GroupLevel[];
   /** The fields «Group by» offers, in this order — among those the model lets split the set. */
   groupable?: readonly string[];
+  /** The entity's trash (`trashOf`): each row offers «Restore» when the entity declares it. */
+  trash?: boolean;
 };
 
 /** A cut offered by name in the search bar: «sólo pagadas», «vencidas». */
@@ -92,40 +95,29 @@ export function scopeOf<T extends AnyRecord>(list: ListDefinition<T>): Criteria<
   };
 }
 
-/** What a list opened under a cut is named by — «María» of «Pagos · María». */
-export const SCOPE_NAME_PARAM = "of";
-
 /**
- * An entity's list as a workspace reference, opened under a cut: «this member's payments»,
- * what a smart button opens. With `name`, the list says whose it is: «Pagos · María» in its
- * heading, the tab and the breadcrumb — a cut that travels without one reads as the whole list.
+ * An entity's trash, as a named list: its archived records (sincpro_framework's `Archive`,
+ * `ArchivableMixin`), each row offering «Restore» when the entity declares `restore`.
  *
- *     api.open(scopedRef(payments, { field: "member_id", value: member.id }, member.name))
+ *     listView(trashOf(banners))            // «Papelera» in the workspace and ⌘K
  *
- * Context: the cut travels in the reference — client-framework's `SCOPE_PARAM`, the param a
- * chooser carries its cut in (`chooserRef(query, scope)`) — so it survives a reload and a link,
- * and the list opened from it, the application's own too, reads under it ANDed with everything
- * a person searches (`entityView` gives it to `useListing`). An application built this reference
- * by hand. It narrows what is shown; the server still decides what may be read.
+ * Context: every other reading leaves an archived record out; the backend's trash is a `Search`
+ * that names `archived_at` — the list route itself, under `archived_at` not null. So this is the
+ * entity's own list under that cut, never a route of its own, and the server still decides what
+ * comes back.
  */
-export function scopedRef<T extends AnyRecord>(
+export function trashOf<T extends AnyRecord>(
   entity: Entity<T>,
-  selection: Expression<T>,
-  name?: string,
-): EntityRef {
-  const list = entity.ref();
+  options: { title?: string } = {},
+): ListDefinition<T> {
   return {
-    ...list,
-    params: {
-      ...list.params,
-      [SCOPE_PARAM]: JSON.stringify(selection),
-      ...(name === undefined || name === "" ? {} : { [SCOPE_NAME_PARAM]: name }),
-    },
+    ...defineList(entity, {
+      id: "trash",
+      title: options.title ?? frameworkCopy().list.trash,
+      scope: {
+        selection: { field: "archived_at", operator: "is null", value: false } as never,
+      },
+    }),
+    trash: true,
   };
-}
-
-/** The name a reference's cut carries (`scopedRef(…, name)`), or nothing. */
-export function scopeNameOf(ref: Pick<EntityRef, "params">): string | undefined {
-  const name = ref.params?.[SCOPE_NAME_PARAM];
-  return name === undefined || name === "" ? undefined : name;
 }

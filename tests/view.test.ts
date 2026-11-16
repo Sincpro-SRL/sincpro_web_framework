@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 
-import { scopeOfRef, type Transport } from "@sincpro/client-framework";
+import { scopeNameOf, scopeOfRef, type Transport } from "@sincpro/client-framework";
 import type { ViewProps } from "@sincpro/web-composer";
-import { entityView, scopedRef, scopeNameOf } from "@sincpro/web-framework";
+import { entityView, trashOf } from "@sincpro/web-framework";
 import { test } from "vitest";
 
 import { facturaMeta, facturas } from "../stories/support/ventas";
@@ -75,11 +75,8 @@ test("what a reference reads as before its view names it", () => {
   // The list is the view's name; under a named cut, whose it is.
   assert.equal(title(facturas.ref()), "Facturas");
   const cut = { field: "customer_id", operator: "=", value: "C-004" } as const;
-  assert.equal(
-    title(scopedRef(facturas, cut, "Globex Bolivia")),
-    "Facturas · Globex Bolivia",
-  );
-  assert.equal(title(scopedRef(facturas, cut)), "Facturas");
+  assert.equal(title(facturas.listRef(cut, "Globex Bolivia")), "Facturas · Globex Bolivia");
+  assert.equal(title(facturas.listRef(cut)), "Facturas");
   // A record: its key when a person reads it, the view's name when it is a machine's.
   assert.equal(title(facturas.ref("F-2026-0004")), "F-2026-0004");
   assert.equal(title(facturas.ref("0192f5e0a1b27c3d8e4f5a6b7c8d9e0f")), "Facturas");
@@ -87,9 +84,22 @@ test("what a reference reads as before its view names it", () => {
 
 test("a list opened under a cut carries the cut and its name", () => {
   const cut = { field: "customer_id", operator: "=", value: "C-004" } as const;
-  const ref = scopedRef(facturas, cut, "Globex Bolivia");
+  const ref = facturas.listRef(cut, "Globex Bolivia");
   assert.equal(ref.id, undefined);
   assert.deepEqual(scopeOfRef(ref), cut);
   assert.equal(scopeNameOf(ref), "Globex Bolivia");
-  assert.equal(scopeNameOf(scopedRef(facturas, cut)), undefined);
+  assert.equal(scopeNameOf(facturas.listRef(cut)), undefined);
+});
+
+test("an entity's trash is its own list under archived_at not null, offering restore", () => {
+  const trash = trashOf(facturas);
+  assert.equal(trash.trash, true);
+  assert.equal(trash.entity, facturas);
+  assert.equal(trash.key, "ventas:factura-trash");
+  assert.deepEqual(trash.scope?.selection, {
+    field: "archived_at",
+    operator: "is null",
+    value: false,
+  });
+  assert.equal(trashOf(facturas, { title: "Anuladas" }).title, "Anuladas");
 });

@@ -3,9 +3,9 @@
 import {
   type Draft,
   type Entity,
-  type EntityRef,
   newEntityId,
   pathFor,
+  type ResourceRef,
   retryKeys,
   startingValuesOf,
   TransportError,
@@ -135,7 +135,7 @@ const PREVIEW_PAUSE = 300;
 
 export function useRecord<T extends AnyRecord>(
   entity: Entity<T>,
-  opened: string | EntityRef,
+  opened: string | ResourceRef,
 ): RecordReading<T> {
   const { transport, locale, metas, context } = useFramework();
   const given = typeof opened === "string" ? opened : (opened.id ?? "");
