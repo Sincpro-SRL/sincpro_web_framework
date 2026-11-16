@@ -184,11 +184,17 @@ export function EntityRecord<T extends AnyRecord>({
   const { meta, locale, edit } = reading;
   const layout = formOf(meta, entity.summary);
   const shown = fields ?? layout.fields;
-  // The record's own lifecycle (its `Delete`) beside the screen's commands; once it is gone the
-  // surface closes — every list that showed it reads again by itself.
+  // The record's own lifecycle (its `Delete`, its trash) beside the screen's commands; once it is
+  // out of every reading the surface closes — every list that showed it reads again by itself.
   const lifecycle =
-    reading.isNew || entity.delete === undefined ? null : (
-      <RecordLifecycle record={reading} onDone={() => api.close()} />
+    reading.isNew ||
+    (entity.delete === undefined &&
+      entity.archive === undefined &&
+      entity.restore === undefined) ? null : (
+      <RecordLifecycle
+        record={reading}
+        onDone={(done) => (done === "restore" ? reading.reload() : api.close())}
+      />
     );
   const own = actions?.(reading) ?? null;
   const ownActions =

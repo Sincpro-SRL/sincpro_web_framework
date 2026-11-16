@@ -185,6 +185,10 @@ built; this file is how to keep it.
   server reads `values` as the real `Edit` does (`applied` in `stories/support/servidor.ts`):
   when it filtered them by `changed`, stories passed while a stored record could not be edited
   against the real backend.
+- **An archived record is out of every reading but the trash** (sincpro_framework 3.37,
+  `ArchivableMixin`): the trash is the entity's own list naming `archived_at` (`trashOf`), never
+  a route of its own. A fake server must leave archived records out of any other reading
+  (story 53's transport), or a story passes while the real list still shows them.
 - **web-ui's `Picker` offers «see all…» only while it holds rows it does not draw** — never when
   given `onLoadMore`. `EntityPicker` does not pass it, so the chooser (the server search) is
   always reachable.

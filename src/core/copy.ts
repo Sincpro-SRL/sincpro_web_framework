@@ -16,6 +16,8 @@ export type FrameworkCopy = {
     items: (count: number, exact: boolean) => string;
   };
   list: {
+    /** The entity's trash: its archived records (`trashOf`). */
+    trash: string;
     loadMore: string;
     loading: string;
     /** «12 of 120»: what is on screen against what matches. */
@@ -60,6 +62,10 @@ export type FrameworkCopy = {
     add: string;
     /** The record's own `Delete` (its dry run is shown before it runs). */
     delete: string;
+    /** Into the entity's trash (`Archive`): out of every reading, nothing lost. */
+    archive: string;
+    /** Out of the trash (`Restore`): read again. */
+    restore: string;
   };
   picker: {
     /** The button beside a many2one that opens the chooser over the whole set. */
@@ -104,6 +110,7 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
     items: (count, exact) => `${count}${exact ? "" : "+"} ${count === 1 ? "item" : "items"}`,
   },
   list: {
+    trash: "Trash",
     loadMore: "Load more",
     loading: "Loading…",
     shown: (shown, total, exact) => `${shown} of ${total}${exact ? "" : "+"}`,
@@ -134,6 +141,8 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
     create: "New",
     add: "Add",
     delete: "Delete",
+    archive: "Move to the trash",
+    restore: "Restore",
   },
   picker: {
     browse: "Search all",
@@ -181,6 +190,7 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
       `${count}${exact ? "" : "+"} ${count === 1 ? "elemento" : "elementos"}`,
   },
   list: {
+    trash: "Papelera",
     loadMore: "Cargar más",
     loading: "Cargando…",
     shown: (shown, total, exact) => `${shown} de ${total}${exact ? "" : "+"}`,
@@ -213,6 +223,8 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
     create: "Nuevo",
     add: "Agregar",
     delete: "Eliminar",
+    archive: "Mover a la papelera",
+    restore: "Restaurar",
   },
   picker: {
     browse: "Buscar en todos",

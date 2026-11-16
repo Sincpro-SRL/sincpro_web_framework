@@ -4,7 +4,6 @@ import {
   entityView,
   factsOf,
   RelatedRecord,
-  scopedRef,
   SincproApp,
   useCount,
   useRecord,
@@ -25,7 +24,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          "Un registro que apunta a otro **por su clave sola** —el pago de una cuota, `payment_id`— se lee por su **nombre**: `RelatedRecord` lo pide una vez por clave y deja la clave al lado, como enlace que abre donde el workspace lo pone. En los hechos de un registro (`factsOf`) un many2one de una entidad declarada es ese mismo **enlace**, no un texto.\n\nY lo que **otros registros tienen de este** —«las facturas de este cliente (8)»— es un botón con su número: `useCount(entidad, criteria)` lo cuenta el **servidor** (una lista de una fila; «—» mientras no contesta, nunca 0), y `scopedRef(entidad, selección)` abre la lista de la entidad **bajo ese corte**, que viaja en la referencia: sobrevive a recargar y a un enlace, y nada de lo que se busque lo saca.",
+          "Un registro que apunta a otro **por su clave sola** —el pago de una cuota, `payment_id`— se lee por su **nombre**: `RelatedRecord` lo pide una vez por clave y deja la clave al lado, como enlace que abre donde el workspace lo pone. En los hechos de un registro (`factsOf`) un many2one de una entidad declarada es ese mismo **enlace**, no un texto.\n\nY lo que **otros registros tienen de este** —«las facturas de este cliente (8)»— es un botón con su número: `useCount(entidad, criteria)` lo cuenta el **servidor** (una lista de una fila; «—» mientras no contesta, nunca 0), y `entidad.listRef(selección, nombre)` (client-framework) abre la lista de la entidad **bajo ese corte**, que viaja en la referencia: sobrevive a recargar y a un enlace, y nada de lo que se busque lo saca.",
       },
     },
   },
@@ -81,7 +80,7 @@ function Cliente({ api, resource }: ViewProps) {
             icon={FileText}
             label="Facturas"
             {...(cuantas === null ? {} : { count: cuantas.value })}
-            onClick={() => api.open(scopedRef(facturas, suyas, cliente.record.name))}
+            onClick={() => api.open(facturas.listRef(suyas, cliente.record.name))}
           />
         </div>
       </Record.Paper>

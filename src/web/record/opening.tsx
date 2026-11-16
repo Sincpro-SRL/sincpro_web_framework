@@ -1,6 +1,6 @@
 "use client";
 
-import { type Entity, type EntityRef } from "@sincpro/client-framework";
+import { type Entity, type ResourceRef } from "@sincpro/client-framework";
 import { type AnyRecord, type Criteria, type Expression, merge } from "@sincpro/criteria";
 import { isList, type ListDefinition, scopeOf } from "@sincpro/web-framework/core/list";
 import type { OpenTarget } from "@sincpro/web-ui";
@@ -23,7 +23,7 @@ import { createContext, type ReactNode, useContext } from "react";
  * that already committed — the holder gives an opening without `choose`.
  */
 export type RecordOpening = {
-  open: (ref: EntityRef, to: OpenTarget) => void;
+  open: (ref: ResourceRef, to: OpenTarget) => void;
   /** Where it may open from here, the default first. */
   targets: readonly OpenTarget[];
   /** The form is not on a page — a panel, a peek, a modal: a list inside it starts as rows

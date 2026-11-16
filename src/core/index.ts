@@ -64,10 +64,8 @@ export {
   type ListDefinition,
   type ListSpec,
   type NamedFilter,
-  SCOPE_NAME_PARAM,
-  scopedRef,
-  scopeNameOf,
   scopeOf,
+  trashOf,
 } from "@sincpro/web-framework/core/list";
 export { lookupOf, type LookupOption } from "@sincpro/web-framework/core/lookup";
 export { detailOf, measuresOf, sumsOf } from "@sincpro/web-framework/core/measure";
