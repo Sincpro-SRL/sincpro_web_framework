@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import { presented, useCommand } from "@sincpro/web-framework";
 import { test } from "vitest";
 
-import { issues, projects } from "../stories/support/forge-contract/project/entities";
+import {
+  issues,
+  projects,
+} from "../stories/support/forge-contract/project/adapters/generated/entities";
 
 /**
  * Context: what @sincpro/client-framework generates from a contract is proven there, byte for

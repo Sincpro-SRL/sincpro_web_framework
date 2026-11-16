@@ -18,6 +18,7 @@ export {
   type CommandState,
   type Rehearsal,
   useCommand,
+  useRouteCommand,
 } from "@sincpro/web-framework/react/useCommand";
 export { useContextValues } from "@sincpro/web-framework/react/useContextValues";
 export { useCount } from "@sincpro/web-framework/react/useCount";
@@ -42,6 +43,11 @@ export {
   type RecordState,
   useRecord,
 } from "@sincpro/web-framework/react/useRecord";
+export {
+  type LifecycleAction,
+  type RecordLifecycleActions,
+  useRecordLifecycle,
+} from "@sincpro/web-framework/react/useRecordLifecycle";
 export { useRelated } from "@sincpro/web-framework/react/useRelated";
 export { type ServiceState, useService } from "@sincpro/web-framework/react/useService";
 export {

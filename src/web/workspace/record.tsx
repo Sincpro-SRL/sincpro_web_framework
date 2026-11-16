@@ -13,6 +13,7 @@ import { useHistory } from "@sincpro/web-framework/react/useHistory";
 import { type RecordReading, useRecord } from "@sincpro/web-framework/react/useRecord";
 import { useSummaryOf } from "@sincpro/web-framework/react/useSummary";
 import { dirtyOf, RecordField } from "@sincpro/web-framework/web/record/edit";
+import { RecordLifecycle } from "@sincpro/web-framework/web/record/RecordLifecycle";
 import { Refused } from "@sincpro/web-framework/web/Refused";
 import { useRecordInWorkspace } from "@sincpro/web-framework/web/workspace/workspace";
 import { Button, Callout, FormSection, Record, Skeleton } from "@sincpro/web-ui";
@@ -183,7 +184,20 @@ export function EntityRecord<T extends AnyRecord>({
   const { meta, locale, edit } = reading;
   const layout = formOf(meta, entity.summary);
   const shown = fields ?? layout.fields;
-  const ownActions = actions?.(reading) ?? null;
+  // The record's own lifecycle (its `Delete`) beside the screen's commands; once it is gone the
+  // surface closes — every list that showed it reads again by itself.
+  const lifecycle =
+    reading.isNew || entity.delete === undefined ? null : (
+      <RecordLifecycle record={reading} onDone={() => api.close()} />
+    );
+  const own = actions?.(reading) ?? null;
+  const ownActions =
+    own === null && lifecycle === null ? null : (
+      <>
+        {own}
+        {lifecycle}
+      </>
+    );
   const tabs = pages ?? layout.pages;
 
   return (

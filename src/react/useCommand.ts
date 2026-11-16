@@ -58,10 +58,22 @@ export function useCommand<
   N extends keyof C & string = keyof C & string,
   A extends CommandAnswers = CommandAnswers,
 >(entity: Entity<T, C, A>, name: N): CommandState<AnswerOf<R, A, N>, C[N]> {
-  const { transport } = useFramework();
   // A name outside the declared ones still reaches here from untyped code: say which.
   const route: WriteRoute | undefined = entity.commands[name];
   if (route === undefined) throw new Error(`${entity.key} declares no command "${name}"`);
+  return useRouteCommand<AnswerOf<R, A, N>, C[N]>(route, entity.key);
+}
+
+/**
+ * One write route of an entity run as a Command — what `useCommand` runs for a declared Command,
+ * and `useRecordLifecycle` for the record's own `delete`. `route` may be absent (an entity that
+ * declares none): the hook is still called, and running it is refused naming the entity.
+ */
+export function useRouteCommand<R, B extends AnyRecord = AnyRecord>(
+  route: WriteRoute | undefined,
+  owner: string,
+): CommandState<R, B> {
+  const { transport } = useFramework();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [rehearsal, setRehearsal] = useState<Rehearsal | null>(null);
@@ -83,6 +95,7 @@ export function useCommand<
       body: AnyRecord,
       gesture: RetryKeys,
     ): Promise<A | undefined> => {
+      if (route === undefined) throw new Error(`${owner} declares no route for this`);
       setBusy(true);
       setError(null);
       const idempotencyKey = gesture.keyFor({ id, body });
@@ -106,11 +119,11 @@ export function useCommand<
         if (mounted.current) setBusy(false);
       }
     },
-    [transport, route],
+    [transport, route, owner],
   );
 
   return {
-    run: (id, body) => send<AnswerOf<R, A, N>>(id, body ?? {}, keys.current),
+    run: (id, body) => send<R>(id, body ?? {}, keys.current),
     rehearse: async (id, body) => {
       const answer = await send<Rehearsal>(id, { ...body, dry_run: true }, retryKeys());
       if (answer !== undefined && mounted.current) setRehearsal(answer);

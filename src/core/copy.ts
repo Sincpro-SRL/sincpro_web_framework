@@ -58,6 +58,8 @@ export type FrameworkCopy = {
     create: string;
     /** A record's one2many: the button that opens the form of a new related record. */
     add: string;
+    /** The record's own `Delete` (its dry run is shown before it runs). */
+    delete: string;
   };
   picker: {
     /** The button beside a many2one that opens the chooser over the whole set. */
@@ -131,6 +133,7 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
     creating: (name) => (name ? `${name} · new` : "New"),
     create: "New",
     add: "Add",
+    delete: "Delete",
   },
   picker: {
     browse: "Search all",
@@ -209,6 +212,7 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
     creating: (name) => (name ? `${name} · nuevo` : "Nuevo"),
     create: "Nuevo",
     add: "Agregar",
+    delete: "Eliminar",
   },
   picker: {
     browse: "Buscar en todos",

@@ -195,6 +195,33 @@ test("a history reads the event's own label and says the rest with the events' w
   });
 });
 
+test("a fact of sincpro_framework 3.37 says who did it, and its envelope stays out of the detail", () => {
+  const [entry] = historyOf(
+    [
+      {
+        name: "ventas.v1.deleted",
+        id: "e2",
+        created_at: "2026-11-16T23:00:00Z",
+        entity_type: "Factura",
+        entity_id: "F-1",
+        entity_display: "F-1",
+        actor: "juan",
+        label: { default: "Deleted", es: "Se eliminó" },
+        to_state: "Anulada",
+      },
+    ],
+    eventoMeta,
+    "es",
+  );
+  assert.deepEqual(entry, {
+    id: "e2",
+    label: "Se eliminó",
+    at: "2026-11-16T23:00:00Z",
+    by: "juan",
+    detail: "Ahora: Anulada",
+  });
+});
+
 test("a fact without a label reads as a change, never as its id", () => {
   const [entry] = historyOf(
     [{ id: "01a18fc5-9e", created_at: "2026-10-31T12:00:00Z", entity_id: "F-1" }],
