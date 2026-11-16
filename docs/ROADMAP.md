@@ -1562,13 +1562,19 @@ the ten were pieces that existed already or a wrong reading of one.
 
 - **Fixed here**:
   - **Editing a stored record through `Edit`.** The form sent the record whole — `id`, `version`,
-    `created_at`, each line's own — and sincpro_framework's `apply_values` refuses a field the
-    framework writes at every level, and refuses a relation read as a page written back. A stored
-    record could be created and never edited. Now a stored record sends what changed, without
-    what the model marks `readonly` (a line keeps its identity): `editedOf`. The backend puts it
-    over what it stored and the caller's draft, so nothing else is needed. The fake server's `Edit`
-    filtered `values` by `changed`, which hid it; it now reads values as `apply_values` does
-    (`applied`), and story 12 failed without the fix.
+    `created_at`, each line's own. sincpro_framework 3.36 refused a field the framework writes at
+    every level; 3.37 (sincpro_framework#262) leaves that echo out but, rightly, still refuses a
+    relation read as a page written back. A stored record could be created and never edited. Now
+    a stored record sends what changed, without what the model marks `readonly` (a line keeps
+    its identity): `editedOf` — right on both versions. The fake server's `Edit` filtered
+    `values` by `changed`, which hid it; it now reads values as 3.37's `Edit` does (`applied`),
+    and story 12 (an invoice whose lines came as a page) fails without the fix.
+  - **What composer#15 left here.** A record's name the screen's way, for a model with no
+    display field (`entityView title`, `EntityRecord title`, `useRecordScreen` /
+    `useRecordInWorkspace` `{ title }`); a reference reads as the view's name while its record
+    is a machine's key (a UUID v7), as its key otherwise; a list opened under a cut says whose
+    it is (`scopedRef(entity, cut, name)` → «Facturas · Globex Bolivia» in its heading and tab).
+    Story 50.
   - **The contract's widget.** `RecordField` and the lines editor honour `widget: "textarea"`
     (web-ui's `TextArea`), except in a cell. Only the framework's own names: one an application
     registers is drawn with `as`. Story 49.

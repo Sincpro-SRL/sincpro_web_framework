@@ -81,7 +81,7 @@ function Cliente({ api, resource }: ViewProps) {
             icon={FileText}
             label="Facturas"
             {...(cuantas === null ? {} : { count: cuantas.value })}
-            onClick={() => api.open(scopedRef(facturas, suyas))}
+            onClick={() => api.open(scopedRef(facturas, suyas, cliente.record.name))}
           />
         </div>
       </Record.Paper>
@@ -110,9 +110,12 @@ function FacturaConHechos({ api, resource }: ViewProps) {
 function App({
   start,
   factura = Factura,
+  cliente = "propio",
 }: {
   start: "factura" | "cliente";
   factura?: (props: ViewProps) => React.JSX.Element;
+  /** The customer's record: this story's own, or the framework's named the screen's way. */
+  cliente?: "propio" | "del-framework";
 }) {
   const transport = useMemo(() => {
     const servidor = servidorVentas();
@@ -122,9 +125,15 @@ function App({
     () => [
       // The invoices' own list is the framework's: it reads under the cut the reference carries.
       entityView(facturas, { transport, name: "Facturas", record: factura }),
-      entityView(clientes, { transport, name: "Clientes", record: Cliente }),
+      cliente === "propio"
+        ? entityView(clientes, { transport, name: "Clientes", record: Cliente })
+        : entityView(clientes, {
+            transport,
+            name: "Clientes",
+            title: (one) => `${String(one["name"])} · ${String(one["city"])}`,
+          }),
     ],
-    [transport, factura],
+    [transport, factura, cliente],
   );
   return (
     <div className="flex h-dvh min-h-0 flex-col bg-ground">
@@ -159,8 +168,11 @@ export const LoQueOtrosTienenDeEsteSeCuentaYSeAbre: Story = {
     const boton = await canvas.findByRole("button", { name: /Facturas/ });
     await waitFor(() => expect(boton).toHaveTextContent("8"));
     await userEvent.click(boton);
-    // The invoices' list, under the cut: eight rows (under 200 every row is drawn), every one
-    // of this customer.
+    // The invoices' list, under the cut and named by it: eight rows (under 200 every row is
+    // drawn), every one of this customer.
+    await expect(
+      await canvas.findByRole("heading", { name: "Facturas · Globex Bolivia" }),
+    ).toBeVisible();
     const filas = () => within(canvas.getByRole("table")).getAllByRole("row").slice(1);
     await waitFor(() => expect(filas()).toHaveLength(8));
     for (const fila of filas()) await expect(fila).toHaveTextContent("Globex Bolivia");
@@ -176,5 +188,16 @@ export const UnHechoQueApuntaAOtroEsUnEnlace: Story = {
     await userEvent.click(await canvas.findByRole("link", { name: "Globex Bolivia" }));
     const modal = await canvas.findByRole("dialog", { name: "Globex Bolivia" });
     await expect(await within(modal).findByText("Sucre")).toBeVisible();
+  },
+};
+
+export const UnRegistroSeLlamaComoDiceLaPantalla: Story = {
+  render: () => <App start="cliente" cliente="del-framework" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // The framework's record, named the screen's way (`entityView title`): heading and tab.
+    await expect(
+      await canvas.findByRole("heading", { name: "Globex Bolivia · Sucre" }),
+    ).toBeVisible();
   },
 };

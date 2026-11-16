@@ -269,13 +269,14 @@ export function creationOf(meta: Meta | null | undefined, values: AnyRecord): An
  *       ->  { discount: "5", lines: [{ id: "l1", qty: 2 }, { qty: 1 }] }
  *
  * Context: the form used to send the record whole, as it holds it — `id`, `version`,
- * `created_at` and each line's own among them. sincpro_framework's `apply_values` refuses a
- * field the framework writes at every level (a held line is edited with it too), and refuses a
- * relation read as a page (`{items, count, cursor}`) written back, since it would remove every
- * record the page did not bring. So a stored record could be created and never edited. The
- * backend keeps what it stored and the caller's draft, and puts this edit on top of both: what
- * changed is all it needs. The model marks the fields the framework writes `readonly` (and the
- * computed ones), so nothing here names them. A new record goes through `creationOf`.
+ * `created_at` and each line's own among them. sincpro_framework up to 3.36 refused a field the
+ * framework writes at every level (`apply_values`); 3.37 leaves that echo out, but still
+ * refuses a relation read as a page (`{items, count, cursor}`) written back, since it would
+ * remove every record the page did not bring. So a stored record could be created and never
+ * edited. The backend keeps what it stored and the caller's draft, and puts this edit on top of
+ * both: what changed is all it needs, on either version. The model marks the fields the
+ * framework writes `readonly` (and the computed ones), so nothing here names them. A new record
+ * goes through `creationOf`.
  */
 export function editedOf(
   meta: Meta | null | undefined,

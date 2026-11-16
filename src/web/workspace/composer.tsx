@@ -2,6 +2,7 @@
 
 import {
   type Entity,
+  isEntityId,
   listRoute,
   NEW_PARAM,
   scopeOfRef,
@@ -9,13 +10,14 @@ import {
 } from "@sincpro/client-framework";
 import { type AnyRecord, matching, type Meta } from "@sincpro/criteria";
 import {
+  type ResourceRef,
   type SearchHit,
   usePhone,
   type ViewProps,
   type ViewSpec,
   type WorkspaceApi,
 } from "@sincpro/web-composer";
-import type { ListDefinition } from "@sincpro/web-framework/core/list";
+import { type ListDefinition, scopeNameOf } from "@sincpro/web-framework/core/list";
 import { lookupOf } from "@sincpro/web-framework/core/lookup";
 import { ListScopeProvider } from "@sincpro/web-framework/react/scope";
 import { useListing } from "@sincpro/web-framework/react/useListing";
@@ -70,6 +72,10 @@ export type EntityViewOptions = {
   goto?: boolean;
   /** Known before any search: no request asks for it. */
   meta?: Meta;
+  /** A record's name, the screen's way — for a model with no display field (a singleton reads
+   *  as its key). Used by the default record; a record of its own passes it to
+   *  `useRecordInWorkspace` / `useRecordScreen`. */
+  title?: (record: AnyRecord) => string | null;
   actions?: ViewSpec["actions"];
   /** ⌘K's question: the list route's params that say which records it searches. */
   search?: { params?: Readonly<Record<string, string>> };
@@ -112,18 +118,48 @@ function InWorkspace({ api, children }: { api: WorkspaceApi; children: ReactNode
   return <RecordOpeningProvider value={opening}>{children}</RecordOpeningProvider>;
 }
 
-/** The entity's list when the application writes none. */
-function listOf<T extends AnyRecord>(entity: Entity<T>): ComponentType<ViewProps> {
-  return function DefaultList({ api }: ViewProps) {
-    return <EntityList listing={useListing(entity)} api={api} />;
+/** The entity's list when the application writes none: opened under a named cut, it says
+ *  whose it is («Facturas · Globex Bolivia»). */
+function listOf<T extends AnyRecord>(
+  entity: Entity<T>,
+  name: string,
+): ComponentType<ViewProps> {
+  return function DefaultList({ api, resource }: ViewProps) {
+    const of = scopeNameOf(resource);
+    return (
+      <EntityList
+        listing={useListing(entity)}
+        api={api}
+        {...(of === undefined ? {} : { title: `${name} · ${of}` })}
+      />
+    );
   };
 }
 
 /** The entity's record when the application writes none. */
-function recordOf<T extends AnyRecord>(entity: Entity<T>): ComponentType<ViewProps> {
+function recordOf<T extends AnyRecord>(
+  entity: Entity<T>,
+  title: ((record: AnyRecord) => string | null) | undefined,
+): ComponentType<ViewProps> {
   return function DefaultRecord(props: ViewProps) {
-    return <EntityRecord {...props} entity={entity} />;
+    return (
+      <EntityRecord {...props} entity={entity} {...(title === undefined ? {} : { title })} />
+    );
   };
+}
+
+/**
+ * What a reference reads as before its view names it — a crumb whose view is not mounted, a
+ * record still loading: the list is the view's name (with its cut's, `scopedRef`); a record
+ * its key when the key is something a person reads (`F-2026-0004`), the view's name when it is
+ * a machine's (a UUID v7, `isEntityId`).
+ */
+function titleOf(ref: ResourceRef, name: string): string {
+  if (ref.id === undefined) {
+    const of = scopeNameOf(ref);
+    return of === undefined ? name : `${name} · ${of}`;
+  }
+  return isEntityId(ref.id) ? name : ref.id;
 }
 
 export function entityView<T extends AnyRecord>(
@@ -135,8 +171,8 @@ export function entityView<T extends AnyRecord>(
 
   async function screens(): Promise<ComponentType<ViewProps>> {
     const loaded = options.load === undefined ? {} : await options.load();
-    const List = loaded.list ?? options.list ?? listOf(entity);
-    const One = loaded.record ?? options.record ?? recordOf(entity);
+    const List = loaded.list ?? options.list ?? listOf(entity, options.name);
+    const One = loaded.record ?? options.record ?? recordOf(entity, options.title);
     return function EntityView(props: ViewProps) {
       const record =
         props.resource.id !== undefined || props.resource.params?.[NEW_PARAM] !== undefined;
@@ -162,7 +198,7 @@ export function entityView<T extends AnyRecord>(
   return {
     domain: entity.domain,
     kind: entity.kind,
-    title: (ref) => ref.id ?? options.name,
+    title: (ref) => titleOf(ref, options.name),
     goto: options.goto ?? true,
     ...(options.icon === undefined ? {} : { icon: options.icon }),
     ...(options.actions === undefined ? {} : { actions: options.actions }),

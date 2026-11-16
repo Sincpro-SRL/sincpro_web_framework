@@ -58,9 +58,11 @@ const refuse = (route: string, status: number, problem: Record<string, unknown>)
   } as never);
 
 /**
- * What sincpro_framework's `apply_values` takes from a form's `values`: fields of the record,
- * never one the framework writes (`id`, `version`, the stamps), and a list of records whole —
- * the collection a reading answered is read as its items, and a PAGE of it is refused, since
+ * What sincpro_framework's `Edit` takes from a form's `values` (3.37, sincpro_framework#262):
+ * fields of the record; what the framework writes (`id`, `version`, the stamps) is the record's
+ * ECHO — left out, never assigned — but an `id` other than the record's is refused, since it
+ * would put one record's values on another; and a list of records goes whole — the collection a
+ * reading answered is read as its items, and a PAGE of it is refused (`_sent_whole`), since
  * written back it would remove every record it did not bring. Each refusal is a 422 pointing at
  * the value. A fake that took whatever came hid that the form sent the record whole.
  */
@@ -69,6 +71,7 @@ function applied(
   values: AnyRecord,
   fields: readonly string[],
   written: readonly string[],
+  own: AnyRecord = {},
 ): AnyRecord {
   const invalid = (name: string, detail: string) =>
     refuse(route, 422, {
@@ -79,7 +82,11 @@ function applied(
   const out: AnyRecord = {};
   for (const [name, value] of Object.entries(values)) {
     if (!fields.includes(name)) throw invalid(name, `No hay un campo ${name} para escribir.`);
-    if (written.includes(name)) throw invalid(name, `${name} lo escribe el framework.`);
+    if (written.includes(name)) {
+      if (name === "id" && own["id"] !== undefined && value !== own["id"])
+        throw invalid(name, "Esos valores son de otro registro.");
+      continue; // the echo of what the form read: the record's, never assigned
+    }
     const collection =
       value !== null && typeof value === "object" && !Array.isArray(value) && "items" in value
         ? (value as { items: unknown; count?: { exact?: boolean }; cursor?: unknown })
@@ -295,6 +302,7 @@ export function servidorVentas() {
       (sent["values"] ?? {}) as AnyRecord,
       CLIENTE_FIELDS,
       FRAMEWORK_WRITES,
+      { id },
     );
     const kept = drafts.get(id);
     if (sent["action"] === "discard") {

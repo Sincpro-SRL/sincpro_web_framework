@@ -178,12 +178,13 @@ built; this file is how to keep it.
 - **A new record of an entity with `edit`, keyed by `id`, gets its id HERE** (`newEntityId`, a
   UUID v7 as 32 hex, sincpro_framework's format): its draft and its save go through the `Edit`
   route under it. Without `edit` no id is sent — a `create` DTO is the application's.
-- **A stored record's `Edit` carries what changed, never the record whole** (`editedOf`):
-  sincpro_framework's `apply_values` refuses a field the framework writes at every level (a
-  line's `version` too) and a relation read as a page written back. The server puts the edit
-  over what it stored and the caller's draft. The fake server reads `values` as `apply_values`
-  does (`applied` in `stories/support/servidor.ts`): when it filtered them by `changed`, stories
-  passed while a stored record could not be edited against the real backend.
+- **A stored record's `Edit` carries what changed, never the record whole** (`editedOf`): a
+  relation read as a page and written back is refused (it would remove what the page did not
+  bring), and up to sincpro_framework 3.36 so was any field the framework writes (3.37 leaves
+  that echo out). The server puts the edit over what it stored and the caller's draft. The fake
+  server reads `values` as the real `Edit` does (`applied` in `stories/support/servidor.ts`):
+  when it filtered them by `changed`, stories passed while a stored record could not be edited
+  against the real backend.
 - **web-ui's `Picker` offers «see all…» only while it holds rows it does not draw** — never when
   given `onLoadMore`. `EntityPicker` does not pass it, so the chooser (the server search) is
   always reachable.
