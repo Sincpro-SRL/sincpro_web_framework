@@ -146,8 +146,9 @@ export const PorVariosCampos: Story = {
     await canvas.findByText("1–20");
     const builder = async () => {
       await userEvent.click(await canvas.findByRole("button", { name: /Filtrar/ }));
+      // The cuts panel opens in the overlay layer (web-ui 2.2): it is looked for in the page.
       await userEvent.click(
-        await canvas.findByRole("button", { name: /Abrir el constructor/ }),
+        await page.findByRole("button", { name: /Abrir el constructor/ }),
       );
       const dialog = await page.findByRole("dialog", { name: "Constructor de criteria" });
       await waitFor(() => expect(dialog).toBeVisible());

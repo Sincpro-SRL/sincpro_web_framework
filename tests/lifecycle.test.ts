@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 
 import { defineMeta, field } from "@sincpro/client-framework";
-import { creationOf, defaultsOf } from "@sincpro/web-framework";
+import { creationOf, defaultsOf, editedOf } from "@sincpro/web-framework";
 import { test } from "vitest";
 
 import { facturaMeta } from "../stories/support/ventas";
@@ -62,4 +62,36 @@ test("a create sends what was written, even what a condition locks afterwards", 
     }),
     { slug: "acme", currency: "BOB", has_lines: true, name: "Acme" },
   );
+});
+
+test("an edit of a stored record sends what changed, never what the framework writes", () => {
+  const stored = {
+    number: "F-7",
+    version: 3,
+    created_at: "2026-11-01T12:00:00Z",
+    notes: "antes",
+    discount: "0",
+    amount_total: "100.00",
+    lines: [
+      { id: "L-1", product: "Tornillo", quantity: 2, price: "10", subtotal: "20" },
+      { product: "Tuerca", quantity: 1, price: "5", subtotal: "5" },
+    ],
+  };
+  // The record whole is on screen; only the note and the lines were changed.
+  assert.deepEqual(
+    editedOf(facturaMeta, { ...stored, notes: "después" }, ["notes", "lines", "version"]),
+    {
+      notes: "después",
+      // A line keeps its identity — the form names the line it edits — and loses what the
+      // line's model marks read-only (its computed subtotal).
+      lines: [
+        { id: "L-1", product: "Tornillo", quantity: 2, price: "10" },
+        { product: "Tuerca", quantity: 1, price: "5" },
+      ],
+    },
+  );
+  // Nothing changed: nothing travels — a save then stores the draft the server holds.
+  assert.deepEqual(editedOf(facturaMeta, stored, []), {});
+  // Without a model, what changed travels as it is.
+  assert.deepEqual(editedOf(null, { ...stored, notes: "x" }, ["notes"]), { notes: "x" });
 });

@@ -142,3 +142,35 @@ export const CadaGrupoConSuTotal: Story = {
     await expect(canvas.getByText(String(pagadas.length))).toBeVisible();
   },
 };
+
+/** The same invoices; this screen offers «Group by» the payment and the state, in that order. */
+function FacturasPorPagoYEstado() {
+  const listing = useListing(facturas, { pageSize: 20 });
+  return (
+    <EntityList
+      listing={listing}
+      columns={["number", "customer", "state", "amount_total"]}
+      groupable={["payment", "state", "correlation"]}
+    />
+  );
+}
+
+export const SoloLosCamposQueLaPantallaNombra: Story = {
+  render: () => <FacturasPorPagoYEstado />,
+  decorators: escenario,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await canvas.findByText("1–20");
+    await userEvent.click(canvas.getByRole("button", { name: /agrupar/i }));
+    const pago = await page.findByRole("button", { name: "Forma de pago", pressed: false });
+    const estado = page.getByRole("button", { name: "Estado", pressed: false });
+    // In the screen's order; a field it did not name — the date — is not offered, and a name
+    // the model does not have is not either.
+    await expect(
+      pago.compareDocumentPosition(estado) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    await expect(page.queryByRole("button", { name: "Fecha", pressed: false })).toBeNull();
+    await expect(page.queryByRole("button", { name: "correlation" })).toBeNull();
+  },
+};

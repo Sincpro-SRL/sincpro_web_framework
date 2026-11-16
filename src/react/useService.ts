@@ -6,7 +6,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * What a screen keeps of running one of the application's use cases.
  *
  * `run` answers what the use case answered, or `undefined` when it failed — the failure is in
- * `error`, for the screen to say (`explain`, `Refused`); it never throws at the screen.
+ * `error`, for the screen to say (`explain`, `Refused`); it never throws at the screen. So a use
+ * case that answers nothing answers `null`, never `undefined`: a `DELETE` the server answers
+ * with 204 resolves `null` through the transport, and a Feature hands that on instead of typing
+ * itself `void` — or «done» and «failed» look the same to the screen
+ * (Sincpro-SRL/sincpro_client_framework#51).
  */
 export type ServiceState<A extends unknown[], R> = {
   run: (...args: A) => Promise<R | undefined>;

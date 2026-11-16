@@ -2,7 +2,8 @@
 
 import { type Entity } from "@sincpro/client-framework";
 import type { AnyRecord, Meta } from "@sincpro/criteria";
-import type { ResourceRef, WorkspaceApi } from "@sincpro/web-composer";
+import { type ResourceRef, usePhone, type WorkspaceApi } from "@sincpro/web-composer";
+import { useNameOf } from "@sincpro/web-framework/react/useNameOf";
 import { useSummaryOf } from "@sincpro/web-framework/react/useSummary";
 import { openOptions, targetsFor } from "@sincpro/web-framework/web/list/openIn";
 import { relationOf } from "@sincpro/web-framework/web/record/summary";
@@ -69,13 +70,17 @@ export function RelatedRecord<T extends AnyRecord>({
   editor?: ReactNode;
 }) {
   const summarize = useSummaryOf(entity);
+  usePhone(api); // «Abrir en…» follows the mode: on a phone, no side panel and no window
+  // A key alone (`payment_id`, an `EntityID`) is read by its name, asked once by key — the key
+  // until it answers, and when nothing does. It used to stay the key: «P-0192…» for a payment.
+  const named = useNameOf(entity, typeof value === "string" ? value : "");
   const extra = editor === undefined ? {} : { editor };
   if (value === null || value === undefined || value === "")
     return <RelationValue name={null} {...extra} />;
   const summary = summarize(typeof value === "string" ? { id: value } : value, meta);
   return (
     <RelationValue
-      {...relationOf(summary)}
+      {...relationOf(named === undefined ? summary : { ...summary, name: named })}
       onOpenIn={(to) => openIn(api, entity.ref(summary.id), to)}
       openTargets={targetsFor(api)}
       {...extra}

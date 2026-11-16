@@ -7,7 +7,7 @@ import {
   TRAIL_PARAM,
 } from "@sincpro/client-framework";
 import { type AnyRecord, type Criteria, nameOf } from "@sincpro/criteria";
-import { RecordLink, useCrumbs, type WorkspaceApi } from "@sincpro/web-composer";
+import { RecordLink, useCrumbs, usePhone, type WorkspaceApi } from "@sincpro/web-composer";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { explain } from "@sincpro/web-framework/core/explain";
 import type { GroupLevel, NamedFilter } from "@sincpro/web-framework/core/list";
@@ -72,6 +72,7 @@ const NO_TRAIL: readonly never[] = [];
 const NO_WORKSPACE = {
   crumbs: () => NO_TRAIL,
   context: { subscribe: () => () => undefined },
+  layout: { phone: () => false, subscribe: () => () => undefined },
 } as unknown as WorkspaceApi;
 
 /** How many lists' trails are kept: the records opened from the last fifty lists page on. */
@@ -137,6 +138,9 @@ export type EntityListProps<T extends AnyRecord, C extends CommandBodies = Comma
   sums?: readonly string[] | false;
   /** The cuts this list offers by name: «sólo pagadas», «vencidas». */
   filters?: readonly NamedFilter<T>[];
+  /** The fields «Group by» offers, in this order — among those the model lets split the set.
+   *  Without it, the list definition's, else every one the model does. */
+  groupable?: readonly string[];
   /**
    * Rows can be ticked. With `api`, what is ticked is PUBLISHED to the workspace
    * (`api.select`): a panel beside it follows the selection without knowing this list.
@@ -205,6 +209,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   search = "bar",
   sums,
   filters: askedFilters,
+  groupable: askedGroupable,
   selectable = false,
   selectionActions,
   embedded = false,
@@ -222,6 +227,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
     definition?.views ??
     (embedded ? ["table"] : pivotAsked === undefined ? EVERY_VIEW : [...EVERY_VIEW, "pivot"]);
   const filters = askedFilters ?? definition?.filters ?? [];
+  const groupable = askedGroupable ?? definition?.groupable;
   const title = askedTitle ?? definition?.title;
   const description = askedDescription ?? definition?.description;
   const copy = frameworkCopy().list;
@@ -353,6 +359,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   // `useCrumbs`, not `api.crumbs()`: the crumb must follow a name given later (`setTitle`).
   // Without a workspace it reads a trail that never changes — a hook cannot be skipped.
   const following = useCrumbs(api ?? NO_WORKSPACE);
+  usePhone(api ?? NO_WORKSPACE); // where a row opens follows the mode (`targetsFor`)
   const trail = crumbs ?? (embedded || api === undefined ? undefined : following);
 
   const [ticked, setTicked] = useState<ReadonlySet<string>>(() => new Set());
@@ -596,6 +603,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
               listing={listing}
               filters={filters}
               groups={groups}
+              {...(groupable === undefined ? {} : { groupable })}
               {...(asked === "" ? {} : { seed: asked })}
             />
           </List.Search>

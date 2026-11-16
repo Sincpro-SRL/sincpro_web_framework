@@ -199,6 +199,7 @@ function LineValue({
     viewOf(definition, field, locale).type,
     definition?.fields[field]?.exact === true,
     choicesOf(definition, field, locale),
+    definition?.fields[field]?.widget,
   );
 }
 

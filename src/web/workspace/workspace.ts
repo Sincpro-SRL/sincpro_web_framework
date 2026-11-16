@@ -27,19 +27,30 @@ import { useEffect } from "react";
  * to ANSWER (`api.pick(entity.newRef(…))` — «Agregar» on a record's one2many), it answers the
  * record it became instead, and the surface closes: whoever asked reads it again.
  *
+ * Its name is the model's display field — or the screen's word for it (`title`), for a record
+ * whose model has none: a singleton («the institution's texts») would read as its key.
+ *
  *     const invoice = useRecord(invoices, resource);
  *     useRecordInWorkspace(api, invoice);
+ *     useRecordInWorkspace(api, texts, { title: () => "Textos de la institución" });
  */
 export function useRecordInWorkspace<T extends AnyRecord>(
   api: WorkspaceApi,
   record: RecordReading<T>,
+  options: { title?: ((record: T) => string | null) | undefined } = {},
 ): void {
   const display = record.meta?.display || record.meta?.identity || "";
+  const named =
+    record.status === "ready" && options.title !== undefined
+      ? options.title(record.record)
+      : null;
   const title = record.isNew
     ? newTitle(record.meta, record.locale)
-    : record.status === "ready" && display !== ""
-      ? textOf(record.meta, display, (record.record as AnyRecord)[display], record.locale)
-      : null;
+    : named !== null
+      ? named
+      : record.status === "ready" && display !== ""
+        ? textOf(record.meta, display, (record.record as AnyRecord)[display], record.locale)
+        : null;
   const dirty = record.edit.dirty;
   const opened = api.self.id ?? "";
   const { entity, id } = record;

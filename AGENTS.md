@@ -114,7 +114,7 @@ built; this file is how to keep it.
   of an entity reads `presentationOf(entity)` and applies it, or it is not «everywhere».
 - **web-ui's table draws only the rows in view from 200 on** (1.2, `rowWindow`). Counting `<tr>`
   in a play counts what is drawn, not what the list holds: read the table's `aria-rowcount`
-  (story 15's `bodyRows`).
+  (story 15's `bodyRows`). Under 200 there is no `aria-rowcount`: every row is drawn, count them.
 
 - **Before saying «the composer lacks X», read its README** (`~/dev/sincpro_web_composer`). What
   an opening carries is already there: `params` (in the reference: survives reload and links —
@@ -153,6 +153,9 @@ built; this file is how to keep it.
   1.5+; without `rowClick` a row click becomes a peek) — and «Abrir en…» (`OpenInMenu`, web-ui's
   own words) the rest, beside the name in the table and on each row. Never only hover icons;
   never a modal from inside a modal. A one2many gets the same through `RecordOpening`.
+- **The cuts panel opens in the overlay layer** (web-ui 2.2: filters, grouping, favourites, «Abrir
+  el constructor»): a play finds its controls in the page (`within(document.body)`), never in
+  the story's canvas.
 - **Lists of records search with the BAR** (filters, builder, grouping) — the one2many and the
   «Buscar más…» chooser too. `search="box"` is a screen's explicit choice. With Enter the bar
   takes its FIRST suggestion, which may be a field filter (web-ui): a play picks the literal
@@ -175,6 +178,13 @@ built; this file is how to keep it.
 - **A new record of an entity with `edit`, keyed by `id`, gets its id HERE** (`newEntityId`, a
   UUID v7 as 32 hex, sincpro_framework's format): its draft and its save go through the `Edit`
   route under it. Without `edit` no id is sent — a `create` DTO is the application's.
+- **A stored record's `Edit` carries what changed, never the record whole** (`editedOf`): a
+  relation read as a page and written back is refused (it would remove what the page did not
+  bring), and up to sincpro_framework 3.36 so was any field the framework writes (3.37 leaves
+  that echo out). The server puts the edit over what it stored and the caller's draft. The fake
+  server reads `values` as the real `Edit` does (`applied` in `stories/support/servidor.ts`):
+  when it filtered them by `changed`, stories passed while a stored record could not be edited
+  against the real backend.
 - **web-ui's `Picker` offers «see all…» only while it holds rows it does not draw** — never when
   given `onLoadMore`. `EntityPicker` does not pass it, so the chooser (the server search) is
   always reachable.
@@ -229,6 +239,10 @@ built; this file is how to keep it.
   declare `aggregate` in `entity()` or preload the meta, or the line falls to the dialog.
 - **web-ui's `LineItems` draws `value` unless the column has `cell`** — `text` is only what its
   search reads. Give `cell` the model's text.
+- **The contract's `widget` is read only for the framework's own names** (`textarea` today, in
+  `controlFor`). A widget an application registers is drawn with `as`: never a registry of
+  strings here. A hand-written `defineMeta` cannot say it yet (client-framework's `FieldOptions`
+  has no `widget`): spread it into the field (story 49).
 - **Every level has its way in** (`RecordField as` / `lines` / `list`, `EntityList cells` /
   `faces`, `RecordLinesEditor look`): a new default piece ships with the prop that replaces it.
   A screen's face goes in as web-ui's `List.Present` written straight into `List` — a slot.
@@ -249,6 +263,10 @@ built; this file is how to keep it.
   `entity<T, C>` types each Command's body (`CommandBodies`); `useCommand(issues, "send")` infers
   `C` and the name. `useCommand<Issue, Answer>(…)` falls back to the loose default (TypeScript
   never infers part of a list), so a screen that wants the check writes no type argument.
+- **`useService` is an action; a reading through a use case is `useServiceReading`.** An action
+  never runs on mount and follows nothing; a reading is keyed by its arguments (as JSON), reads
+  again on another context or a followed write, and never shows another argument's answer. Do
+  not give `useService` dependencies: a screen that read with it showed the tab it had left.
 - **A bounded context, its services, the process and the context are @sincpro/client-framework's**
   (`BoundedContext`, `servicesWith`, `configureProcess`, `processContext`): a screen runs a use
   case with `useService((id) => projectBoundedContext.execute(new CommandCloseIssue(id)))` and

@@ -199,6 +199,53 @@ function displayOf(field: FieldMeta, value: AnyRecord): string {
 }
 
 /**
+ * What a value reads as when a screen holds it outside any model — a total it added up, a
+ * due date of its own: the same text `textOf` gives a field of that type, in `locale`, on the
+ * zone the application installed. `null` when there is nothing to read. `useTextOf()` binds them
+ * to the provider's locale.
+ *
+ *     numberTextOf("1150.5", "es-BO")                              -> "1.150,5"
+ *     dayTextOf("2026-03-12", "es")                                -> "12 mar 2026"
+ *     instantTextOf("2026-03-12T14:00:00Z", "es")                  -> "12 mar 2026, 10:00" (La Paz)
+ *     moneyTextOf({ amount: "1150.5", currency: "BOB" }, "es-BO")  -> "Bs 1.150,50"
+ *
+ * Context: every application wrote its own money and date formatting for its own screens, on
+ * the browser's zone and its own locale, while the framework had the right one private.
+ */
+export function numberTextOf(value: unknown, locale?: string): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (Number.isNaN(Number(value))) return String(value);
+  // A decimal that travels as text goes to `Intl` as text: every digit kept, none through a
+  // float (`"12345678901234567.89"` reads whole).
+  if (typeof value === "string")
+    return numberFormat(locale, decimals(value)).format(
+      value.trim() as Intl.StringNumericLiteral,
+    );
+  return numberFormat(locale, undefined).format(Number(value));
+}
+
+/** A day (`"2026-03-12"`) as a person reads it. A day has no zone: it is never converted. */
+export function dayTextOf(value: unknown, locale?: string): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  return typeof value === "string"
+    ? dateFormat(locale, false).format(localDate(value))
+    : String(value);
+}
+
+/** An instant as a person reads it, on the wall clock of the zone the application installed. */
+export function instantTextOf(value: unknown, locale?: string): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? String(value) : dateFormat(locale, true).format(date);
+}
+
+/** A money (`{ amount, currency }`) as a person reads it, rounded to its currency's decimals;
+ *  `null` when the value is not one. */
+export function moneyTextOf(value: unknown, locale?: string): string | null {
+  return Money.isMoney(value) ? moneyText(value, locale) : null;
+}
+
+/**
  * The text a value reads as. `null` when there is nothing to read — the caller draws its own
  * «empty» (a dash in a fact, nothing in a cell).
  *
@@ -226,26 +273,12 @@ export function textOf(
     case "boolean":
       return value ? copy.value.yes : copy.value.no;
     case "date":
-      return typeof value === "string"
-        ? dateFormat(locale, false).format(localDate(value))
-        : String(value);
-    case "datetime": {
-      const date = new Date(String(value));
-      return Number.isNaN(date.getTime())
-        ? String(value)
-        : dateFormat(locale, true).format(date);
-    }
+      return dayTextOf(value, locale);
+    case "datetime":
+      return instantTextOf(value, locale);
     case "integer":
-    case "number": {
-      if (Number.isNaN(Number(value))) return String(value);
-      // A decimal that travels as text goes to `Intl` as text: every digit kept, none through a
-      // float (`"12345678901234567.89"` reads whole).
-      if (typeof value === "string")
-        return numberFormat(locale, decimals(value)).format(
-          value.trim() as Intl.StringNumericLiteral,
-        );
-      return numberFormat(locale, undefined).format(Number(value));
-    }
+    case "number":
+      return numberTextOf(value, locale);
     case "text[]":
       return Array.isArray(value)
         ? value.length === 0
@@ -261,7 +294,7 @@ export function textOf(
       return typeof value === "object" ? displayOf(field, value as AnyRecord) : String(value);
     case "embedded":
       // A value object has no text of its own — but a money, the one every ERP holds, does.
-      return Money.isMoney(value) ? moneyText(value, locale) : null;
+      return moneyTextOf(value, locale);
     default:
       return typeof value === "object" ? JSON.stringify(value) : String(value);
   }

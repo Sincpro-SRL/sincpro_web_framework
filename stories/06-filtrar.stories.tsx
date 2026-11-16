@@ -73,10 +73,12 @@ export const UnFiltroConNombreYElNombreDelCliente: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    // The cuts panel opens in the overlay layer (web-ui 2.2): it is looked for in the page.
+    const page = within(canvasElement.ownerDocument.body);
     await canvas.findByText("20 de 64");
 
     await userEvent.click(await canvas.findByRole("button", { name: /Filtrar/ }));
-    await userEvent.click(await canvas.findByRole("button", { name: "Sólo pagadas" }));
+    await userEvent.click(await page.findByRole("button", { name: "Sólo pagadas" }));
     const shown = Math.min(20, PAGADAS.length);
     await expect(await canvas.findByText(`${shown} de ${PAGADAS.length}`)).toBeVisible();
 
@@ -105,11 +107,10 @@ export const UnaPreguntaEnElConstructor: Story = {
     const page = within(canvasElement.ownerDocument.body);
     await canvas.findByText("20 de 64");
     await userEvent.click(await canvas.findByRole("button", { name: /Filtrar/ }));
-    await userEvent.click(await canvas.findByRole("button", { name: "Por cobrar" }));
+    // The cuts panel opens in the overlay layer (web-ui 2.2): it is looked for in the page.
+    await userEvent.click(await page.findByRole("button", { name: "Por cobrar" }));
     // The panel stays open after a pick: the builder is opened from it, with what was put.
-    await userEvent.click(
-      await canvas.findByRole("button", { name: /Abrir el constructor/ }),
-    );
+    await userEvent.click(await page.findByRole("button", { name: /Abrir el constructor/ }));
     // The window fades in: it is in the document before it is visible.
     const dialog = await page.findByRole("dialog", { name: "Constructor de criteria" });
     await waitFor(() => expect(dialog).toBeVisible());

@@ -23,17 +23,34 @@ import {
 /** The cuts a date offers, coarse to fine — web-ui orders the levels by them. */
 const DATE_GRAINS: readonly GroupGrain[] = ["year", "quarter", "month", "week", "day"];
 
-/** The fields the model says may split a set (`groupable`), in its words. The identity splits
- *  into groups of one, and the version means nothing to a person: neither is offered. */
-export function groupableOf(meta: Meta | null, locale?: string): GroupableField[] {
+/**
+ * The fields the model says may split a set (`groupable`), in its words. The identity splits
+ * into groups of one, and the version means nothing to a person: neither is offered. With
+ * `only`, the screen's own choice among them, in its order — a name the model does not let
+ * split the set is still not offered.
+ *
+ * Context: sincpro_framework marks a field groupable by its TYPE, so a context's log offered
+ * «group by» `correlation_id` and `causation_id`. Which of them mean something to a person is
+ * the model's to say (ROADMAP); until it does, and wherever a screen knows better, the screen
+ * names them (`EntityList groupable`, `defineList({ groupable })`). Never a list of technical
+ * names kept here.
+ */
+export function groupableOf(
+  meta: Meta | null,
+  locale?: string,
+  only?: readonly string[],
+): GroupableField[] {
   if (meta === null) return [];
-  return Object.entries(meta.fields)
+  const names = only ?? Object.keys(meta.fields);
+  return names
+    .map((name) => [name, meta.fields[name]] as const)
     .filter(
-      ([name, field]) =>
-        field.groupable === true &&
-        field.kind === "scalar" &&
-        name !== meta.identity &&
-        name !== "version",
+      (entry): entry is readonly [string, NonNullable<(typeof entry)[1]>] =>
+        entry[1] !== undefined &&
+        entry[1].groupable === true &&
+        entry[1].kind === "scalar" &&
+        entry[0] !== meta.identity &&
+        entry[0] !== "version",
     )
     .map(([name, field]) => ({
       field: name,

@@ -54,6 +54,7 @@ export function EntitySearchBar<T extends AnyRecord>({
   listing,
   filters = [],
   groups,
+  groupable: only,
   seed,
 }: {
   listing: Listing<T>;
@@ -61,6 +62,9 @@ export function EntitySearchBar<T extends AnyRecord>({
   filters?: readonly NamedFilter<T>[];
   /** The grouping of the same set (`useGroups(listing)`): offers «Group by». */
   groups?: Groups<T>;
+  /** The fields «Group by» offers, in this order — among those the model lets split the set.
+   *  Without it, every one it does. */
+  groupable?: readonly string[];
   /** A text to start on, put as the literal search chip — what was typed in a picker whose
    *  «Buscar más…» opened this list. */
   seed?: string;
@@ -71,7 +75,7 @@ export function EntitySearchBar<T extends AnyRecord>({
   const [building, setBuilding] = useState(false);
   const model = useMemo(() => (meta ? modelOf(meta, locale) : undefined), [meta, locale]);
   const facets = useMemo(() => (meta ? facetsOf(meta, locale) : []), [meta, locale]);
-  const groupable = useMemo(() => groupableOf(meta, locale), [meta, locale]);
+  const groupable = useMemo(() => groupableOf(meta, locale, only), [meta, locale, only]);
   const ui = useUiCopy();
   const seeded = useRef(false);
   useEffect(() => {

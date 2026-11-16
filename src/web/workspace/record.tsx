@@ -73,10 +73,11 @@ export type Stamp = { at: string; by?: string };
 export function useRecordScreen<T extends AnyRecord>(
   entity: Entity<T>,
   { api, resource }: Pick<ViewProps, "api" | "resource">,
+  options: { title?: ((record: T) => string | null) | undefined } = {},
 ) {
   const reading = useRecord(entity, resource);
   const crumbs = useCrumbs(api);
-  useRecordInWorkspace(api, reading);
+  useRecordInWorkspace(api, reading, options);
   const history = useHistory(entity, reading.isNew ? "" : reading.id, [reading.record]);
   const summarize = useSummaryOf(entity);
   const copy = frameworkCopy().record;
@@ -125,6 +126,7 @@ export function useRecordScreen<T extends AnyRecord>(
       identity: {
         // A new record is «creating»; an existing one has no name until it is read.
         title:
+          (ready && !reading.isNew ? options.title?.(reading.record) : null) ??
           summary?.name ??
           (reading.isNew ? copy.creating(nameOf(reading.meta, reading.locale) || "") : ""),
         ...(summary?.type == null ? {} : { subtitle: summary.type }),
@@ -157,8 +159,11 @@ export function EntityRecord<T extends AnyRecord>({
   fields,
   pages,
   actions,
+  title,
 }: ViewProps & {
   entity: Entity<T>;
+  /** Its name, the screen's way — for a record whose model has no display field. */
+  title?: (record: T) => string | null;
   /** The fields, in this order. Without it, the model's (`formOf`). */
   fields?: readonly string[];
   /** The one2many shown as pages, in this order. Without it, every one the model has. */
@@ -166,7 +171,7 @@ export function EntityRecord<T extends AnyRecord>({
   /** The record's own commands, beside «save / discard». */
   actions?: (record: RecordReading<T>) => ReactNode;
 }) {
-  const screen = useRecordScreen(entity, { api, resource });
+  const screen = useRecordScreen(entity, { api, resource }, { title });
   const { reading, crumbs, history, pager } = screen;
   const [page, setPage] = useState<string | undefined>(undefined);
   const copy = frameworkCopy().record;

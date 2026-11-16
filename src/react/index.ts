@@ -20,6 +20,7 @@ export {
   useCommand,
 } from "@sincpro/web-framework/react/useCommand";
 export { useContextValues } from "@sincpro/web-framework/react/useContextValues";
+export { useCount } from "@sincpro/web-framework/react/useCount";
 export { type Groups, useGroups } from "@sincpro/web-framework/react/useGroups";
 export { useHistory } from "@sincpro/web-framework/react/useHistory";
 export {
@@ -43,5 +44,10 @@ export {
 } from "@sincpro/web-framework/react/useRecord";
 export { useRelated } from "@sincpro/web-framework/react/useRelated";
 export { type ServiceState, useService } from "@sincpro/web-framework/react/useService";
+export {
+  type ServiceReading,
+  useServiceReading,
+} from "@sincpro/web-framework/react/useServiceReading";
 export { useSummaryOf } from "@sincpro/web-framework/react/useSummary";
+export { useTextOf, type ValueTexts } from "@sincpro/web-framework/react/useTextOf";
 export { useWrites } from "@sincpro/web-framework/react/useWrites";

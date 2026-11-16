@@ -177,6 +177,75 @@ await project.sendIssue({ issue_id: "i1", message: "y el reporte" });
 const caller = await auth.getCaller(); // a GET of its own: the transport needs `read`
 ```
 
+## Before writing a piece, look for it
+
+quipu, the first application built end to end on the stack (Sincpro-SRL/sincpro_web_framework#34),
+rewrote pieces that were already here. Each of these is one import:
+
+| What the screen needs                                      | The piece                                                                     |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| A record's whole screen: fields, pages, history, audit     | `EntityRecord` (`entityView` without `record`), `useRecordScreen` to own it   |
+| The same screen creating, then becoming the created record | `EntityRecord` / `useRecordInWorkspace`: the reference is replaced by itself  |
+| «Are you sure?» before a destructive command               | `CommandButton destructive` / `ServiceButton`: the server's dry run is shown  |
+| A record this one points at, as a link that opens it       | `RecordField` (read-only), `RelatedRecord`, `factsOf` — a key alone is named  |
+| «This member's payments (2)»                               | `useCount(payments, { selection })` + `api.open(scopedRef(payments, cut))`    |
+| A related list inside the record                           | `RecordField name="payments"` (`RelatedList`), `useRelated`                   |
+| A long text written in several lines                       | nothing: the contract's `widget: "textarea"` (`presentation(widgets=…)`)      |
+| Money and dates in a screen of its own                     | `useTextOf()` — the provider's locale, the installed zone                     |
+| A reading through a use case that follows its arguments    | `useServiceReading(useCase, args, { follows })` — `useService` is for actions |
+| «Group by» without technical fields                        | `EntityList groupable={[…]}` / `defineList({ groupable })`                    |
+
+## Which way to call the backend
+
+The three ways, and when each earns its place, are client-framework's guide
+(`docs/WEB.md`, «Which way a screen reaches the backend», Sincpro-SRL/sincpro_client_framework#51).
+What this package adds is how a SCREEN runs each — and a reading and an action are not run alike:
+
+| The call…                                                                | The way (client-framework)                         | From a screen                                                          |
+| ------------------------------------------------------------------------ | -------------------------------------------------- | ---------------------------------------------------------------------- |
+| lists, opens, edits or runs a declared Command of an entity              | the entity screens                                 | `useListing`, `useRecord`, `useCommand`, `CommandButton`, `EntityList` |
+| writes once, with no logic of its own — forwards what was typed          | the generated client over the screens transport    | `useService` / `ServiceButton`: runs when the person presses           |
+| reads once, with no logic of its own — a panel, `GET /me`                | the generated client over the screens transport    | `useServiceReading`: runs on mount, again on other arguments           |
+| decides, composes several calls, publishes an event, is reused elsewhere | a Command and its `Feature` / `ApplicationService` | `useService` for an action, `useServiceReading` for a reading          |
+
+Start with the lightest that fits. A use case that answers nothing answers `null` (a 204 does):
+`useService.run` resolves `undefined` only when it failed. A screen never writes
+`transport.send` by hand.
+
+## Testing a screen
+
+The stack ships what a screen's test needs; nothing here needs a second runner.
+
+- **The server**: `memoryTransport(tables, { latency, handle, read, draft, refuse })`
+  (@sincpro/client-framework) answers lists and records over in-memory rows with the real
+  criteria — searches, filters, order, keyset pages — and announces writes like a real transport.
+  `handle` answers Commands; make it refuse what sincpro_framework refuses (a field the framework
+  writes, a page of a relation written back): a fake that takes whatever comes hides bugs
+  (`stories/support/servidor.ts`, `applied`).
+- **The screen**: inside `FrameworkProvider transport={…}` (or `<SincproApp>` for a workspace),
+  the same provider the application mounts.
+- **The runner**: a Storybook story with a `play`, run by `@storybook/addon-vitest` in a real
+  Chrome (`npx vitest run --project storybook`), as this package does — the story is the test,
+  and the same story is the screen's documentation. Without Storybook, vitest's browser mode with
+  Testing Library runs the same `play` body.
+- **The habits** (AGENTS.md, «Known traps»): wait for what animates in
+  (`await waitFor(() => expect(…).toBeVisible())`), find controls by role and name, one scenario
+  per story, and prove a new play fails before trusting it passes.
+
+What is not shipped yet: a memory server that speaks sincpro_framework's `Edit` by itself
+(ROADMAP, «What quipu found»).
+
+## A public site with an application inside
+
+What works today: readings without the composer (`FrameworkProvider` + `useListing` /
+`useRecord`; `react/` and `web/record/` never import it, `make doctor`), a transport without a
+token for anonymous reads, and modules that touch no `window` or `document` when imported, so an
+SSR framework can render them. What does not: data loaded on the server and hydrated — every
+reading starts in an effect, so a server render draws the skeleton, which no search engine reads.
+That arrives with the server-state cache (ARCHITECTURE.md, TanStack Query under the hooks). Until
+then a public page reads with its framework's loader and draws with web-ui, and the application
+parts use this package.
+
 ## Upgrading from 1.x
 
 What an application sees of web-framework 2 is one move: the transport, the entity and what an
