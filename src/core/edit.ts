@@ -259,3 +259,50 @@ export function creationOf(meta: Meta | null | undefined, values: AnyRecord): An
   }
   return sent;
 }
+
+/**
+ * What an edit of a STORED record sends (sincpro_framework's `Edit`): the fields the person
+ * changed, and inside them nothing the model marks `readonly` — a line keeps only its identity,
+ * the way the form names the line it edits.
+ *
+ *     editedOf(invoiceMeta, record, ["discount", "lines"])
+ *       ->  { discount: "5", lines: [{ id: "l1", qty: 2 }, { qty: 1 }] }
+ *
+ * Context: the form used to send the record whole, as it holds it — `id`, `version`,
+ * `created_at` and each line's own among them. sincpro_framework's `apply_values` refuses a
+ * field the framework writes at every level (a held line is edited with it too), and refuses a
+ * relation read as a page (`{items, count, cursor}`) written back, since it would remove every
+ * record the page did not bring. So a stored record could be created and never edited. The
+ * backend keeps what it stored and the caller's draft, and puts this edit on top of both: what
+ * changed is all it needs. The model marks the fields the framework writes `readonly` (and the
+ * computed ones), so nothing here names them. A new record goes through `creationOf`.
+ */
+export function editedOf(
+  meta: Meta | null | undefined,
+  values: AnyRecord,
+  changed: readonly string[],
+): AnyRecord {
+  const sent: AnyRecord = {};
+  for (const name of changed) {
+    const field = meta?.fields[name];
+    if (field?.readonly === true) continue;
+    sent[name] = writableOf(field?.definition, values[name]);
+  }
+  return sent;
+}
+
+/** A value of a list of records (the lines) or of one record held inside (a value object),
+ *  without what the model of those records marks `readonly` — the identity kept. Anything else
+ *  as it is. */
+function writableOf(definition: Meta | null | undefined, value: unknown): unknown {
+  if (definition == null || value === null || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map((one) => writableOf(definition, one));
+  const identity = definition.identity || "id";
+  const kept: AnyRecord = {};
+  for (const [name, one] of Object.entries(value as AnyRecord)) {
+    const field = definition.fields[name];
+    if (name !== identity && field?.readonly === true) continue;
+    kept[name] = writableOf(field?.definition, one);
+  }
+  return kept;
+}

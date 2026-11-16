@@ -1,4 +1,4 @@
-import { type Entity, type EntityRef } from "@sincpro/client-framework";
+import { type Entity, type EntityRef, SCOPE_PARAM } from "@sincpro/client-framework";
 import type { AnyRecord, Criteria, Expression, Grain, Sort } from "@sincpro/criteria";
 
 /**
@@ -45,6 +45,8 @@ export type ListDefinition<T extends AnyRecord = AnyRecord> = {
   views?: readonly ("table" | "rows" | "board" | "sheet" | "pivot")[];
   /** Grouped from the start — the server counts the groups. */
   groupBy?: readonly GroupLevel[];
+  /** The fields «Group by» offers, in this order — among those the model lets split the set. */
+  groupable?: readonly string[];
 };
 
 /** A cut offered by name in the search bar: «sólo pagadas», «vencidas». */
@@ -88,4 +90,24 @@ export function scopeOf<T extends AnyRecord>(list: ListDefinition<T>): Criteria<
     ...list.scope,
     ...(list.order === undefined ? {} : { order: [list.order] }),
   };
+}
+
+/**
+ * An entity's list as a workspace reference, opened under a cut: «this member's payments»,
+ * what a smart button opens.
+ *
+ *     api.open(scopedRef(payments, { field: "member_id", value: member.id }))
+ *
+ * Context: the cut travels in the reference — client-framework's `SCOPE_PARAM`, the param a
+ * chooser carries its cut in (`chooserRef(query, scope)`) — so it survives a reload and a link,
+ * and the list opened from it, the application's own too, reads under it ANDed with everything
+ * a person searches (`entityView` gives it to `useListing`). An application built this reference
+ * by hand. It narrows what is shown; the server still decides what may be read.
+ */
+export function scopedRef<T extends AnyRecord>(
+  entity: Entity<T>,
+  selection: Expression<T>,
+): EntityRef {
+  const list = entity.ref();
+  return { ...list, params: { ...list.params, [SCOPE_PARAM]: JSON.stringify(selection) } };
 }

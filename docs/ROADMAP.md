@@ -1552,3 +1552,66 @@ route }`), whoever sent it. A preview or a dry run announces nothing (`changeOf`
 Next: server-pushed changes, the same feed fed by sincpro_framework#201
 (Sincpro-SRL/sincpro_client_framework#44); a cross-tab feed over `BroadcastChannel` when two tabs
 must agree.
+
+## What quipu found (2026-11-16)
+
+quipu, a reference application on the whole stack (a professional association's portal: members,
+dues, courses, a shop, a public site and its back office), listed what this package made hard
+(Sincpro-SRL/sincpro_web_framework#34). Each item was checked against the code first; four of
+the ten were pieces that existed already or a wrong reading of one.
+
+- **Fixed here**:
+  - **Editing a stored record through `Edit`.** The form sent the record whole — `id`, `version`,
+    `created_at`, each line's own — and sincpro_framework's `apply_values` refuses a field the
+    framework writes at every level, and refuses a relation read as a page written back. A stored
+    record could be created and never edited. Now a stored record sends what changed, without
+    what the model marks `readonly` (a line keeps its identity): `editedOf`. The backend puts it
+    over what it stored and the caller's draft, so nothing else is needed. The fake server's `Edit`
+    filtered `values` by `changed`, which hid it; it now reads values as `apply_values` does
+    (`applied`), and story 12 failed without the fix.
+  - **The contract's widget.** `RecordField` and the lines editor honour `widget: "textarea"`
+    (web-ui's `TextArea`), except in a cell. Only the framework's own names: one an application
+    registers is drawn with `as`. Story 49.
+  - **«Group by» chosen by the screen.** `EntityList groupable`, `EntitySearchBar groupable`,
+    `defineList({ groupable })`: among what the model lets split the set, in the screen's order.
+    Story 19.
+  - **A key alone, named.** `RelatedRecord` asks a bare key's name (`useNameOf`); it used to
+    show the key. Story 50.
+  - **A fact that points at another record is a link.** `factsOf` draws a many2one of a declared
+    entity as web-ui's `RelationValue`, opening where the view says (`RecordOpening`); of an
+    entity nobody declared it stays the text it was. Story 50.
+  - **What other records hold of this one.** `useCount(entity, criteria)` — the server's count,
+    a listing of one row that follows the context and writes — and `scopedRef(entity, cut)`, the
+    entity's list as a reference opened under a cut (client-framework's `SCOPE_PARAM`, which
+    `entityView` already applied to any list). Story 50.
+  - **Values outside a model.** `numberTextOf`, `dayTextOf`, `instantTextOf`, `moneyTextOf`
+    (what `textOf` used privately) and `useTextOf()` bound to the provider's locale.
+  - **Reading through a use case.** `useServiceReading(useCase, args, { follows })`: on mount,
+    again on other arguments, another context or a followed write; never another argument's
+    answer, the last question wins. `useService` stays the action's. Story 51.
+  - **Discoverability.** `docs/ADOPTION.md`: the pieces not to write again, which way a screen
+    runs each way of calling the backend (aligned with client-framework's guide, `docs/WEB.md`),
+    how to test a screen, and where a public site stands. `useService`: a use case that answers
+    nothing answers `null`; `undefined` is a failure (client-framework#51 item 1).
+  - **composer 1.7 and web-ui 2.2.** On a phone `targetsFor` offers neither a side panel nor a
+    window — composer opens both as the page — and the screens that draw «Abrir en…» follow the
+    mode (`usePhone`); `EntityList`'s stand-in workspace has a `layout`. The composer floor is
+    1.7. web-ui 2.2 opens the cuts panel in the overlay layer: stories 06 and 20 looked for it
+    in the canvas and failed until they looked in the page.
+- **Asked of sincpro_framework** (Sincpro-SRL/sincpro_framework#261):
+  - a widget for an integer that is not a quantity (a year, a code): `Intl` groups four digits in
+    `es-BO` («2.026») and the client cannot tell a year from a count;
+  - `groupable` off for the fields that mean nothing to a person (`correlation_id`,
+    `causation_id`, `entity_version`) — the type alone makes every scalar groupable;
+  - a file / image kind in the Meta (`kind: file|image`, accepted types), which this package will
+    draw with web-ui's `ImageInput` / `DropZone`;
+  - the context's event subclasses in the contract, so `historyOf` labels a fact's own fields
+    and reads who did it and what moved (`by`, `moved`, a tone per kind);
+  - a generic `Delete`, which `EntityRecord` would offer.
+- **Asked of client-framework**: `FieldOptions.widget` (a hand-written definition cannot say
+  it: story 49 spreads it in); `entity.listRef(cut)`, where `scopedRef` belongs with the other
+  references; a memory server that speaks `Edit` as sincpro_framework does.
+- **Asked of web-ui** (Sincpro-SRL/sincpro_web_ui#28): `Record.Smart` without a count shows «—»,
+  right for «not known yet» and wrong for a single link — a link is `RelatedRecord`.
+- **Still here**: data loaded on the server and hydrated (with the server-state cache); sections
+  in `EntityRecord` (the Meta publishes none).

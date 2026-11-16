@@ -53,3 +53,13 @@ test("from a page, a record may open anywhere the workspace can put it", () => {
     [{ to: "window", size: RECORD_SIZE }],
   );
 });
+
+test("on a phone, neither a side panel nor a window: both open as the page", () => {
+  const page = createTestApi(facturas.ref(), { phone: true });
+  assert.deepEqual(targetsFor(page.api), ["modal", "peek", "page"]);
+  const modal = createTestApi(clientes.ref("C-004"), {
+    over: facturas.ref("F-2026-0004"),
+    phone: true,
+  });
+  assert.deepEqual(targetsFor(modal.api), ["peek", "page"]);
+});

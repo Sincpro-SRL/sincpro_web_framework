@@ -8,7 +8,13 @@ import {
   type Transport,
 } from "@sincpro/client-framework";
 import { type AnyRecord, matching, type Meta } from "@sincpro/criteria";
-import type { SearchHit, ViewProps, ViewSpec, WorkspaceApi } from "@sincpro/web-composer";
+import {
+  type SearchHit,
+  usePhone,
+  type ViewProps,
+  type ViewSpec,
+  type WorkspaceApi,
+} from "@sincpro/web-composer";
 import type { ListDefinition } from "@sincpro/web-framework/core/list";
 import { lookupOf } from "@sincpro/web-framework/core/lookup";
 import { ListScopeProvider } from "@sincpro/web-framework/react/scope";
@@ -81,6 +87,7 @@ export type EntityViewOptions = {
  * a one2many's «Agregar» as the new record's form that answers once it exists.
  */
 function InWorkspace({ api, children }: { api: WorkspaceApi; children: ReactNode }) {
+  usePhone(api); // the places follow the mode: on a phone, no side panel and no window
   const targets = targetsFor(api);
   const opening = useMemo<RecordOpening>(() => {
     // Never a modal over a modal: from inside one, what answers docks beside it.
@@ -133,8 +140,9 @@ export function entityView<T extends AnyRecord>(
     return function EntityView(props: ViewProps) {
       const record =
         props.resource.id !== undefined || props.resource.params?.[NEW_PARAM] !== undefined;
-      // A chooser opened by a picker offers only what the picker may choose: its cut travels in
-      // the reference, and the list — the application's own too — reads under it.
+      // A chooser opened by a picker offers only what the picker may choose, and a list opened
+      // under a cut (`scopedRef`) shows only what it cuts: the cut travels in the reference, and
+      // the list — the application's own too — reads under it.
       const cut = record ? undefined : scopeOfRef(props.resource);
       const list =
         cut === undefined ? (

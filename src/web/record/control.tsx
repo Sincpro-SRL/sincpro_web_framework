@@ -16,6 +16,7 @@ import {
   NumberInput,
   Select,
   TagsField,
+  TextArea,
   TextInput,
 } from "@sincpro/web-ui";
 import type { ReactNode } from "react";
@@ -34,16 +35,23 @@ export type FieldControl = {
 
 /**
  * The control a field's TYPE asks for — a choice, a number, a date, a date and time, a yes/no, a
- * list of words,
- * a text.
+ * list of words, a text — or the one its `widget` names when the model names one of the
+ * framework's own: `textarea`, several lines of prose.
  * Shared by a record's field (`RecordField`) and a line's cell and dialog (`RecordLinesEditor`):
  * one rule for what a value is edited with.
+ *
+ * Context: sincpro_framework publishes each field's widget — its type's, or the one
+ * `presentation(widgets=…)` names — and a screen that ignored it drew a one-line input for a
+ * note, so every application passed `as` for each long text. Only the framework's own names are
+ * read here: a name an application registers is drawn with `as`, never looked up in a registry
+ * of strings.
  */
 export function controlFor(
   control: FieldControl,
   type: string,
   exact: boolean,
   choices: { value: unknown; label: string }[],
+  widget?: string,
 ): ReactNode {
   const { value, set } = control;
   const named = control.standalone === true ? { "aria-label": control.label } : {};
@@ -106,6 +114,14 @@ export function controlFor(
       );
     }
     default:
+      // Not in a cell: a row of a table is one line high, and the dialog has the room.
+      if (widget === "textarea" && control.standalone !== true)
+        return (
+          <TextArea
+            value={value === null || value === undefined ? "" : String(value)}
+            onChange={set}
+          />
+        );
       return (
         <TextInput
           value={value === null || value === undefined ? "" : String(value)}

@@ -26,6 +26,7 @@ export {
   computedLocally,
   creationOf,
   defaultsOf,
+  editedOf,
   errorAt,
   errorsByField,
   type FieldState,
@@ -63,14 +64,19 @@ export {
   type ListDefinition,
   type ListSpec,
   type NamedFilter,
+  scopedRef,
   scopeOf,
 } from "@sincpro/web-framework/core/list";
 export { lookupOf, type LookupOption } from "@sincpro/web-framework/core/lookup";
 export { detailOf, measuresOf, sumsOf } from "@sincpro/web-framework/core/measure";
 export {
   BOOKKEEPING,
+  dayTextOf,
   defaultFields,
   type FieldView,
+  instantTextOf,
+  moneyTextOf,
+  numberTextOf,
   sortKeyOf,
   textOf,
   viewOf,

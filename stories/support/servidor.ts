@@ -8,7 +8,7 @@ import {
 } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
 
-import { CLIENTES, type Factura, FACTURAS, VENTAS } from "./ventas";
+import { clienteMeta, CLIENTES, type Factura, facturaMeta, FACTURAS, VENTAS } from "./ventas";
 
 /**
  * The sales service the use cases run against — what a sincpro_framework service does, in
@@ -56,6 +56,51 @@ const refuse = (route: string, status: number, problem: Record<string, unknown>)
     next_step: "fix_request",
     ...problem,
   } as never);
+
+/**
+ * What sincpro_framework's `apply_values` takes from a form's `values`: fields of the record,
+ * never one the framework writes (`id`, `version`, the stamps), and a list of records whole —
+ * the collection a reading answered is read as its items, and a PAGE of it is refused, since
+ * written back it would remove every record it did not bring. Each refusal is a 422 pointing at
+ * the value. A fake that took whatever came hid that the form sent the record whole.
+ */
+function applied(
+  route: string,
+  values: AnyRecord,
+  fields: readonly string[],
+  written: readonly string[],
+): AnyRecord {
+  const invalid = (name: string, detail: string) =>
+    refuse(route, 422, {
+      kind: "invalid",
+      reason: "INVALID_VALUE",
+      errors: [{ pointer: `#/values/${name}`, detail }],
+    });
+  const out: AnyRecord = {};
+  for (const [name, value] of Object.entries(values)) {
+    if (!fields.includes(name)) throw invalid(name, `No hay un campo ${name} para escribir.`);
+    if (written.includes(name)) throw invalid(name, `${name} lo escribe el framework.`);
+    const collection =
+      value !== null && typeof value === "object" && !Array.isArray(value) && "items" in value
+        ? (value as { items: unknown; count?: { exact?: boolean }; cursor?: unknown })
+        : undefined;
+    if (
+      collection !== undefined &&
+      (collection.cursor != null || collection.count?.exact === false)
+    )
+      throw invalid(
+        name,
+        `${name} llegó como una página: escribirla borraría lo que no trajo.`,
+      );
+    out[name] = collection === undefined ? value : collection.items;
+  }
+  return out;
+}
+
+const FACTURA_FIELDS = Object.keys(facturaMeta.fields);
+const CLIENTE_FIELDS = Object.keys(clienteMeta.fields);
+/** What the framework writes on a record: never in a form's values. */
+const FRAMEWORK_WRITES = ["id", "version", "created_at", "updated_at"];
 
 export function servidorVentas() {
   const facturas: Factura[] = structuredClone(FACTURAS);
@@ -233,11 +278,10 @@ export function servidorVentas() {
   /**
    * sincpro_framework's `Edit` over the customers (`PUT /clientes/{id}/edit`): the record named
    * by `id` — the stored one, or a NEW one created under the id the client minted. The values
-   * carry what a person writes: a field the framework writes (`id`) is refused, as
-   * `apply_values` refuses it; the path and the body name the same record.
+   * carry what a person writes, read as `apply_values` reads them (`applied`): a field the
+   * framework writes is refused; the path and the body name the same record.
    */
   function editarCliente(route: string, id: string, sent: AnyRecord): unknown {
-    const values = (sent["values"] ?? {}) as AnyRecord;
     const invalid = (pointer: string, detail: string) =>
       refuse(route, 422, {
         kind: "invalid",
@@ -246,7 +290,12 @@ export function servidorVentas() {
       });
     if (sent["id"] !== id)
       throw invalid("#/id", "El cuerpo y la ruta nombran otro registro.");
-    if ("id" in values) throw invalid("#/values/id", "Cliente.id lo escribe el framework.");
+    const values = applied(
+      route,
+      (sent["values"] ?? {}) as AnyRecord,
+      CLIENTE_FIELDS,
+      FRAMEWORK_WRITES,
+    );
     const kept = drafts.get(id);
     if (sent["action"] === "discard") {
       drafts.delete(id);
@@ -315,19 +364,20 @@ export function servidorVentas() {
 
     const f = find(route, decodeURIComponent(number ?? ""));
 
-    // sincpro_framework's `Edit`, `save`: the fields it changed, out of the record whole, stored
-    // if nobody moved the record (or its draft) since it was read; the draft is dropped.
+    // sincpro_framework's `Edit`, `save`: the draft's values, then this edit's — every value
+    // sent, read as `apply_values` reads them —, stored if nobody moved the record (or its draft)
+    // since it was read; the draft is dropped.
     if (method === "PUT" && action === "draft" && sent["action"] === "save") {
       const kept = drafts.get(f.number);
       if ((kept?.version ?? 0) !== sent["version"] || sent["origin_version"] !== f.version)
         throw stale(route, f);
-      const values = sent["values"] as AnyRecord;
-      const changed = sent["changed"] as string[];
-      return guardar(
+      const values = applied(
         route,
-        f,
-        Object.fromEntries(changed.filter((k) => k in values).map((k) => [k, values[k]])),
+        (sent["values"] ?? {}) as AnyRecord,
+        FACTURA_FIELDS,
+        FRAMEWORK_WRITES,
       );
+      return guardar(route, f, { ...kept?.values, ...values });
     }
 
     // `discard`: the draft dropped; the stored record stays as it was.
@@ -336,8 +386,8 @@ export function servidorVentas() {
       return { factura: { ...f }, draft: null };
     }
 
-    // sincpro_framework's `Edit` (save_draft): the record as the form holds it, the fields it
-    // changed, the draft version it read; answers the record and the draft it is now.
+    // sincpro_framework's `Edit` (save_draft): what the form wrote over the caller's draft, the
+    // draft version it read; answers the record and the draft it is now.
     if (method === "PUT" && action === "draft") {
       const kept = drafts.get(f.number);
       if ((kept?.version ?? 0) !== sent["version"])
@@ -346,10 +396,14 @@ export function servidorVentas() {
           reason: "DRAFT_CONFLICT",
           detail: "Otra pestaña guardó el borrador antes.",
         });
-      const values = sent["values"] as AnyRecord;
-      const changed = new Set(sent["changed"] as string[]);
+      const values = applied(
+        route,
+        (sent["values"] ?? {}) as AnyRecord,
+        FACTURA_FIELDS,
+        FRAMEWORK_WRITES,
+      );
       const next: Draft = {
-        values: Object.fromEntries(Object.entries(values).filter(([k]) => changed.has(k))),
+        values: { ...kept?.values, ...values },
         version: (kept?.version ?? 0) + 1,
         origin_version: Number(sent["origin_version"] ?? f.version),
       };

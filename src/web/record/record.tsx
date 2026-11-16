@@ -4,8 +4,18 @@ import { type AnyRecord, describeRows, type Meta } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
 import { relatedOf } from "@sincpro/web-framework/core/related";
+import { type RelationField, relationFieldOf } from "@sincpro/web-framework/core/relation";
+import { useEntityFor } from "@sincpro/web-framework/react/context";
+import { useNameOf } from "@sincpro/web-framework/react/useNameOf";
 import { columnsOf } from "@sincpro/web-framework/web/list/columns";
-import { List, type RowAction, type SheetField } from "@sincpro/web-ui";
+import { useRecordOpening } from "@sincpro/web-framework/web/record/opening";
+import {
+  List,
+  type OpenTarget,
+  RelationValue,
+  type RowAction,
+  type SheetField,
+} from "@sincpro/web-ui";
 import type { ReactNode } from "react";
 
 /**
@@ -40,13 +50,72 @@ export function factsOf<T extends AnyRecord>(
   return names.map((name) => {
     const view = viewOf(meta, name, options.locale);
     const own = options.cells?.[name];
+    const relation = relationFieldOf(meta, name);
     return {
       label: view.label,
-      value: own ? own(record) : (textOf(meta, name, record[name], options.locale) ?? EMPTY),
+      value: own ? (
+        own(record)
+      ) : relation !== undefined && !relation.many ? (
+        <RelationFact
+          record={record}
+          meta={meta}
+          name={name}
+          relation={relation}
+          locale={options.locale}
+        />
+      ) : (
+        (textOf(meta, name, record[name], options.locale) ?? EMPTY)
+      ),
       ...(view.help === undefined ? {} : { hint: view.help }),
       ...(name === meta?.identity ? { mono: true } : {}),
     };
   });
+}
+
+/**
+ * A many2one read as a fact: the name of the record it points at, as a link that opens it where
+ * the view says (`RecordOpening`: the workspace's places, «Abrir en…») — when the application
+ * declared its entity. A key alone (`EntityID[Tenant]`) is named by key (`useNameOf`). Of an
+ * entity nobody declared, it is the text it always was.
+ *
+ * Context: a fact a person read as «Globex Bolivia» led nowhere, so an application wrote its own
+ * link for «this payment's member», or misused a smart button for it. A component inside the
+ * fact's VALUE is fine: what web-ui finds by type are the slots, never their content.
+ */
+function RelationFact({
+  record,
+  meta,
+  name,
+  relation,
+  locale,
+}: {
+  record: AnyRecord;
+  meta: Meta | null | undefined;
+  name: string;
+  relation: RelationField;
+  locale: string | undefined;
+}) {
+  const target = useEntityFor(relation.target);
+  const opening = useRecordOpening();
+  const raw = record[relation.key];
+  const key = raw === null || raw === undefined ? "" : String(raw);
+  const asked = useNameOf(relation.held ? undefined : target, key);
+  if (target === undefined || key === "")
+    return <>{textOf(meta, name, record[name], locale) ?? EMPTY}</>;
+  const held = relation.held
+    ? textOf(meta, relation.relation, record[relation.relation], locale)
+    : null;
+  return (
+    <RelationValue
+      name={held ?? asked ?? key}
+      {...(opening === null
+        ? {}
+        : {
+            onOpenIn: (to: OpenTarget) => opening.open(target.ref(key), to),
+            openTargets: opening.targets,
+          })}
+    />
+  );
 }
 
 /** How many records a relation of this record holds — the TOTAL, not the page it brought. */

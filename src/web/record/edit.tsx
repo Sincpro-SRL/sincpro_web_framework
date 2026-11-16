@@ -251,7 +251,13 @@ export function RecordField<T extends Record<string, unknown>>({
       ) : state.readonly ? (
         <ReadValue value={textOf(meta, name, value, locale) ?? "—"} />
       ) : (
-        controlFor(control, view.type, field?.exact === true, choicesOf(meta, name, locale))
+        controlFor(
+          control,
+          view.type,
+          field?.exact === true,
+          choicesOf(meta, name, locale),
+          field?.widget,
+        )
       )}
     </Field>
   );

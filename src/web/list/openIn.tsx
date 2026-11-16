@@ -24,7 +24,9 @@ import {
  *
  * The places allowed depend on where the list is: from inside a modal, no modal (a second one
  * would replace the first and lose what was typed in it) — composer says where a view is
- * (`api.over`).
+ * (`api.over`). On a phone a side panel and a window both open as the page (composer 1.7,
+ * `api.layout`), so neither is offered: three entries that do the same are a lie. A screen that
+ * draws the menu follows the mode (`usePhone(api)`) so it redraws when it changes.
  */
 
 /** A record's form fits; a short task (register a payment) passes its own size. */
@@ -32,10 +34,16 @@ export const RECORD_SIZE = { w: 760, h: 560 } as const;
 
 const EVERYWHERE: readonly OpenTarget[] = ["modal", "peek", "side", "page", "window"];
 const FROM_A_MODAL: readonly OpenTarget[] = ["side", "peek", "page", "window"];
+const ON_A_PHONE: readonly OpenTarget[] = ["modal", "peek", "page"];
+const ON_A_PHONE_FROM_A_MODAL: readonly OpenTarget[] = ["peek", "page"];
 
 /** Where a record may open from this view, the default first. */
-export function targetsFor(api: Pick<WorkspaceApi, "over">): readonly OpenTarget[] {
-  return api.over === null ? EVERYWHERE : FROM_A_MODAL;
+export function targetsFor(
+  api: Pick<WorkspaceApi, "over"> & Partial<Pick<WorkspaceApi, "layout">>,
+): readonly OpenTarget[] {
+  const phone = api.layout?.phone() === true;
+  if (api.over === null) return phone ? ON_A_PHONE : EVERYWHERE;
+  return phone ? ON_A_PHONE_FROM_A_MODAL : FROM_A_MODAL;
 }
 
 /** web-ui's target as composer's options. Destinations share their names, so only the size is

@@ -18,6 +18,7 @@ import {
   computedLocally,
   creationOf,
   defaultsOf,
+  editedOf,
   errorsByField,
   type FieldState,
   fieldStateOf,
@@ -48,10 +49,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
  *   - **drafts** — an edit kept between requests (sincpro_framework's `Drafts`) comes back with
  *     the record and is shown as restored; `keep()` stores the current one.
  *   - **`Edit`** — an entity that declares `edit` speaks sincpro_framework's `Edit` on it for all
- *     three: `keep()` is `save_draft`, `save()` is `save` — the record whole, the fields changed,
- *     the draft version read and the stored version it started from — and `discard()` is
- *     `discard`, which drops the draft on the server too. Without it, a save sends the changed
- *     fields and the version to `save`.
+ *     three: `keep()` is `save_draft`, `save()` is `save` — the fields changed, without what the
+ *     framework writes (`editedOf`), the draft version read and the stored version it started
+ *     from — and `discard()` is `discard`, which drops the draft on the server too. Without it,
+ *     a save sends the changed fields and the version to `save`.
  *   - **creating** — with no id it is a record that does not exist yet: it starts from the
  *     defaults the model publishes, previews like any other, and `save()` sends it to the
  *     entity's `create` route with an `Idempotency-Key` (a retry never creates two). When the
@@ -376,14 +377,17 @@ export function useRecord<T extends AnyRecord>(
     else setFailure(error);
   };
 
-  // sincpro_framework's `Edit`: the record as the form holds it, whole; the fields changed; the
-  // draft version read (`0`: none) — another tab that kept first wins —, and the stored version
-  // the edit started from. Without an `action` it is the server's default, `save_draft`.
+  // sincpro_framework's `Edit`: what the form writes; the fields changed; the draft version read
+  // (`0`: none) — another tab that kept first wins —, and the stored version the edit started
+  // from. Without an `action` it is the server's default, `save_draft`.
   const editOf = (action?: "save_draft" | "save" | "discard"): AnyRecord => ({
     id: keyNow(),
-    // A new record carries what a person may write — never a field the framework writes (its
-    // id, its stamps), which `Edit` refuses.
-    values: isNew ? creationOf(state.meta, values) : values,
+    // Never a field the framework writes (its id, its stamps, a line's version), which `Edit`
+    // refuses: a new record carries what a person may write, a stored one what changed — the
+    // server puts it over what it stored and the caller's draft.
+    values: isNew
+      ? creationOf(state.meta, values)
+      : editedOf(state.meta, values, Object.keys(changed)),
     changed: Object.keys(changed),
     version: draft?.version ?? 0,
     ...(typeof version === "number" ? { origin_version: version } : {}),
