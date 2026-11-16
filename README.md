@@ -470,6 +470,7 @@ hook and draw your own, or go straight to the loose piece.
 | Cross it by two fields           | `EntityList pivot`                                          | `usePivot`                            | `pivotOf`                                                   |
 | Order by several fields          | the bar's criteria builder                                  | `listing.orderBy([...])`              | criteria's `order`                                          |
 | Act on it (with a dry run)       | `ServiceButton` (a use case), `CommandButton`, row commands | `useService`, `useCommand`            | `transport.send`                                            |
+| Delete it                        | `EntityRecord` (`RecordLifecycle`)                          | `useRecordLifecycle`                  | `entity.delete`, `useRouteCommand`                          |
 | Read again when it was written   | every reading of this package, by itself                    | `useWrites`                           | `processChanges` (client-framework)                         |
 | What happened to it              | `Record.Activity` fed by `useHistory`                       | `useHistory`                          | `historyOf`                                                 |
 | The application context          | `SincproApp`                                                | `useRecordInWorkspace`, `useFollowed` | `FrameworkProvider`, `webUiSkin`                            |

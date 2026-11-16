@@ -277,8 +277,13 @@ built; this file is how to keep it.
 - **The transport, the entity and the generator are @sincpro/client-framework's.** Import them
   from there, never re-export them here (`tests/index.test.ts` pins it): one door, or two versions
   meet in one screen. `stories/support/forge-contract/` holds forge's contracts and what that
-  generator writes from them, out of prettier and eslint; story 40 runs on them. After upgrading
-  @sincpro/client-framework, run `make codegen-fixtures` and read the diff.
+  generator writes from them (by layer: `<context>/domain/generated`, `<context>/adapters/generated`),
+  out of prettier and eslint; story 40 runs on them. After upgrading @sincpro/client-framework,
+  run `make codegen-fixtures` and read the diff — skipping it once left 1.9's flat files under 1.11.
+- **A `DELETE`'s fields travel in its query string** (client-framework 1.12): sincpro_framework
+  reads a `DELETE` from its URL and refuses a field in its body. `memoryTransport` hands them to
+  `handle` as the body, so a fake answers a `Delete` from `body` — and returns `null` for «done»:
+  `undefined` reads as a failure in `ActionButton` / `useService`.
 - **A transport here forwards a call's own headers** (`CallOptions`): `cachedTransport` hands
   them down and keeps answers by the question alone — the headers are a use case's trace.
 - **A Command's record goes where its body names it** (`target`, `bodyFor`): `run(id, body)`

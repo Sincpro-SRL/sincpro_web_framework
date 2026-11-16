@@ -13,19 +13,34 @@ import { frameworkCopy } from "@sincpro/web-framework/core/copy";
  *
  * These are business facts («Factura confirmada»), never technical logs: those belong to the
  * observability stack, not to a record's screen.
+ *
+ * Since sincpro_framework 3.37 every fact also says which one it is (`name`, `billing.v1.deleted`),
+ * who did it (`actor`, the context's user) and who the record was then (`entity_display`), and
+ * the contract labels a subclass's own fields (`reason` → «Motivo»). Who did it is the entry's
+ * `by` — web-ui's activity draws it —; the rest of the envelope never repeats in its detail.
  */
-export type HistoryEntry = { id: string; label: string; at: string; detail?: string };
+export type HistoryEntry = {
+  id: string;
+  label: string;
+  at: string;
+  /** Who did it, as the fact says (`actor`); absent: the system, or a backend before 3.37. */
+  by?: string;
+  detail?: string;
+};
 
 /** What every fact carries: what remains is what this fact says. */
 const ENVELOPE = new Set([
   "id",
+  "name",
   "created_at",
   "updated_at",
   "version",
   "label",
   "entity_type",
   "entity_id",
+  "entity_display",
   "entity_version",
+  "actor",
   "correlation_id",
   "causation_id",
 ]);
@@ -55,10 +70,12 @@ export function historyOf(
       .map(([key, value]) => [key, said(value)] as const)
       .filter(([, value]) => value !== null && value !== row["entity_id"])
       .map(([key, value]) => `${labelOf(meta, key, locale)}: ${value}`);
+    const actor = said(row["actor"]);
     return {
       id: String(row["id"]),
       label: word,
       at: String(row["created_at"] ?? ""),
+      ...(actor === null ? {} : { by: actor }),
       ...(parts.length === 0 ? {} : { detail: parts.join(" · ") }),
     };
   });

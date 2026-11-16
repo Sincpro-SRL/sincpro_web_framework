@@ -111,14 +111,15 @@ build:
 
 # What story 40 runs: forge's client contracts (stories/support/forge-contract/<context>.contract.json,
 # copied from a real `export-client-contract`) through @sincpro/client-framework's generator, as
-# forge's console runs it (`--domain <context> --base /v1`). Run it after upgrading
-# @sincpro/client-framework, and read the diff.
+# forge's console runs it (`--domain <context> --base /v1`), by layer since client-framework 1.10:
+# `<context>/domain/generated` (models, Commands) and `<context>/adapters/generated` (client,
+# entities). Run it after upgrading @sincpro/client-framework, and read the diff.
 FORGE_CONTRACT := stories/support/forge-contract
 codegen-fixtures:
 	@for one in project auth sandbox; do \
 		npx sincpro-client generate $(FORGE_CONTRACT)/$$one.contract.json \
 			--out $(FORGE_CONTRACT)/$$one --domain $$one --base /v1 >/dev/null && \
-		rm $(FORGE_CONTRACT)/$$one/contract.json; \
+		rm $(FORGE_CONTRACT)/$$one/domain/generated/contract.json; \
 	done
 	@echo "✓ $(FORGE_CONTRACT)/ written from the contracts"
 

@@ -1621,3 +1621,30 @@ the ten were pieces that existed already or a wrong reading of one.
   right for «not known yet» and wrong for a single link — a link is `RelatedRecord`.
 - **Still here**: data loaded on the server and hydrated (with the server-state cache); sections
   in `EntityRecord` (the Meta publishes none).
+
+## sincpro_framework 3.37 and client-framework 1.12 (2026-11-16)
+
+sincpro_framework 3.37 (Sincpro-SRL/sincpro_framework#262–#265) publishes the generic `Delete`,
+a trash (`Archive`, `Restore`, `Purge`), a record's life as facts, every fact saying who did it
+(`actor`) and who the record was (`entity_display`), a history readable with no code (`name`,
+labelled envelope, a subclass's fields labelled), «group by» off for identities, versions and
+trace ids, and `EntityRef`. client-framework 1.12 gives the entity its `delete` route and sends a
+`DELETE`'s fields in the query string — the wire reads them only there, and 3.37 refuses them in
+a body.
+
+- **Here**:
+  - **«Delete» in the record.** `useRecordLifecycle(record)` — what the entity declares of the
+    record's own lifecycle, each action sending the version read (`origin_version`) and
+    rehearsing with the same body —, `RecordLifecycle` drawing it with `ActionButton`'s gesture
+    (the server's dry run before «Hacerlo»), and `EntityRecord` showing it and closing the
+    surface once the record is gone. `useRouteCommand` is `useCommand`'s machinery for any write
+    route. Story 52.
+  - **History.** `historyOf` reads who did it (`actor` → `by`, which web-ui's activity draws) and
+    keeps `name`, `actor` and `entity_display` out of the detail; the labels of a fact's own
+    fields now come from the contract.
+  - **client-framework 1.12.** The floor is 1.12. Its generator writes by layer since 1.10
+    (`domain/generated`, `adapters/generated`), and the fixtures of story 40 were still the flat
+    files of 1.9: `make codegen-fixtures` writes the layered ones now.
+- **Waiting**: the trash in the record and its list (`archive`, `restore` routes on the entity,
+  Sincpro-SRL/sincpro_client_framework#54), `entity.listRef` in place of `scopedRef`, and an
+  `EntityRef` field drawn as a link — the Meta does not mark one yet (asked of sincpro_framework).

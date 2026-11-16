@@ -6,7 +6,10 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { Escenario } from "./support/escenario";
 import contract from "./support/forge-contract/project.contract.json";
-import { entities, issues } from "./support/forge-contract/project/entities";
+import {
+  entities,
+  issues,
+} from "./support/forge-contract/project/adapters/generated/entities";
 
 const meta: Meta = {
   title: "Casos de uso/40 · Desde el contrato",
@@ -14,7 +17,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          'Una pantalla de forge armada **sólo con lo generado** desde su contrato (`sincpro-web generate`, PRD_01): `issues` sale de `stories/support/forge-contract/project/entities.ts`, que se escribió del contrato que exporta un forge real (`export-client-contract`). Nadie escribió una ruta: la lista es el `search` de `Issue` y «Enviar» es su comando `sendIssue`, `POST /issues/{issue_id}/messages`. La pantalla da el id del registro y el mensaje; el comando sabe en qué campo va el id (`target: "issue_id"`), y la ruta lo toma de ahí. Las definiciones se precargan desde la misma foto (`metasOf`): las palabras de la lista están antes de la primera respuesta.',
+          'Una pantalla de forge armada **sólo con lo generado** desde su contrato (`sincpro-web generate`, PRD_01): `issues` sale de `stories/support/forge-contract/project/adapters/generated/entities.ts`, que se escribió del contrato que exporta un forge real (`export-client-contract`). Nadie escribió una ruta: la lista es el `search` de `Issue` y «Enviar» es su comando `sendIssue`, `POST /issues/{issue_id}/messages`. La pantalla da el id del registro y el mensaje; el comando sabe en qué campo va el id (`target: "issue_id"`), y la ruta lo toma de ahí. Las definiciones se precargan desde la misma foto (`metasOf`): las palabras de la lista están antes de la primera respuesta.',
       },
     },
   },

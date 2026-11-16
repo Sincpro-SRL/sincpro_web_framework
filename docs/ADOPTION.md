@@ -182,18 +182,19 @@ const caller = await auth.getCaller(); // a GET of its own: the transport needs 
 quipu, the first application built end to end on the stack (Sincpro-SRL/sincpro_web_framework#34),
 rewrote pieces that were already here. Each of these is one import:
 
-| What the screen needs                                      | The piece                                                                     |
-| ---------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| A record's whole screen: fields, pages, history, audit     | `EntityRecord` (`entityView` without `record`), `useRecordScreen` to own it   |
-| The same screen creating, then becoming the created record | `EntityRecord` / `useRecordInWorkspace`: the reference is replaced by itself  |
-| «Are you sure?» before a destructive command               | `CommandButton destructive` / `ServiceButton`: the server's dry run is shown  |
-| A record this one points at, as a link that opens it       | `RecordField` (read-only), `RelatedRecord`, `factsOf` — a key alone is named  |
-| «This member's payments (2)»                               | `useCount(payments, { selection })` + `api.open(scopedRef(payments, cut))`    |
-| A related list inside the record                           | `RecordField name="payments"` (`RelatedList`), `useRelated`                   |
-| A long text written in several lines                       | nothing: the contract's `widget: "textarea"` (`presentation(widgets=…)`)      |
-| Money and dates in a screen of its own                     | `useTextOf()` — the provider's locale, the installed zone                     |
-| A reading through a use case that follows its arguments    | `useServiceReading(useCase, args, { follows })` — `useService` is for actions |
-| «Group by» without technical fields                        | `EntityList groupable={[…]}` / `defineList({ groupable })`                    |
+| What the screen needs                                      | The piece                                                                                     |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| A record's whole screen: fields, pages, history, audit     | `EntityRecord` (`entityView` without `record`), `useRecordScreen` to own it                   |
+| The same screen creating, then becoming the created record | `EntityRecord` / `useRecordInWorkspace`: the reference is replaced by itself                  |
+| «Are you sure?» before a destructive command               | `CommandButton destructive` / `ServiceButton`: the server's dry run is shown                  |
+| «Delete» on a record, with the server's dry run            | nothing: the entity's `delete` route (role `delete`); `RecordLifecycle`, `useRecordLifecycle` |
+| A record this one points at, as a link that opens it       | `RecordField` (read-only), `RelatedRecord`, `factsOf` — a key alone is named                  |
+| «This member's payments (2)»                               | `useCount(payments, { selection })` + `api.open(scopedRef(payments, cut))`                    |
+| A related list inside the record                           | `RecordField name="payments"` (`RelatedList`), `useRelated`                                   |
+| A long text written in several lines                       | nothing: the contract's `widget: "textarea"` (`presentation(widgets=…)`)                      |
+| Money and dates in a screen of its own                     | `useTextOf()` — the provider's locale, the installed zone                                     |
+| A reading through a use case that follows its arguments    | `useServiceReading(useCase, args, { follows })` — `useService` is for actions                 |
+| «Group by» without technical fields                        | `EntityList groupable={[…]}` / `defineList({ groupable })`                                    |
 
 ## Which way to call the backend
 

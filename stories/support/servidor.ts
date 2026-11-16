@@ -337,6 +337,27 @@ export function servidorVentas() {
     const sent = (body ?? {}) as AnyRecord;
     const [, , number, action] = route.split("/");
 
+    // sincpro_framework's `Delete` over the customers (3.37): a dry run answers what would go
+    // and touches nothing; the delete answers nothing — `null`, a 204.
+    if (method === "DELETE" && route.startsWith("/clientes/")) {
+      const id = decodeURIComponent(number ?? "");
+      const at = clientes.findIndex((c) => c["id"] === id);
+      if (at < 0)
+        throw refuse(route, 404, {
+          kind: "not_found",
+          reason: "AGGREGATE_NOT_FOUND",
+          detail: `No hay un cliente ${id}.`,
+        });
+      const name = String(clientes[at]?.["name"] ?? id);
+      if (sent["dry_run"] === true)
+        return {
+          text: `Se eliminará ${name}. Sus facturas no se tocan.`,
+          data: { id },
+        };
+      clientes.splice(at, 1);
+      return null;
+    }
+
     if (method === "PUT" && route.startsWith("/clientes/") && action === "edit")
       return editarCliente(route, decodeURIComponent(number ?? ""), sent);
 
