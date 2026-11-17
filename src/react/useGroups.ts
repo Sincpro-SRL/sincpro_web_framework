@@ -7,6 +7,7 @@ import {
   type Measure,
   resumingFrom,
 } from "@sincpro/criteria";
+import { areGroups, NotGrouped } from "@sincpro/web-framework/core/groups";
 import type { GroupLevel } from "@sincpro/web-framework/core/list";
 import { measuresOf, sumsOf } from "@sincpro/web-framework/core/measure";
 import { useFramework } from "@sincpro/web-framework/react/context";
@@ -131,8 +132,12 @@ export function useGroups<T extends AnyRecord>(
     };
     transport.list<Bucket<T>>(route, criteria as never, aborter.signal).then(
       (page) => {
-        if (!aborter.signal.aborted)
-          setState({ status: "ready", buckets: page.rows, error: null });
+        if (aborter.signal.aborted) return;
+        // Records answered to a grouped question are not groups: the list's failure, never a
+        // table drawing piles without a count.
+        if (!areGroups(page.rows))
+          setState({ status: "failed", buckets: [], error: new NotGrouped(route) });
+        else setState({ status: "ready", buckets: page.rows, error: null });
       },
       (error: unknown) => {
         if (!aborter.signal.aborted) setState({ status: "failed", buckets: [], error });

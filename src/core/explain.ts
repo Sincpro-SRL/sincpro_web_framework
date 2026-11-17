@@ -1,5 +1,6 @@
 import { TransportError } from "@sincpro/client-framework";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
+import { NotGrouped } from "@sincpro/web-framework/core/groups";
 
 /**
  * What a person reads about a failure: a heading, and a sentence with what happened and what
@@ -33,6 +34,9 @@ export function explain(error: unknown): {
       retryable,
     };
   }
+  // It answered, and not what was asked: retrying asks the same thing again.
+  if (error instanceof NotGrouped)
+    return { heading: copy.unexpected, sentence: error.message, retryable: false };
   if (error instanceof TransportError && error.status !== null)
     return { heading: copy.status(error.status), sentence: error.message, retryable: true };
   return {

@@ -1,6 +1,14 @@
+import { memoryTransport, type Transport } from "@sincpro/client-framework";
 import type { Criteria } from "@sincpro/criteria";
-import { defineList, EntityList, textOf, useListing } from "@sincpro/web-framework";
+import {
+  defineList,
+  EntityList,
+  FrameworkProvider,
+  textOf,
+  useListing,
+} from "@sincpro/web-framework";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useMemo } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { Escenario, EscenarioRest } from "./support/escenario";
@@ -80,7 +88,7 @@ export const PorEstado: Story = {
 /**
  * The same grouping over HTTP — `restTransport` against sincpro_framework's REST wire, whose
  * `Search` answers a grouping criteria on the SAME route with `groups` beside the records
- * (3.37.2; client-framework 2.2 reads them by name). Against the fake alone, «group by» once
+ * (3.37.1; client-framework 2.2 reads them by name). Against the fake alone, «group by» once
  * passed every story and worked on no real screen.
  */
 export const PorEstadoSobreRest: Story = {
@@ -112,6 +120,40 @@ export const PorEstadoSobreRest: Story = {
     // A group opens with its own criteria, as on any wire.
     await userEvent.click(pagadas);
     await expect(await canvas.findByText("F-2026-0003")).toBeVisible();
+  },
+};
+
+/** A backend that does not group: it answers a grouped question with its records. */
+function SinAgrupar() {
+  const transport = useMemo((): Transport => {
+    const memory = memoryTransport(VENTAS, { latency: 30 });
+    return {
+      ...memory,
+      list: (route, criteria, signal, options) => {
+        const { grouping: _, ...plain } = criteria as Criteria;
+        return memory.list(route, plain as typeof criteria, signal, options);
+      },
+    };
+  }, []);
+  return (
+    <FrameworkProvider transport={transport} locale="es">
+      <Facturas />
+    </FrameworkProvider>
+  );
+}
+
+/**
+ * Records answered to a grouped question are not groups: the list says it in its failed state,
+ * never a table that falls over drawing piles without a count (web-ui left it to this package,
+ * Sincpro-SRL/sincpro_web_ui#33).
+ */
+export const UnServidorQueNoAgrupa: Story = {
+  render: () => <SinAgrupar />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await agruparPor(canvasElement, "Estado");
+    await expect(await canvas.findByText(/no contestó con grupos/)).toBeVisible();
+    await expect(canvas.queryByRole("button", { name: /Pagada.*\d/ })).toBeNull();
   },
 };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import type { AnyRecord, Bucket, Criteria, Measure } from "@sincpro/criteria";
+import { areGroups, NotGrouped } from "@sincpro/web-framework/core/groups";
 import type { GroupLevel } from "@sincpro/web-framework/core/list";
 import { measuresOf, sumsOf } from "@sincpro/web-framework/core/measure";
 import { useFramework } from "@sincpro/web-framework/react/context";
@@ -91,7 +92,16 @@ export function usePivot<T extends AnyRecord>(
       transport.list<Bucket<T>>(listing.route, grouped([columns]), aborter.signal),
     ]).then(
       ([crossed, byColumn]) => {
-        if (!aborter.signal.aborted)
+        if (aborter.signal.aborted) return;
+        // Records answered to a grouped question are not a crossing (`areGroups`).
+        if (!areGroups(crossed.rows) || !areGroups(byColumn.rows))
+          setState({
+            status: "failed",
+            crossed: [],
+            columns: [],
+            error: new NotGrouped(listing.route),
+          });
+        else
           setState({
             status: "ready",
             crossed: crossed.rows,
