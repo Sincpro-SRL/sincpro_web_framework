@@ -3,7 +3,7 @@ import { defineList, EntityList, textOf, useListing } from "@sincpro/web-framewo
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { Escenario } from "./support/escenario";
+import { Escenario, EscenarioRest } from "./support/escenario";
 import { facturaMeta, FACTURAS, facturas, VENTAS } from "./support/ventas";
 
 const meta: Meta = {
@@ -74,6 +74,44 @@ export const PorEstado: Story = {
     const leido = pedidos.at(-1)!.criteria;
     await expect(JSON.stringify(leido.selection)).toContain('"paid"');
     await expect(leido.grouping).toBeUndefined();
+  },
+};
+
+/**
+ * The same grouping over HTTP — `restTransport` against sincpro_framework's REST wire, whose
+ * `Search` answers a grouping criteria on the SAME route with `groups` beside the records
+ * (3.37.2; client-framework 2.2 reads them by name). Against the fake alone, «group by» once
+ * passed every story and worked on no real screen.
+ */
+export const PorEstadoSobreRest: Story = {
+  render: () => (
+    <EscenarioRest>
+      {({ calls }) => (
+        <>
+          <Facturas />
+          <output data-testid="pedidos" hidden>
+            {JSON.stringify(calls.map((call) => call.url))}
+          </output>
+        </>
+      )}
+    </EscenarioRest>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await agruparPor(canvasElement, "Estado");
+    // The groups the server counted over all 64 — not the records it answered beside them.
+    const pagadas = await canvas.findByRole("button", { name: /Pagada.*22/ });
+    await expect(canvas.getByRole("button", { name: /Borrador.*11/ })).toBeVisible();
+    await expect(canvas.getByText(/4 grupos · 64 registros/)).toBeVisible();
+    // Asked on the list's own route, the grouping in its criteria.
+    const urls = (): string[] =>
+      JSON.parse(canvas.getByTestId("pedidos").textContent ?? "[]");
+    await expect(
+      urls().some((url) => url.startsWith("/v1/facturas?") && url.includes("group_by")),
+    ).toBe(true);
+    // A group opens with its own criteria, as on any wire.
+    await userEvent.click(pagadas);
+    await expect(await canvas.findByText("F-2026-0003")).toBeVisible();
   },
 };
 

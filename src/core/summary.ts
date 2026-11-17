@@ -13,8 +13,12 @@ import { textOf } from "@sincpro/web-framework/core/present";
  *
  * Which field plays each part: the one the entity declares (`entity(…, { summary })`), else
  * the first conventional name the model holds (`description`, `state`/`status`, `created_at`,
- * …). The name is the model's own `display`. When the backend publishes these parts in its
- * model definition, they are read from there and the convention steps aside.
+ * …). The name is the model's own `display`. The convention only knows English names: a model
+ * whose state is `estado` and its description `descripcion` declares them —
+ * `entity(…, { summary: { state: "estado", description: "descripcion" } })` — or plays no such
+ * part (no tag on top, no colour on its rows). Nothing is guessed: an entity may hold two
+ * choices. It is the client's to say, never the Meta's: which field a screen shows as the state
+ * is presentation, and sincpro_framework does not publish it (#266, decided).
  */
 export type RecordSummary = {
   id: string;

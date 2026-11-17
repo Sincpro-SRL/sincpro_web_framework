@@ -48,7 +48,8 @@ const issueMeta = (writable: boolean) =>
   });
 
 const tenants = entity("auth:tenant", { list: "/tenants" });
-const issues = entity("project:issue", { list: "/issues" });
+// It can be stored (`save`): a record of an entity nothing can write is drawn read only.
+const issues = entity("project:issue", { list: "/issues", save: "PUT /issues/{id}" });
 
 const TENANTS = [
   { id: "acme", display_name: "Acme Bolivia" },

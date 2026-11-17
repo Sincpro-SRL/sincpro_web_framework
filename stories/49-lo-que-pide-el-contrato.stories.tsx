@@ -34,7 +34,8 @@ const noticiaMeta = defineMeta({
   },
 });
 
-const noticias = entity("portal:noticia", { list: "/noticias" });
+// It can be stored (`save`): a record of an entity nothing can write is drawn read only.
+const noticias = entity("portal:noticia", { list: "/noticias", save: "PUT /noticias/{id}" });
 
 const NOTICIAS = [{ id: "n1", title: "Asamblea de diciembre", body: "" }];
 

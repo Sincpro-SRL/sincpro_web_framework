@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 
+import { defineMeta, field } from "@sincpro/client-framework";
 import { formOf } from "@sincpro/web-framework";
 import { test } from "vitest";
 
@@ -31,5 +32,41 @@ test("the picture and the audit parts are not text boxes", () => {
 });
 
 test("without a model there is nothing to draw", () => {
-  assert.deepEqual(formOf(null), { fields: [], pages: [] });
+  assert.deepEqual(formOf(null), { fields: [], pages: [], sections: [] });
+});
+
+const recibo = defineMeta({
+  aggregate: "Recibo",
+  identity: "numero",
+  fields: {
+    numero: field.text({ label: "N.º de recibo" }),
+    concepto: field.text({ label: "Concepto" }),
+  },
+});
+const monto = defineMeta({
+  aggregate: "Money",
+  identity: "currency",
+  fields: { amount: field.number({ exact: true }), currency: field.text() },
+});
+const pagoMeta = defineMeta({
+  aggregate: "Pago",
+  identity: "id",
+  fields: {
+    id: field.text({ readonly: true }),
+    concepto: field.text({ label: "Concepto" }),
+    recibo: field.embedded(recibo, { label: "Recibo" }),
+    total: field.embedded(monto, { label: "Total" }),
+    archived_at: field.datetime({ nullable: true }),
+  },
+});
+
+test("a value the record embeds is a section of its own fields; a money stays a field", () => {
+  const { fields, sections } = formOf(pagoMeta);
+  assert.deepEqual(sections, ["recibo"]);
+  assert.equal(fields.includes("recibo"), false);
+  assert.equal(fields.includes("total"), false);
+});
+
+test("when it went to the trash is a stamp, not a field", () => {
+  assert.equal(formOf(pagoMeta).fields.includes("archived_at"), false);
 });

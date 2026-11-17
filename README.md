@@ -213,6 +213,20 @@ workspace (`domain:kind`). `summary` only when its fields are not the convention
 on sincpro_framework does not write them: `sincpro-client generate` does, from its contract
 («From the contract», below).
 
+`summary` is how an application says which of its fields plays each part of a record — its
+state, its type, its description, its picture, who made it. The convention only knows English
+names (`state`/`status`, `type`/`kind`/`category`, `description`/`summary`, `image`…): a model
+whose state is `estado` names it, or its header shows no state and its rows no tag. Guessing is
+not safe — an entity may hold two choices — so a field not named this way plays no part.
+
+```ts
+// quipu's payment: Spanish field names, said once.
+export const payments = {
+  ...generated.pagos,
+  summary: { state: "estado", description: "descripcion" },
+};
+```
+
 ```ts
 import { entity } from "@sincpro/client-framework";
 
@@ -226,6 +240,21 @@ export const invoices = entity<Invoice>("sales:invoice", {
   save: "PUT /invoices/{id}",
   commands: { post: "POST /invoices/{id}/post" },
   history: "/invoices/{id}/events", // its DomainEvents: a record's facts
+});
+```
+
+An entity with neither `edit` nor `save` — a payment, an order that only its Commands move — has
+its records drawn read only, whole: nothing on screen invites typing what nobody can store.
+
+**How a record looks** is the client's, declared once with the entity (`presented`): its row,
+card and option, the columns of a table of it, the colour of each value of a choice and of each
+kind of fact in its history. Cells, rows, cards, the record's tag and its activity use them:
+
+```ts
+export const payments = presented(entity<Payment>("billing:payment", { list: "/payments" }), {
+  tones: { estado: { EN_REVISION: "warn", VALIDADO: "good", RECHAZADO: "bad" } },
+  facts: { pago_aprobado: "good", pago_rechazado: "bad" }, // by a fact's `name`, or its last part
+  columns: ["periodo", "monto", "estado"],
 });
 ```
 

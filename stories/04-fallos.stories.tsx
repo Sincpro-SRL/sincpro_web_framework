@@ -48,7 +48,12 @@ export const SinAccesoALaLista: Story = {
   ],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText(/Pedíselo al administrador/)).toBeVisible();
+    // Its kind in the application's words; what happened is the server's, and what to do next
+    // the copy's — the same for every «no access» (the server's English default never shows).
+    await expect(await canvas.findByText(/No tenés acceso/)).toBeVisible();
+    await expect(
+      await canvas.findByText(/VENTAS_LEER\. Pedí acceso a quien lo administra\./),
+    ).toBeVisible();
   },
 };
 

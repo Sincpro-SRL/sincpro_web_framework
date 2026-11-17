@@ -156,7 +156,7 @@ export const UnRechazoSeMuestraDondePaso: Story = {
     await expect(await canvas.findByText(`${PUBLICADA}: Publicada`)).toBeVisible();
     // Undoable: it runs on the click. The server refuses it, and says why, where it happened.
     await userEvent.click(canvas.getByRole("button", { name: "Confirmar" }));
-    await expect(await page.findByText("Ya está confirmada")).toBeInTheDocument();
+    await expect(await page.findByText(/^Ya está confirmada/)).toBeInTheDocument();
     await expect(canvas.getByText(`${PUBLICADA}: Publicada`)).toBeVisible();
   },
 };

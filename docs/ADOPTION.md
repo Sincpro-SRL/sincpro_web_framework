@@ -191,6 +191,19 @@ rewrote pieces that were already here. Each of these is one import:
 | A trash: put away, see it, bring back                      | nothing on the record (`archive` / `restore` routes); `listView(trashOf(entity))` for the trash |
 | A record this one points at, as a link that opens it       | `RecordField` (read-only), `RelatedRecord`, `factsOf` — a key alone is named                    |
 | «This member's payments (2)»                               | `useCount(payments, { selection })` + `api.open(payments.listRef(cut, name))`                   |
+| The one record a record belongs to, as a link in its head  | `RelatedRecord` — never a `Record.Smart` without a count: it reads «—», «not known yet»         |
+| A state as a coloured tag, everywhere                      | `presented(entity, { tones: { estado: { … } } })` — the word stays the Meta's                   |
+| A history in the app's words, colour per fact              | nothing: edits read «Field: before → after»; `presented(entity, { facts })` for colours         |
+| A fact's own fields in the model's words                   | `SincproApp events={eventMetasOf(contract)}` (client-framework) — built once, by wire name      |
+| A server text in the user's language (a dry run)           | nothing: the provider sends its `locale` as `lang` in the context                               |
+| A history of one's own                                     | `useRecordScreen(entity, props, { history: false })` — the framework's is not read              |
+| A record of an entity nothing can save, read only          | nothing: without `edit`/`save` every field is read only                                         |
+| A value the record embeds (a receipt), field by field      | nothing in `EntityRecord`; `RecordField name="recibo"` / `"recibo.numero"`, `factsOf`           |
+| A refusal in the app's words                               | nothing: `Refused` / `explain` head it by its `kind` from the copy table                        |
+| Money with no currency of its own (`widget: money`)        | `SincproApp currency="BOB"` (or `FrameworkProvider currency`)                                   |
+| Dates day first (DD/MM/YYYY)                               | nothing: the default; `dateStyle="literal"` for the month in words (a phone gets it)            |
+| Totals at a list's foot                                    | nothing: the model's `total` (`Presentation.totals`) — over the rows in hand, said so           |
+| A state, a type or a description not named in English      | `entity(…, { summary: { state: "estado", description: "descripcion" } })`                       |
 | A related list inside the record                           | `RecordField name="payments"` (`RelatedList`), `useRelated`                                     |
 | A long text written in several lines                       | nothing: the contract's `widget: "textarea"` (`presentation(widgets=…)`)                        |
 | Money and dates in a screen of its own                     | `useTextOf()` — the provider's locale, the installed zone                                       |

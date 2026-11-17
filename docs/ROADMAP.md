@@ -1661,3 +1661,85 @@ a body.
     `EntityRef` is sincpro_framework's text `bounded_context.Entity:key`.
 - **Waiting**: an `EntityRef` field drawn as a link, resolved with `Resolve` — the Meta does not
   mark a field as one yet (asked of sincpro_framework, #261).
+
+## quipu on 3.37 (2026-11-17)
+
+quipu (a reference app on the whole stack) moved its screens onto `useRecordScreen`,
+`EntityRecord`, `RecordField` and the text helpers, and reported what it still wrote by hand
+(Sincpro-SRL/sincpro_web_framework#39). Almost all of it needed nothing from the backend: the Meta
+already publishes it.
+
+- **Here**:
+  - **History.** An edit (`EntityUpdated`) reads «Concepto: Cuota → Cuota de noviembre», each field
+    in the word it had then (`field_labels`) and each side as the record's own model writes it (a
+    choice by its word, money as money); `changes` and `field_labels` never reach the detail as
+    JSON. Each fact takes a tone by its `name` — whole or its last part —: the framework's own
+    (`FACT_TONES`: deleted, archived, restored) and the application's
+    (`presented(entity, { facts })`). `useRecordScreen(…, { history: false })` reads none, for a
+    screen that draws its own. Story 54.
+  - **A record of an entity nothing can save is read only, whole** (`Editing.writable`): without
+    `edit`/`save` (or `create` for a new one) every field is, whatever its hints say. «Agregar» on
+    a relation still follows the relation's own hint: adding stores another record. Five story
+    fixtures edited records of entities with no write route; they declare one now.
+  - **A record says each thing once.** `EntityRecord` leaves out of its fields what its head
+    already says — the name, the state, the type — while it cannot be typed in; the framework's
+    stamps (`STAMPS`: version, created and updated, by whom, `archived_at`) are the audit's and
+    the activity's. One column, label over value, on a phone (`usePhone`): web-ui's grid does not
+    narrow by itself.
+  - **An embedded value from its definition.** `formOf` gives each value object (not a money) as
+    a section (`sections`), `EntityRecord` draws its fields, `RecordField` draws `recibo` whole or
+    `recibo.numero` alone (written back into the value whole), `factsOf` names them by path, and
+    `textOf` reads one as «N.º de recibo: 0042 · Emitido: 16/11/2026», never as JSON.
+  - **A related list inside a record** uses the related entity's columns
+    (`presented(entity, { columns })`), else its fields without the stamps and without an
+    identity that is not its name; ten records or fewer have no search bar (kept once shown).
+    The row's link and «Abrir en…» move to the column that names it when the identity is not shown.
+  - **Cells by type**: a choice is a `Tag` in the tone the application declared
+    (`presented(entity, { tones })`, neutral otherwise), a yes a check and a no nothing, an amount
+    the model draws as money (`widget: money`) money. The same tones colour a row's state tag and
+    the record's head.
+  - **Money with no currency of its own** is written in the business's (`currency` on
+    `FrameworkProvider` / `SincproApp`), rounded to cents without one.
+  - **Dates day first.** `DD/MM/YYYY` and `DD/MM/YYYY HH:mm` by default, assembled from the parts
+    so no locale reorders them; `dateStyle: "literal"` writes the month in words, which
+    `SincproApp` uses on a phone. Cells, fields, facts and `useTextOf` follow it.
+  - **A refusal in the application's words**: `explain` heads it with the copy's word for its
+    `kind`, says the server's `detail`, then the copy's next step for that kind
+    (`failure.next`) — the server's `guidance` only where the copy has none (`invalid`, `domain`:
+    only the use case knows how to fix its own refusal). The story fakes spoke `title` for what
+    happened; they speak `detail` now, as the backend does.
+  - **Totals at a list's foot.** A column the model adds up (`total`: sum, avg, min, max) declares
+    web-ui's `aggregate` with its own format, and the table draws the foot; `sumsOf` — what each
+    group adds up — reads `total` first and `measuresOf` asks the server with its function. The
+    foot adds up **the rows in hand**: while they are not the whole set the list says «Totales de
+    esta página». Story 55.
+  - **`summary` for names that are not English** is documented where a developer looks (README,
+    ADOPTION, `summaryOf`).
+- **sincpro_framework 3.37.1–3.37.2, criteria 2.2.2, client-framework 2.2** (#266, #56) — the
+  floors are client-framework 2.2 and criteria 2.2.2:
+  - **«Group by» works against the real backend.** There is no read of groups of its own: a
+    `Search` whose criteria groups answers `groups` on the same route, first, beside the records
+    (3.37.2); criteria reads them by name (`groupsFrom`) and client-framework's `restTransport`
+    sends a grouping criteria to it, as `memoryTransport` answers it. `useGroups` and `usePivot`
+    ask the same question as before. The stories' REST wire (`stories/support/rest.ts`) answered
+    a grouped list with the groups IN the records' place; it speaks the backend's shape now,
+    story 19 groups over it (`PorEstadoSobreRest`), and `tests/groups.test.ts` reads an answer
+    written by hand as the backend writes it. Still to do: the same on quipu's running backend,
+    once 3.37.2 is out of draft.
+  - **The words of an event's own fields** are its definition in the contract (3.37.1):
+    `FrameworkProvider events={eventMetasOf(contract)}` (client-framework 2.1), and `historyOf`
+    names a fact's fields by its `name`'s definition before the route's.
+  - **The language travels.** `FrameworkProvider` puts its `locale` in the process's context as
+    `lang` (never over one the application set), so what the server writes in the call's
+    language — a dry run's «Se eliminará «F-0042»» (3.37.1, `data.display` beside it) — comes in
+    the screen's. A `Delete` of the domain's own says more than the generic one («sus facturas no
+    se tocan», story 52): the server's text is kept, never replaced by the copy's. quipu's
+    `RegistroSimple.would` can go.
+  - **`summary` stays the client's** (`entity(…, { summary })`): sincpro_framework does not
+    publish which field is the state, the type or the description — decided in #266.
+- **Waiting**: the total over everything filtered, answered by the server — groups bring their
+  `measures`, a list's foot without grouping has no reading of measures yet.
+- **Asked of web-ui**: `Record.Smart` without a count draws «—» («not known yet»); a single link
+  draws none. Until then a single related record is `RelatedRecord`, documented in ADOPTION
+  (Sincpro-SRL/sincpro_web_ui#28). `List`'s `totals` goes on `List.Table`, like its row actions:
+  on the root it is dropped in silence.

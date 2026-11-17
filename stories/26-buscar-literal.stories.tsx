@@ -74,10 +74,12 @@ export const ElSelectorBuscaEnElServidor: Story = {
     await userEvent.type(campo, "Ajuste 123455");
     await userEvent.click(await page.findByRole("option", { name: /^Ajuste 123455/ }));
     await expect(await canvas.findByText("elegido: M-0123455")).toBeVisible();
+    // Read word by word (criteria 2.2): every word must be there, in whatever field.
     await expect(
-      delSelector.asked.some((one) =>
-        JSON.stringify(one.selection ?? {}).includes("Ajuste 123455"),
-      ),
+      delSelector.asked.some((one) => {
+        const asked = JSON.stringify(one.selection ?? {});
+        return asked.includes('"Ajuste"') && asked.includes('"123455"');
+      }),
     ).toBe(true);
     // Back to the first ten, and the field still says which one was chosen.
     await expect(campo).toHaveValue("Ajuste 123455");

@@ -71,8 +71,8 @@ export const EnLaPaginaDosColumnasAlCostadoUna: Story = {
     await userEvent.click(await page.findByRole("menuitem", { name: "Abrir al costado" }));
     const enPanel = await page.findByRole("heading", { name: numero });
     const panel = enPanel.closest("article")!;
-    await within(panel).findByText("Estado", { selector: "label" });
-    await expect(enLaMismaFila(panel, "Estado", "Fecha")).toBe(false);
+    await within(panel).findByText("Fecha", { selector: "label" });
+    await expect(enLaMismaFila(panel, "Fecha", "Vence")).toBe(false);
     // As a page: two columns.
     await userEvent.click(await canvas.findByText(numero, { selector: "td *, td" }));
     await waitFor(() =>
@@ -82,9 +82,9 @@ export const EnLaPaginaDosColumnasAlCostadoUna: Story = {
       .getAllByRole("heading", { name: numero })
       .map((one) => one.closest("article")!)
       .find(
-        (one) => one !== panel && within(one).queryByText("Estado", { selector: "label" }),
+        (one) => one !== panel && within(one).queryByText("Fecha", { selector: "label" }),
       )!;
-    await expect(enLaMismaFila(enPagina, "Estado", "Fecha")).toBe(true);
+    await expect(enLaMismaFila(enPagina, "Fecha", "Vence")).toBe(true);
   },
 };
 
@@ -127,9 +127,10 @@ export const UnaListaDentroDeUnModalEmpiezaEnFilas: Story = {
     await userEvent.click(await canvas.findByText(await primera(canvasElement)));
     await userEvent.click(await canvas.findByRole("button", { name: "Abrir en un modal" }));
     const modal = await canvas.findByRole("dialog");
-    // The form in a modal: two columns, and no empty rail under its title.
-    await within(modal).findByText("Nombre", { selector: "label" });
-    await expect(enLaMismaFila(modal, "Nombre", "NIT")).toBe(true);
+    // The form in a modal: two columns, and no empty rail under its title. (A customer nothing
+    // can save is read only, whole: its name is its title, never again a field.)
+    await within(modal).findByText("NIT", { selector: "label" });
+    await expect(enLaMismaFila(modal, "NIT", "Ciudad")).toBe(true);
     // Its invoices start as rows — no seven-column table squeezed into 760 px.
     await userEvent.click(await within(modal).findByRole("tab", { name: /Facturas/ }));
     await within(modal).findAllByText(/^F-2026-\d{4}$/);
@@ -183,7 +184,7 @@ export const UnCodigoUnaFechaUnMontoNoSeParten: Story = {
     // One line: a code read whole, however narrow the table.
     await expect(lines(cell)).toBe(1);
     await expect(within(canvasElement).getByRole("table")).toBeVisible();
-    const fecha = within(canvasElement).getAllByText(/^\d{1,2}\s\S+\s\d{4}$/u, {
+    const fecha = within(canvasElement).getAllByText(/^\d{2}\/\d{2}\/\d{4}$/u, {
       selector: "td, td *",
     })[0]!;
     await expect(lines(fecha)).toBe(1);

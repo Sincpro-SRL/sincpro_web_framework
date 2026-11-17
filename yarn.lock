@@ -1277,20 +1277,20 @@
     "@sentry/browser-utils" "11.11.0"
     "@sentry/core" "11.11.0"
 
-"@sincpro/client-framework@^2.0.0":
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/client-framework/-/client-framework-2.0.0.tgz#38e05206479c9b44dba3cf59582527d6aaa71ac0"
-  integrity sha512-cNtRP6Wck30438mM+zkuvuBf0ynvcTLXanVeW5UvBQXVed8XUEvjjwFjagTPg97VO/GSdu1n0mD0khHk9l4I3Q==
+"@sincpro/client-framework@^2.2.0":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/client-framework/-/client-framework-2.2.0.tgz#ec5b41f797f200192f853744f5cf9df8b0dbf701"
+  integrity sha512-j+5I9pkKrC2EicRii22gm60WdKHKUO5IqqYoMECz/KZKFNfS9pyj8aSinBMp7QlmHHH6x1e0lyL5YccoB3B+fA==
 
 "@sincpro/criteria-react@^2.1.0":
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/@sincpro/criteria-react/-/criteria-react-2.1.0.tgz#2bdf22a455fa5a00defcb17a197e2b672e97ead4"
   integrity sha512-IzhviGe8oNV3tfjP+gIx27+vtMoLh3GskTltepH1bx8nwBubBDU0r130Kj7NzY8alQtdP1ZpwoYvL0eGTrxIuA==
 
-"@sincpro/criteria@^2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/criteria/-/criteria-2.1.0.tgz#9d1d56e78e7bb76f9e15a5a1c3c5684e254860d7"
-  integrity sha512-rXOCC5MxYTZ1JYiJ++8EJFvkYpMRMZl4JQ9PNgqzYa/StsZjGJsK7mnQAqdJb2TfHuwUys8gMxj9wp4fEZN5ZQ==
+"@sincpro/criteria@^2.2.2":
+  version "2.2.2"
+  resolved "https://registry.yarnpkg.com/@sincpro/criteria/-/criteria-2.2.2.tgz#577919b518a7494ce43dbbbb2c4b97bf61cadaca"
+  integrity sha512-QwTxTnS41M4teiguBOH5Hcswza59SYhBG1/gKU2xLPrOuiByiJFSxGP2CX82+2OcSuYng5LSrYf4jM5KpzRRkQ==
 
 "@sincpro/web-composer@^1.7.0":
   version "1.7.0"

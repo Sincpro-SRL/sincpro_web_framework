@@ -454,8 +454,9 @@ export function servidorVentas() {
         throw refuse(route, 422, {
           kind: "domain",
           reason: "NOT_DRAFT",
-          title: "Ya está confirmada",
-          detail: `${f.number} está ${ESTADO[f.state].toLowerCase()}.`,
+          // What happened is the problem's `detail`; its `title` is one per kind, and the screen
+          // heads it in the application's words.
+          detail: `Ya está confirmada: ${f.number} está ${ESTADO[f.state].toLowerCase()}.`,
         });
       const from = f.state;
       f.state = "posted";

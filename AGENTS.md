@@ -308,6 +308,19 @@ built; this file is how to keep it.
   transport has none. `cachedTransport` never keeps a read — it is the context's own.
 - **`presented` keeps an entity's typed Commands and answers** (`Presented<T, C, A>`). A helper
   that takes an entity and returns `Entity<T>` silently turns a generated entity loose.
+- **A record of an entity with no `edit`/`save` is read only, whole** (`Editing.writable`): a
+  story that types into a record must declare a write route on its entity, even if it never
+  saves. «Agregar» on a relation follows the relation's hint, never the parent's writability.
+- **web-ui's `totals` goes on `List.Table`**, as `rowActions` does: on the root `List` it is
+  dropped in silence and no foot is drawn.
+- **A grouped `Search` answers `groups` beside its records, on the same route**
+  (sincpro_framework 3.37.2; criteria reads them by name): the REST wire in
+  `stories/support/rest.ts` writes them first, as the backend does. When it wrote the groups in
+  the records' place, «group by» passed every story and read nothing from the real backend.
+- **The provider puts its `locale` in the process's context as `lang`**: a play that checks the
+  exact `sincpro-context` starts from `configureProcess()`, or it reads the language too.
+- **A refusal is headed by its `kind` in the copy's words** (`explain`): what happened travels in
+  the problem's `detail`. A fake that puts it in `title` draws a heading nobody sees.
 - **The meta store is filled DURING useListing's render**: a value read from it earlier in the
   same component's render is from before the answer, and nothing renders again. A criteria that
   depends on the definition keeps it in state and sets it in an effect (`useLookup exclude`).

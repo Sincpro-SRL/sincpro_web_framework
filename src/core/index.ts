@@ -41,7 +41,13 @@ export {
 } from "@sincpro/web-framework/core/edit";
 export { explain } from "@sincpro/web-framework/core/explain";
 export { type FormLayout, formOf } from "@sincpro/web-framework/core/form";
-export { type HistoryEntry, historyOf } from "@sincpro/web-framework/core/history";
+export {
+  FACT_TONES,
+  type FactTone,
+  type HistoryEntry,
+  historyOf,
+  toneOfFact,
+} from "@sincpro/web-framework/core/history";
 export {
   addingOf,
   type AddingRule,
@@ -68,17 +74,32 @@ export {
   trashOf,
 } from "@sincpro/web-framework/core/list";
 export { lookupOf, type LookupOption } from "@sincpro/web-framework/core/lookup";
-export { detailOf, measuresOf, sumsOf } from "@sincpro/web-framework/core/measure";
+export {
+  detailOf,
+  measuresOf,
+  sumsOf,
+  type Total,
+  totalOf,
+} from "@sincpro/web-framework/core/measure";
 export {
   BOOKKEEPING,
+  currencyNow,
+  type DateStyle,
+  dateStyleNow,
   dayTextOf,
   defaultFields,
+  fieldAt,
+  fieldMetaOf,
   type FieldView,
+  installCurrency,
+  installDateStyle,
   instantTextOf,
   moneyTextOf,
   numberTextOf,
   sortKeyOf,
+  STAMPS,
   textOf,
+  valueAt,
   viewOf,
 } from "@sincpro/web-framework/core/present";
 export { type Related, relatedOf } from "@sincpro/web-framework/core/related";

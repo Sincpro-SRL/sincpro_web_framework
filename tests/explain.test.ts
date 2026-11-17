@@ -25,15 +25,17 @@ function server(status: number, body: unknown, calls: Call[]): typeof fetch {
   }) as typeof fetch;
 }
 
-test("a refusal carries the server's problem, and reads as its guidance", async () => {
+test("a refusal is headed in the client's words by its kind, and says what the server said happened", async () => {
   const problem = {
     type: "about:blank",
-    title: "Sin permiso",
+    // The server's title is one per kind, in English until the language travels at the edge.
+    title: "Permission denied",
     status: 403,
     kind: "permission_denied",
     reason: "MISSING_PERMISSION",
+    detail: "Ese pago es de otro colegiado.",
     next_step: "ask_for_access",
-    guidance: "Pedí acceso al administrador.",
+    guidance: "Ask an administrator for access.",
     retryable: false,
   };
   const transport = restTransport({ fetch: server(403, problem, []) });
@@ -41,9 +43,37 @@ test("a refusal carries the server's problem, and reads as its guidance", async 
     assert.ok(error instanceof TransportError);
     assert.equal(error.problem?.kind, "permission_denied");
     const told = explain(error);
-    assert.equal(told.heading, "Sin permiso");
-    assert.equal(told.sentence, "Pedí acceso al administrador.");
+    assert.equal(told.heading, "No tenés acceso");
+    // What happened is the server's; what to do next is the copy's for this kind.
+    assert.equal(
+      told.sentence,
+      "Ese pago es de otro colegiado. Pedí acceso a quien lo administra.",
+    );
     assert.equal(told.retryable, false);
+    return true;
+  });
+});
+
+test("a refusal only the use case knows how to fix keeps the server's guidance", async () => {
+  const problem = {
+    type: "about:blank",
+    title: "Refused",
+    status: 422,
+    kind: "domain",
+    reason: "ALREADY_SENT",
+    next_step: "fix_input",
+    detail: "Ese comprobante ya fue enviado antes.",
+    guidance: "Revisá el historial del pago.",
+    retryable: false,
+  };
+  const transport = restTransport({ fetch: server(422, problem, []) });
+  await assert.rejects(transport.list("/pagos", {}), (error: unknown) => {
+    const told = explain(error);
+    assert.equal(told.heading, "La operación fue rechazada");
+    assert.equal(
+      told.sentence,
+      "Ese comprobante ya fue enviado antes. Revisá el historial del pago.",
+    );
     return true;
   });
 });

@@ -201,8 +201,8 @@ export const SinRegistroNoSeAgrega: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     // A customer that does not exist yet has nothing for an invoice to point back to: its
-    // invoices are searched (the bar is there, the model known) but nothing adds to them.
-    await canvas.findByRole("combobox", { name: "Buscar" });
+    // invoices are read (none, so no bar to search them) but nothing adds to them.
+    await canvas.findByText("Todavía no hay nada.");
     await expect(canvas.queryByRole("button", { name: "Agregar" })).toBeNull();
   },
 };

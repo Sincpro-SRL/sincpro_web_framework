@@ -1,6 +1,6 @@
 "use client";
 
-import type { AnyRecord, Bucket, Criteria } from "@sincpro/criteria";
+import type { AnyRecord, Bucket, Criteria, Measure } from "@sincpro/criteria";
 import type { GroupLevel } from "@sincpro/web-framework/core/list";
 import { measuresOf, sumsOf } from "@sincpro/web-framework/core/measure";
 import { useFramework } from "@sincpro/web-framework/react/context";
@@ -57,6 +57,9 @@ export function usePivot<T extends AnyRecord>(
   const question = JSON.stringify(asked);
   const measures = axes?.measures ?? sumsOf(listing.meta);
   const sums = measures.join(",");
+  // Each by the function the model adds it up with (`total`), as text: compared by content.
+  const measured =
+    sums === "" ? "" : JSON.stringify(measuresOf(sums.split(","), listing.meta));
   const shape = axes === null ? "" : JSON.stringify([axes.rows, axes.columns]);
   const waiting = axes !== null && axes.measures === undefined && listing.meta === null;
   // Written by anyone — a save, a use case, a panel beside: the crossing is counted again.
@@ -76,7 +79,9 @@ export function usePivot<T extends AnyRecord>(
         ...(JSON.parse(question) as Criteria<T>),
         grouping: {
           group_by: levels.map((level) => ({ ...level })),
-          ...(sums === "" ? {} : { measures: measuresOf(sums.split(",")) }),
+          ...(measured === ""
+            ? {}
+            : { measures: JSON.parse(measured) as Record<string, Measure> }),
           pagination: { limit: MAX_KEYS },
         },
         pagination: { limit: 1 },
@@ -100,7 +105,7 @@ export function usePivot<T extends AnyRecord>(
       },
     );
     return () => aborter.abort();
-  }, [transport, listing.route, question, shape, sums, waiting, context, writes]);
+  }, [transport, listing.route, question, shape, measured, waiting, context, writes]);
 
   return { ...state, measures };
 }

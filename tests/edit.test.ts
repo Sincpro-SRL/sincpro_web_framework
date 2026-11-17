@@ -9,6 +9,7 @@ import {
   restTransport,
   writeRoute,
 } from "@sincpro/client-framework";
+import { labelOf } from "@sincpro/criteria";
 import {
   adviceAt,
   changesOf,
@@ -219,7 +220,75 @@ test("a fact of sincpro_framework 3.37 says who did it, and its envelope stays o
     at: "2026-11-16T23:00:00Z",
     by: "juan",
     detail: "Ahora: Anulada",
+    // A deletion is the framework's own fact of a record's life: its colour is known.
+    tone: "bad",
   });
+});
+
+test("an edit reads as each field before and after, in the words it had then", () => {
+  const [entry] = historyOf(
+    [
+      {
+        name: "ddd.entity.v1.updated",
+        id: "e3",
+        created_at: "2026-11-16T23:00:00Z",
+        entity_id: "F-1",
+        label: { default: "Updated", es: "Se actualizó" },
+        changes: { state: ["draft", "paid"], notes: [null, "Pagada en caja"] },
+        field_labels: { notes: { default: "Notes", es: "Notas" } },
+      },
+    ],
+    eventoMeta,
+    "es",
+    { record: facturaMeta },
+  );
+  // The state by the record's own words; a field with no label then, by the model's.
+  assert.equal(
+    entry?.detail,
+    `${labelOf(facturaMeta, "state", "es")}: Borrador → Pagada · Notas: — → Pagada en caja`,
+  );
+  assert.equal(entry?.detail?.includes("field_labels"), false);
+  assert.equal(entry?.tone, undefined);
+});
+
+test("a fact's own fields are named by its event's definition, by the fact's name", () => {
+  // What `eventMetasOf(contract)` gives (client-framework): one definition per event.
+  const closed = defineMeta({
+    aggregate: "IssueClosed",
+    identity: "id",
+    fields: {
+      id: field.text(),
+      reason: field.text({ label: { default: "Reason", es: "Motivo" } }),
+    },
+  });
+  const [entry] = historyOf(
+    [
+      {
+        name: "project.issue.v1.closed",
+        id: "e9",
+        created_at: "2026-11-17T06:00:00Z",
+        entity_id: "I-1",
+        label: { default: "Closed", es: "Se cerró" },
+        reason: "Duplicada",
+      },
+    ],
+    eventoMeta,
+    "es",
+    { events: { "project.issue.v1.closed": closed } },
+  );
+  assert.equal(entry?.detail, "Motivo: Duplicada");
+});
+
+test("each kind of fact takes the colour the application gave its name", () => {
+  const rows = [
+    { name: "quipu.pagos.v1.pago_aprobado", id: "a", created_at: "", entity_id: "P" },
+    { name: "quipu.pagos.v2.pago_rechazado", id: "b", created_at: "", entity_id: "P" },
+    { name: "ddd.entity.v1.archived", id: "c", created_at: "", entity_id: "P" },
+  ];
+  const tones = historyOf(rows, eventoMeta, "es", {
+    tones: { pago_aprobado: "good", "quipu.pagos.v2.pago_rechazado": "bad" },
+  }).map((entry) => entry.tone);
+  assert.deepEqual(tones, ["good", "bad", "warn"]);
 });
 
 test("a fact without a label reads as a change, never as its id", () => {

@@ -5,7 +5,7 @@ import {
 } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
 import { isList, type ListDefinition } from "@sincpro/web-framework/core/list";
-import type { PickerItem, RecordCard, RowOf } from "@sincpro/web-ui";
+import type { PickerItem, RecordCard, RowOf, Tone } from "@sincpro/web-ui";
 import type { ComponentProps } from "react";
 
 /**
@@ -42,10 +42,32 @@ export type RowLook = Partial<RowOf>;
 /** The board's card. Opening it stays the list's: `onOpen` is not the presentation's. */
 export type CardLook = Partial<Omit<ComponentProps<typeof RecordCard>, "onOpen">>;
 
+/** The colour of each value of a choice, by field and by value as text (the Meta's own keys):
+ *  `{ estado: { APROBADO: "good", RECHAZADO: "bad" } }`. */
+export type ChoiceTones<T> = Readonly<
+  Partial<Record<keyof T & string, Readonly<Record<string, Tone>>>>
+>;
+
 export type Presentation<T> = {
   option?: (record: T) => OptionLook;
   row?: (record: T) => RowLook;
   card?: (record: T) => CardLook;
+  /**
+   * The colour of each value of a choice — a state, a priority. Declared once here and used
+   * wherever the framework draws the value: a table's cell, a row's and a card's tag, the tag of
+   * the record's header. A value with no tone is a neutral tag; the word is always the Meta's.
+   *
+   * Context: which colour «Rechazado» is, is the client's decision — the backend says what a
+   * value is called, never how it looks — and nothing here held it: every application kept a
+   * dictionary per state and passed it to its rows, its record and its cells by hand.
+   */
+  tones?: ChoiceTones<T>;
+  /** The colour of each kind of fact in its history, by its `name` — whole, or its last part
+   *  (`pago_aprobado`) — over the framework's own (`FACT_TONES`). */
+  facts?: Readonly<Record<string, Tone>>;
+  /** The fields a table of its records shows when the screen names none — on its own list and
+   *  inside another record (a one2many) alike. Without it, every field but the stamps. */
+  columns?: readonly (keyof T & string)[];
 };
 
 export type Presented<
