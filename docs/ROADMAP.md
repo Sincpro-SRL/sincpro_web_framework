@@ -1715,17 +1715,16 @@ already publishes it.
     esta página». Story 55.
   - **`summary` for names that are not English** is documented where a developer looks (README,
     ADOPTION, `summaryOf`).
-- **sincpro_framework 3.37.1–3.37.2, criteria 2.2.2, client-framework 2.2** (#266, #56) — the
+- **sincpro_framework 3.37.1, criteria 2.2.2, client-framework 2.2** (#266, #56) — the
   floors are client-framework 2.2 and criteria 2.2.2:
   - **«Group by» works against the real backend.** There is no read of groups of its own: a
     `Search` whose criteria groups answers `groups` on the same route, first, beside the records
-    (3.37.2); criteria reads them by name (`groupsFrom`) and client-framework's `restTransport`
+    (3.37.1 — #268 is in its tag; 3.37.2 only documents it); criteria reads them by name (`groupsFrom`) and client-framework's `restTransport`
     sends a grouping criteria to it, as `memoryTransport` answers it. `useGroups` and `usePivot`
     ask the same question as before. The stories' REST wire (`stories/support/rest.ts`) answered
     a grouped list with the groups IN the records' place; it speaks the backend's shape now,
     story 19 groups over it (`PorEstadoSobreRest`), and `tests/groups.test.ts` reads an answer
-    written by hand as the backend writes it. Still to do: the same on quipu's running backend,
-    once 3.37.2 is out of draft.
+    written by hand as the backend writes it. Still to do: the same on quipu's running backend.
   - **The words of an event's own fields** are its definition in the contract (3.37.1):
     `FrameworkProvider events={eventMetasOf(contract)}` (client-framework 2.1), and `historyOf`
     names a fact's fields by its `name`'s definition before the route's.
@@ -1743,3 +1742,18 @@ already publishes it.
   draws none. Until then a single related record is `RelatedRecord`, documented in ADOPTION
   (Sincpro-SRL/sincpro_web_ui#28). `List`'s `totals` goes on `List.Table`, like its row actions:
   on the root it is dropped in silence.
+
+## web-ui 2.3 (2026-11-17)
+
+- **The floor in development is 2.3** (the peer stays `^2.1.0`: nothing here needs 2.3). Every
+  story passes on it. Its new `--ui-*` tokens and `data-ui` parts reach the workspace by
+  themselves: `webUiSkin` dresses the composer with web-ui's pieces (`Peek`, `Dialog`,
+  `Missing`), never with classes of its own, and the framework's cells draw web-ui's `Tag`.
+- **A grouped question answered with records is the list's failure** (`areGroups`,
+  `NotGrouped`): web-ui did not let `DataTable` draw a group without `count` — «—» would show N
+  empty groups that look valid (Sincpro-SRL/sincpro_web_ui#33) — and left the check to this
+  package. `useGroups` and `usePivot` check every answer; story 19 `UnServidorQueNoAgrupa`.
+- **`SincproApp` inside web-ui's `AppFrame`**: the workspace scrolls itself, so the frame is
+  `scroll="view"` (web-ui 2.3; quipu set `--sticky-top: 0px` by hand). Composer should reset
+  `--sticky-top` in its own scroll boxes (web-ui's rule in `foundations/sticky.ts`) — to be
+  raised in sincpro_web_composer.

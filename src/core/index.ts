@@ -41,6 +41,7 @@ export {
 } from "@sincpro/web-framework/core/edit";
 export { explain } from "@sincpro/web-framework/core/explain";
 export { type FormLayout, formOf } from "@sincpro/web-framework/core/form";
+export { areGroups, NotGrouped } from "@sincpro/web-framework/core/groups";
 export {
   FACT_TONES,
   type FactTone,

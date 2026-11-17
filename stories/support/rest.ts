@@ -21,7 +21,7 @@ import type { servidorVentas } from "./servidor";
  *     GET  /openapi.json               → the discovery document: each model's contract
  *     GET  /v1/facturas?criteria={…}   → {facturas: […], cursor, count, model_version, dropped}
  *     … whose criteria groups          → {groups: […], facturas: […], …} — the groups first,
- *                                        beside the records (sincpro_framework 3.37.2)
+ *                                        beside the records (sincpro_framework 3.37.1)
  *     GET  /v1/facturas/F-1            → {factura: {…}, model_version, dropped, draft}
  *     POST /v1/facturas/F-1/confirm    → the Command's response, as JSON
  *     a refusal                        → its status, `application/problem+json`

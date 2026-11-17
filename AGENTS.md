@@ -314,7 +314,7 @@ built; this file is how to keep it.
 - **web-ui's `totals` goes on `List.Table`**, as `rowActions` does: on the root `List` it is
   dropped in silence and no foot is drawn.
 - **A grouped `Search` answers `groups` beside its records, on the same route**
-  (sincpro_framework 3.37.2; criteria reads them by name): the REST wire in
+  (sincpro_framework 3.37.1; criteria reads them by name): the REST wire in
   `stories/support/rest.ts` writes them first, as the backend does. When it wrote the groups in
   the records' place, «group by» passed every story and read nothing from the real backend.
 - **The provider puts its `locale` in the process's context as `lang`**: a play that checks the

@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import { restTransport } from "@sincpro/client-framework";
 import type { AnyRecord, Bucket } from "@sincpro/criteria";
 import {
+  areGroups,
+  explain,
   installFrameworkCopy,
+  NotGrouped,
   pilesOf,
   SPANISH_FRAMEWORK_COPY,
 } from "@sincpro/web-framework";
@@ -14,7 +17,7 @@ import { facturaMeta } from "../stories/support/ventas";
 installFrameworkCopy(SPANISH_FRAMEWORK_COPY);
 
 /**
- * What sincpro_framework 3.37.2 answers to a Search whose criteria groups (#268): on the SAME
+ * What sincpro_framework 3.37.1 answers to a Search whose criteria groups (#268): on the SAME
  * route, its groups first — value, count over the whole set, measures, the criteria that opens
  * each, the ids of its first page and the cursor inside it — and beside them the records the
  * store answered (on SQL, the first of every group). Written by hand as the backend writes it,
@@ -98,4 +101,19 @@ test("«group by» over REST reads the groups the backend answers beside the rec
     ],
   );
   assert.match(piles[0]?.detail ?? "", /^Total 1\.204\.933,00$/);
+});
+
+test("records answered to a grouped question are not groups, and say so", () => {
+  assert.equal(areGroups(GROUPED_ANSWER.groups), true);
+  assert.equal(areGroups([]), true, "no groups is an answer: nothing matched");
+  // What a backend that does not group answers: the records — no count, no criteria.
+  assert.equal(areGroups(GROUPED_ANSWER.facturas), false);
+  // A level below is checked too.
+  assert.equal(areGroups([{ ...GROUPED_ANSWER.groups[0], groups: [{ value: "x" }] }]), false);
+  // The list's failure, in the application's words — retrying asks the same again.
+  assert.deepEqual(explain(new NotGrouped("/facturas")), {
+    heading: "El servidor contestó otra cosa",
+    sentence: "El servidor no contestó con grupos: esta lista no se puede agrupar ahí.",
+    retryable: false,
+  });
 });

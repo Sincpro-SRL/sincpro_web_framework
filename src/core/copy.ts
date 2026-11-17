@@ -41,6 +41,8 @@ export type FrameworkCopy = {
     groups: (groups: number, records: number) => string;
     /** The foot adds up the rows in hand, and they are not the whole set. */
     pageTotals: string;
+    /** A grouped question answered with something that is not groups. */
+    notGrouped: string;
   };
   record: {
     /** A draft this caller kept is back on screen. */
@@ -97,6 +99,8 @@ export type FrameworkCopy = {
   failure: {
     /** The server could not be reached at all — nothing it said is known. */
     unreachable: string;
+    /** It answered, but not what was asked (a grouped question answered with records). */
+    unexpected: string;
     /** It answered with a status and no problem to read. */
     status: (status: number) => string;
     retry: string;
@@ -133,6 +137,7 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
     groups: (groups, records) =>
       `${groups} ${groups === 1 ? "group" : "groups"} · ${records} ${records === 1 ? "record" : "records"}`,
     pageTotals: "Totals of this page",
+    notGrouped: "The server did not answer with groups: this list cannot be grouped there.",
   },
   record: {
     restored: "A draft you kept is back. Save it or discard it.",
@@ -170,6 +175,7 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
   },
   failure: {
     unreachable: "The server could not be reached",
+    unexpected: "The server answered something else",
     status: (status) => `The server answered ${status}`,
     retry: "Retry",
     kind: {
@@ -227,6 +233,7 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
     groups: (groups, records) =>
       `${groups} ${groups === 1 ? "grupo" : "grupos"} · ${records} ${records === 1 ? "registro" : "registros"}`,
     pageTotals: "Totales de esta página",
+    notGrouped: "El servidor no contestó con grupos: esta lista no se puede agrupar ahí.",
   },
   record: {
     restored: "Volvió un borrador que guardaste. Guardalo o descartalo.",
@@ -265,6 +272,7 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
   },
   failure: {
     unreachable: "No se pudo hablar con el servidor",
+    unexpected: "El servidor contestó otra cosa",
     status: (status) => `El servidor respondió ${status}`,
     retry: "Reintentar",
     kind: {
