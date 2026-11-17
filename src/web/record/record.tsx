@@ -2,7 +2,7 @@
 
 import { type AnyRecord, describeRows, type Meta } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
-import { textOf, viewOf } from "@sincpro/web-framework/core/present";
+import { textOf, valueAt, viewOf } from "@sincpro/web-framework/core/present";
 import { relatedOf } from "@sincpro/web-framework/core/related";
 import { type RelationField, relationFieldOf } from "@sincpro/web-framework/core/relation";
 import { useEntityFor } from "@sincpro/web-framework/react/context";
@@ -28,6 +28,7 @@ import type { ReactNode } from "react";
  *
  *     <Record.Paper>
  *       <Record.Facts fields={factsOf(record, meta, ["number", "customer", "due"])} />
+ *       <Record.Facts fields={factsOf(pago, meta, ["recibo.numero", "recibo.concepto"])} />
  *       <Record.Pages>
  *         <Record.Page id="lines" label={labelOf(meta, "lines")} count={countOf(record, "lines")}>
  *           <RecordLines record={record} meta={meta} name="lines" />
@@ -64,7 +65,8 @@ export function factsOf<T extends AnyRecord>(
           locale={options.locale}
         />
       ) : (
-        (textOf(meta, name, record[name], options.locale) ?? EMPTY)
+        // A field of an embedded value is named by its path: `recibo.numero`.
+        (textOf(meta, name, valueAt(meta, record, name), options.locale) ?? EMPTY)
       ),
       ...(view.help === undefined ? {} : { hint: view.help }),
       ...(name === meta?.identity ? { mono: true } : {}),

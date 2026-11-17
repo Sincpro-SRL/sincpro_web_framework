@@ -5,7 +5,14 @@ import { type AnyRecord, choicesOf } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { errorAt } from "@sincpro/web-framework/core/edit";
 import { editableLines } from "@sincpro/web-framework/core/lines";
-import { textOf, viewOf } from "@sincpro/web-framework/core/present";
+import {
+  fieldAt,
+  fieldMetaOf,
+  isMoneyDefinition,
+  textOf,
+  valueAt,
+  viewOf,
+} from "@sincpro/web-framework/core/present";
 import { relationFieldOf } from "@sincpro/web-framework/core/relation";
 import { useEntityFor, useFramework } from "@sincpro/web-framework/react/context";
 import { useNameOf } from "@sincpro/web-framework/react/useNameOf";
@@ -32,6 +39,16 @@ import {
   type RelationValueProps,
 } from "@sincpro/web-ui";
 import type { ReactNode } from "react";
+
+/** `value` with `path` (`numero`, or `emisor.nit`) set to `next` — a new object, the rest kept. */
+function setAt(value: unknown, path: string, next: unknown): Record<string, unknown> {
+  const base =
+    typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+  const dot = path.indexOf(".");
+  if (dot < 0) return { ...base, [path]: next };
+  const head = path.slice(0, dot);
+  return { ...base, [head]: setAt(base[head], path.slice(dot + 1), next) };
+}
 
 /** A key alone, read: the name of the record it points at, asked once by key — the key until
  *  then, and when nothing answers. */
@@ -64,9 +81,14 @@ function KeyValue({
  * A one2many is a block: its lines (`lines`) or its related list (`list`), each with every piece
  * replaceable the screen's way.
  *
+ * A value the record embeds (a payment's receipt) is drawn from its definition: `name="recibo"`
+ * is a section of its fields, and `name="recibo.numero"` is one of them — its label and type the
+ * definition's, read only when the embedded value is, and written back into the value whole.
+ *
  *     <RecordField record={invoice} name="due_date" />
  *     <RecordField record={invoice} name="customer_id" />
  *     <RecordField record={invoice} name="lines" lines={{ controls: { qty: Stepper } }} />
+ *     <RecordField record={pago} name="recibo.numero" />
  */
 
 export function RecordField<T extends Record<string, unknown>>({
@@ -91,8 +113,20 @@ export function RecordField<T extends Record<string, unknown>>({
 }) {
   const { meta, locale, edit } = record;
   const view = viewOf(meta, name, locale);
-  const state = edit.state(name);
-  const relation = relationFieldOf(meta, name);
+  // A field of an embedded value (`recibo.numero`): the embedded value's state, its own hints.
+  const place = fieldAt(meta, name);
+  const nested = place.meta !== meta;
+  const head = nested ? name.slice(0, name.indexOf(".")) : name;
+  const part = nested ? place.meta?.fields[place.name] : undefined;
+  const whole = edit.state(head);
+  const state = nested
+    ? {
+        visible: whole.visible,
+        readonly: whole.readonly || part?.readonly === true,
+        required: !whole.readonly && part?.required === true,
+      }
+    : whole;
+  const relation = nested ? undefined : relationFieldOf(meta, name);
   const target = useEntityFor(relation?.target);
   const opening = useRecordOpening();
   const { metas } = useFramework();
@@ -109,6 +143,21 @@ export function RecordField<T extends Record<string, unknown>>({
   // project's channels, an inventory's components) — no model of its own, no id — is edited the
   // same way as lines: a whole list, local keys, through the record's own save.
   const own = meta?.fields[name];
+  const parts = Object.keys(own?.definition?.fields ?? {});
+  if (
+    as === undefined &&
+    own?.type === "embedded" &&
+    own.many !== true &&
+    own.definition &&
+    own.widget !== "money" &&
+    !isMoneyDefinition(own.definition)
+  ) {
+    // One value the record embeds: its fields, each by its label — a section of the record.
+    const block = parts.map((one) => (
+      <RecordField key={one} record={record} name={`${name}.${one}`} />
+    ));
+    return bare ? <>{block}</> : <FormSection title={view.label}>{block}</FormSection>;
+  }
   if (as === undefined && own?.type === "embedded" && own.many === true && own.definition) {
     // A page of them stays read only, as a one2many's: written back whole it would drop what
     // it did not bring.
@@ -173,16 +222,19 @@ export function RecordField<T extends Record<string, unknown>>({
     );
     return bare ? list : <FormSection title={view.label}>{list}</FormSection>;
   }
-  const value = edit.values[name];
+  const value = nested ? valueAt(meta, edit.values, name) : edit.values[name];
   const error = errorAt(edit.errors, name);
   const control: FieldControl = {
     value,
-    set: (next) => edit.set(name, next),
+    // A field of an embedded value is written back into the value, whole.
+    set: nested
+      ? (next) => edit.set(head, setAt(edit.values[head], name.slice(head.length + 1), next))
+      : (next) => edit.set(name, next),
     readonly: state.readonly,
     invalid: error !== undefined,
     label: view.label,
   };
-  const field = meta?.fields[name];
+  const field = fieldMetaOf(meta, name);
 
   /** A many2one of a declared entity: chosen by the server's literal search, opened where the
    *  view says. Written by its key; read by the record it points at. */
@@ -255,7 +307,7 @@ export function RecordField<T extends Record<string, unknown>>({
           control,
           view.type,
           field?.exact === true,
-          choicesOf(meta, name, locale),
+          choicesOf(place.meta, place.name, locale),
           field?.widget,
         )
       )}

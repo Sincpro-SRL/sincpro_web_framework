@@ -20,7 +20,7 @@ import {
   type ViewSpec,
   type WorkspaceStore,
 } from "@sincpro/web-composer";
-import { createRegistry, formatRef } from "@sincpro/web-composer/domain";
+import { createRegistry, formatRef, PHONE_WIDTH } from "@sincpro/web-composer/domain";
 import {
   type CachedTransport,
   cachedTransport,
@@ -30,10 +30,11 @@ import {
   installFrameworkCopy,
   SPANISH_FRAMEWORK_COPY,
 } from "@sincpro/web-framework/core/copy";
+import type { DateStyle } from "@sincpro/web-framework/core/present";
 import { FrameworkProvider } from "@sincpro/web-framework/react/context";
 import { webUiSkin } from "@sincpro/web-framework/web/workspace/skin";
 import { installCopy, SPANISH_COPY, ToastProvider } from "@sincpro/web-ui";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 /**
  * The application context in one place: who answers (the transport), in which language, which
@@ -51,6 +52,23 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
  *     const workspace = useWorkspace();
  *     <SincproApp workspace={workspace} bar={<Menu onOpen={(ref) => workspace.push(ref)} />} … />
  */
+/** Narrower than composer's phone (`PHONE_WIDTH`): the workspace fills the window here, so the
+ *  window's width is the workspace's. */
+const PHONE = `(max-width: ${PHONE_WIDTH - 1}px)`;
+
+function onPhone(changed: () => void): () => void {
+  if (typeof window === "undefined" || window.matchMedia === undefined)
+    return () => undefined;
+  const query = window.matchMedia(PHONE);
+  query.addEventListener("change", changed);
+  return () => query.removeEventListener("change", changed);
+}
+
+const isPhone = () =>
+  typeof window !== "undefined" && window.matchMedia !== undefined
+    ? window.matchMedia(PHONE).matches
+    : false;
+
 /** A view that broke while drawing, told to the process's error reporter: `view <ref>`. */
 const reportViewError: OnViewError = (error, { resource }) =>
   reportError(error, `view ${formatRef(resource)}`);
@@ -66,6 +84,9 @@ export function SincproApp({
   skin = webUiSkin,
   cache = {},
   timeZone,
+  dateStyle,
+  currency,
+  events,
   workspace: given,
   bar,
   onViewError = reportViewError,
@@ -95,6 +116,14 @@ export function SincproApp({
   /** Where the business is (`"America/La_Paz"`): every date and time on its wall clock.
    *  Without it, the browser's. */
   timeZone?: string;
+  /** How dates are written. Without it, numeric — «16/11/2026» — and the month in words on a
+   *  phone, where a word reads better than a column of digits. */
+  dateStyle?: DateStyle;
+  /** The business's currency (`"BOB"`): an amount the model draws as money is written in it. */
+  currency?: string;
+  /** Each domain event's definition by its wire name (`eventMetasOf(contract)`): a history
+   *  names each fact's own fields in its words. */
+  events?: Readonly<Record<string, Meta>>;
   /** The workspace, when the app needs to reach it (a menu of its bar): composer's
    *  `useWorkspace()`. Without it, the app keeps one of its own. */
   workspace?: WorkspaceStore;
@@ -150,6 +179,7 @@ export function SincproApp({
     // The cache is read once, as `cached` is.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cached, changes]);
+  const phone = useSyncExternalStore(onPhone, isPhone, () => false);
   const own = useWorkspace();
   const workspace = given ?? own;
   const registry = useMemo(() => createRegistry(views), [views]);
@@ -167,6 +197,9 @@ export function SincproApp({
       {...(metas === undefined ? {} : { metas })}
       {...(entities === undefined ? {} : { entities })}
       {...(timeZone === undefined ? {} : { timeZone })}
+      dateStyle={dateStyle ?? (phone ? "literal" : "numeric")}
+      {...(currency === undefined ? {} : { currency })}
+      {...(events === undefined ? {} : { events })}
     >
       <ToastProvider>
         <div className="flex h-dvh min-h-0 flex-col bg-ground">

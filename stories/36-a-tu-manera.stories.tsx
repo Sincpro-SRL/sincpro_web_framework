@@ -264,9 +264,11 @@ export const UnaListaRelacionadaASuManera: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // The customer's invoices, still searched and paged by the server — drawn the screen's way.
+    // The customer's invoices, read and paged by the server — drawn the screen's way. A few of
+    // them are read whole: no bar to search them (a relation of ten or fewer).
     const propias = await canvas.findAllByText(/^F-2026-\d{4} · propia$/);
     await expect(propias.length).toBeGreaterThan(0);
-    await expect(canvas.getByRole("combobox", { name: "Buscar" })).toBeVisible();
+    await expect(propias.length).toBeLessThanOrEqual(10);
+    await expect(canvas.queryByRole("combobox", { name: "Buscar" })).toBeNull();
   },
 };

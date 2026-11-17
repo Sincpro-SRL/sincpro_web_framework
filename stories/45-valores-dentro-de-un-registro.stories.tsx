@@ -44,7 +44,8 @@ const projectMeta = defineMeta({
   },
 });
 
-const projects = entity("project:project", { list: "/projects" });
+// It can be stored (`save`): a record of an entity nothing can write is drawn read only.
+const projects = entity("project:project", { list: "/projects", save: "PUT /projects/{id}" });
 
 const PROJECTS = [
   {

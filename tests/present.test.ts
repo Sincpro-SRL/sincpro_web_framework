@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
 
-import { defineMeta, field } from "@sincpro/client-framework";
+import { defineMeta, field, installTimeZone } from "@sincpro/client-framework";
 import {
+  currencyNow,
+  dateStyleNow,
   defaultFields,
+  installCurrency,
+  installDateStyle,
   installFrameworkCopy,
   relatedOf,
   sortKeyOf,
   SPANISH_FRAMEWORK_COPY,
   textOf,
+  valueAt,
   viewOf,
 } from "@sincpro/web-framework";
 import { test } from "vitest";
@@ -27,8 +32,7 @@ test("a boolean reads as the copy table says", () => {
 });
 
 test("a date is a local date: no day lost to UTC", () => {
-  const text = textOf(facturaMeta, "invoice_date", "2026-03-01", "es") ?? "";
-  assert.match(text, /^1 /);
+  assert.equal(textOf(facturaMeta, "invoice_date", "2026-03-01", "es"), "01/03/2026");
 });
 
 test("a decimal that travels as text keeps its digits", () => {
@@ -109,6 +113,92 @@ test("a money reads in its currency, rounded as an invoice shows it — the amou
   assert.equal(textOf(meta, "price", { amount: "1,50", currency: "BOB" }, "en"), null);
   assert.equal(textOf(meta, "price", { amount: "", currency: "BOB" }, "en"), null);
   assert.equal(textOf(meta, "price", { amount: "1.5", currency: "" }, "en"), null);
-  // Any other value object still has no text of its own.
+  // A value that is not the money its definition says has no text.
   assert.equal(textOf(meta, "price", { street: "Calle 1" }, "en"), null);
+});
+
+test("a date is written day first by default, and the month in words when asked", () => {
+  const meta = defineMeta({
+    aggregate: "Cita",
+    identity: "id",
+    fields: {
+      id: field.text(),
+      day: field.date({ label: "Día" }),
+      at: field.datetime({ label: "Hora" }),
+    },
+  });
+  installTimeZone("America/La_Paz");
+  try {
+    // Day first whatever the language: `en` would put the month first.
+    assert.equal(textOf(meta, "day", "2026-11-16", "en"), "16/11/2026");
+    assert.equal(textOf(meta, "at", "2026-11-16T19:36:00Z", "es"), "16/11/2026 15:36");
+    installDateStyle("literal");
+    assert.match(textOf(meta, "day", "2026-11-16", "es") ?? "", /^16 nov/);
+    assert.equal(dateStyleNow(), "literal");
+  } finally {
+    installDateStyle(undefined);
+    installTimeZone(undefined);
+  }
+});
+
+test("an amount the model draws as money is money: in the business's currency, rounded", () => {
+  const meta = defineMeta({
+    aggregate: "Pago",
+    identity: "id",
+    fields: { id: field.text(), monto: field.number({ exact: true, label: "Monto" }) },
+  });
+  const money = {
+    ...meta,
+    fields: { ...meta.fields, monto: { ...meta.fields["monto"]!, widget: "money" } },
+  };
+  // No currency installed: two decimals, no symbol — never «25».
+  assert.equal(textOf(money, "monto", "25", "es-BO"), "25,00");
+  installCurrency("BOB");
+  try {
+    assert.match(textOf(money, "monto", "1150.5", "es-BO") ?? "", /^Bs\s?1\.150,50$/);
+    assert.equal(currencyNow(), "BOB");
+  } finally {
+    installCurrency(undefined);
+  }
+  // The same decimal without the widget is a number with its digits.
+  assert.equal(textOf(meta, "monto", "25", "es-BO"), "25");
+});
+
+const reciboMeta = defineMeta({
+  aggregate: "Pago",
+  identity: "id",
+  fields: {
+    id: field.text(),
+    recibo: field.embedded(
+      defineMeta({
+        aggregate: "Recibo",
+        identity: "numero",
+        fields: {
+          numero: field.text({ label: "N.º de recibo" }),
+          emitido_en: field.date({ label: "Emitido" }),
+          concepto: field.text({ label: "Concepto" }),
+        },
+      }),
+      { label: "Recibo" },
+    ),
+  },
+});
+const pago = {
+  id: "P-1",
+  recibo: { numero: "0042", emitido_en: "2026-11-16", concepto: null },
+};
+
+test("a value the record embeds reads through its definition, never as JSON", () => {
+  assert.equal(
+    textOf(reciboMeta, "recibo", pago.recibo, "es"),
+    "N.º de recibo: 0042 · Emitido: 16/11/2026",
+  );
+});
+
+test("a field of an embedded value is named by its path: its label, its type, its value", () => {
+  assert.equal(viewOf(reciboMeta, "recibo.emitido_en", "es").label, "Emitido");
+  assert.equal(viewOf(reciboMeta, "recibo.emitido_en", "es").type, "date");
+  assert.equal(valueAt(reciboMeta, pago, "recibo.numero"), "0042");
+  assert.equal(textOf(reciboMeta, "recibo.emitido_en", "2026-11-16", "es"), "16/11/2026");
+  assert.equal(valueAt(reciboMeta, pago, "recibo.nada"), undefined);
 });

@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 
 import { memoryTransport } from "@sincpro/client-framework";
 import type { AnyRecord, Bucket } from "@sincpro/criteria";
-import { detailOf, measuresOf, sumsOf } from "@sincpro/web-framework";
+import { aggregateOf, detailOf, measuresOf, sumsOf, totalOf } from "@sincpro/web-framework";
 import { test } from "vitest";
 
+import { cuotaMeta, pagoMeta } from "../stories/support/pagos";
 import { clienteMeta, facturaMeta, FACTURAS, VENTAS } from "../stories/support/ventas";
 
 test("what adds up by default is the figure a record computes, not what a person types", () => {
@@ -32,4 +33,19 @@ test("a group's measures read in the model's words and the value's format", () =
   assert.equal(detailOf(facturaMeta, { amount_total: "1611.00" }, "es"), "Total 1611,00");
   assert.equal(detailOf(facturaMeta, undefined), undefined);
   assert.equal(detailOf(facturaMeta, { amount_total: null }), undefined);
+});
+
+test("what the model says adds up comes first — the figure, and its function", () => {
+  // `monto` is typed and published with `total: "sum"`: the model's word wins the heuristic.
+  assert.deepEqual(sumsOf(pagoMeta), ["monto"]);
+  assert.equal(totalOf(cuotaMeta, "monto"), "sum");
+  assert.equal(totalOf(cuotaMeta, "periodo"), undefined);
+  // A list's foot draws it with web-ui's names; a group asks the server with the same function.
+  const average = { ...cuotaMeta, fields: { ...cuotaMeta.fields } };
+  average.fields["monto"] = { ...cuotaMeta.fields["monto"]!, total: "avg" };
+  assert.equal(aggregateOf(average, "monto"), "mean");
+  assert.deepEqual(measuresOf(["monto"], average), {
+    monto: { function: "avg", field: "monto" },
+  });
+  assert.deepEqual(measuresOf(["monto"]), { monto: { function: "sum", field: "monto" } });
 });

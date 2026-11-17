@@ -20,6 +20,8 @@ import type { servidorVentas } from "./servidor";
  *
  *     GET  /openapi.json               → the discovery document: each model's contract
  *     GET  /v1/facturas?criteria={…}   → {facturas: […], cursor, count, model_version, dropped}
+ *     … whose criteria groups          → {groups: […], facturas: […], …} — the groups first,
+ *                                        beside the records (sincpro_framework 3.37.2)
  *     GET  /v1/facturas/F-1            → {factura: {…}, model_version, dropped, draft}
  *     POST /v1/facturas/F-1/confirm    → the Command's response, as JSON
  *     a refusal                        → its status, `application/problem+json`
@@ -65,9 +67,15 @@ export function restServer(
     if (table !== undefined) {
       const written = query.get("criteria");
       const criteria = (written === null ? {} : JSON.parse(written)) as Criteria;
-      const page = await engine.list<AnyRecord>(path, criteria);
       const name = path.slice(path.lastIndexOf("/") + 1);
+      // A Search whose criteria groups answers its groups on the same route, written first, and
+      // the records the store answers beside them — never the groups IN the records' place.
+      const grouped = (criteria.grouping?.group_by?.length ?? 0) > 0;
+      const groups = grouped ? (await engine.list<AnyRecord>(path, criteria)).rows : null;
+      const { grouping: _, ...plain } = criteria;
+      const page = await engine.list<AnyRecord>(path, grouped ? plain : criteria);
       return json(200, {
+        ...(groups === null ? {} : { groups }),
         [name]: page.rows,
         cursor: page.cursor,
         count: page.count,

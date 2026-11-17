@@ -82,6 +82,9 @@ export type Editing = {
   changed: AnyRecord;
   dirty: boolean;
   set: (name: string, value: unknown) => void;
+  /** Whether the entity can store this record at all — `create` for a new one, `edit`/`save`
+   *  for a stored one. Without it every field is read only (`state`), the hints aside. */
+  writable: boolean;
   state: (name: string) => FieldState;
   /** A cell of a list of records — line `index` of `name`, its `field`: the line model's hints
    *  over that line, refined by what the server's preview said of it (`items`, by the line's
@@ -294,6 +297,13 @@ export function useRecord<T extends AnyRecord>(
     isNew &&
     entity.edit !== undefined &&
     (state.meta?.get_id || state.meta?.identity || "id") === "id";
+  // Whether anything can store this record: a new one by `create` (or `Edit` under a minted
+  // key), a stored one by `edit`/`save`. A payment or an order that only Commands move has
+  // neither — every field of it is read only, whatever the model's hints say: an input nothing
+  // can save is an invitation that lies.
+  const writable = isNew
+    ? byEdit || entity.create !== undefined
+    : (entity.edit ?? entity.save) !== undefined;
   /** The record's key for a write: its own, or the one minted for it while it is new. */
   const keyNow = (): string => {
     if (!byEdit) return id;
@@ -406,17 +416,22 @@ export function useRecord<T extends AnyRecord>(
       setTyped(next);
       ask(next, name);
     },
-    state: (name) => fieldStateOf(state.meta, name, values, fromServer),
+    writable,
+    state: (name) => {
+      const said = fieldStateOf(state.meta, name, values, fromServer);
+      return writable ? said : { ...said, readonly: true, required: false };
+    },
     cell: (name, index, field) => {
       const line = (Array.isArray(values[name]) ? values[name] : [])[index] as
         AnyRecord | undefined;
       const definition = state.meta?.fields[name]?.definition;
-      return fieldStateOf(
+      const said = fieldStateOf(
         definition,
         field,
         line ?? {},
         lineStatesOf(fromServer, name, line, index, definition?.identity || "id"),
       );
+      return writable ? said : { ...said, readonly: true, required: false };
     },
     errors: failure instanceof TransportError ? errorsByField(failure.problem?.errors) : {},
     advice,

@@ -1,7 +1,11 @@
 /**
  * The web bindings: what draws a `Listing` and a record with `@sincpro/web-ui`.
  */
-export { type ColumnOptions, columnsOf } from "@sincpro/web-framework/web/list/columns";
+export {
+  aggregateOf,
+  type ColumnOptions,
+  columnsOf,
+} from "@sincpro/web-framework/web/list/columns";
 export {
   type EntityFace,
   EntityList,
@@ -14,6 +18,7 @@ export { OpenInMenu } from "@sincpro/web-framework/web/list/openIn";
 export { pivotOf } from "@sincpro/web-framework/web/list/pivot";
 export {
   type CardLook,
+  type ChoiceTones,
   type OptionLook,
   type Presentation,
   presentationOf,

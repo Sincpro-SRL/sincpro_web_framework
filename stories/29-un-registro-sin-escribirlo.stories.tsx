@@ -72,8 +72,9 @@ export const DeLaListaAlRegistro: Story = {
     // The list nobody wrote, searched literally — and a row to the record, whose many2one is a
     // picker of its entity, by name, not «C-004».
     const canvas = await openGlobexInvoice(canvasElement);
-    // Its state on top (and in its field), in the model's words.
-    await waitFor(() => expect(canvas.getAllByText("Pagada").length).toBeGreaterThan(1));
+    // Its state on top, in the model's words — and not again as a field it cannot be typed in.
+    await waitFor(() => expect(canvas.getAllByText("Pagada").length).toBeGreaterThan(0));
+    await expect(canvas.queryByText("Estado", { selector: "label" })).toBeNull();
     // Its lines in a page of their own, as the table the record brought.
     await userEvent.click(await canvas.findByRole("tab", { name: /Líneas/ }));
     await waitFor(() =>

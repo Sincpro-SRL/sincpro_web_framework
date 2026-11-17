@@ -170,8 +170,8 @@ const refused = application((route) => {
     retryable: false,
     errors: [],
     extensions: {},
-    title: "La incidencia tiene una corrida en curso",
-    guidance: "Detenela antes de cerrarla.",
+    title: "Conflict",
+    detail: "La incidencia tiene una corrida en curso.",
   });
 });
 
@@ -182,10 +182,14 @@ export const UnRechazoSeMuestraYNoSeReporta: Story = {
     refused.start();
     refused.reporter.reports.length = 0;
     await userEvent.click(canvas.getByRole("button", { name: "Cerrar la incidencia" }));
+    // Headed in the application's words by its kind; what happened is the server's, and what to
+    // do next the copy's for a conflict.
+    await expect(await canvas.findByText("Alguien lo cambió antes")).toBeVisible();
     await expect(
-      await canvas.findByText("La incidencia tiene una corrida en curso"),
+      canvas.getByText(
+        "La incidencia tiene una corrida en curso. Volvé a leerlo antes de cambiarlo.",
+      ),
     ).toBeVisible();
-    await expect(canvas.getByText("Detenela antes de cerrarla.")).toBeVisible();
     // The business answered: shown to the person, never reported as a fault.
     await waitFor(() => expect(refused.tracer.spans[0]?.outcome).toBe("refused"));
     await expect(refused.reporter.reports).toHaveLength(0);

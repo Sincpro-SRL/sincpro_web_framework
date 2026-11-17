@@ -105,7 +105,9 @@ export const ElServidorDiceQueNo: Story = {
     const borrador = filas(canvasElement).find((tr) => tr.textContent?.includes("Borrador"))!;
     antes?.();
     await userEvent.click(within(borrador).getByRole("button", { name: "Confirmar" }));
-    // The row offered it as it was read; the server refuses, in its own words.
-    await expect(await canvas.findByText("Ya está confirmada")).toBeVisible();
+    // The row offered it as it was read; the server refuses — headed by its kind in the
+    // application's words, what happened in the server's.
+    await expect(await canvas.findByText("La operación fue rechazada")).toBeVisible();
+    await expect(await canvas.findByText(/^Ya está confirmada/)).toBeVisible();
   },
 };

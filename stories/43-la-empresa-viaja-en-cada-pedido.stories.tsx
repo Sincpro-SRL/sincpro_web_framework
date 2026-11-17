@@ -95,3 +95,32 @@ export const LaListaSeReleeEnLaEmpresaNueva: Story = {
     await expect(server.said.at(-1)).toBe('{"company_id":2}');
   },
 };
+
+function EnEspanol() {
+  const transport = useMemo(() => server.transport, []);
+  return (
+    <FrameworkProvider transport={transport} locale="es">
+      <div className="flex flex-col gap-3 p-4">
+        <Invoices />
+      </div>
+    </FrameworkProvider>
+  );
+}
+
+/**
+ * The screens' language is the call's: the provider puts its `locale` in the process's context
+ * as `lang` (sincpro_framework's `ContextKey.LANG`), so what the server writes in the call's
+ * language — a dry run's «Se eliminará «F-0042»» — comes in the screen's. An application that
+ * set `lang` itself keeps its own.
+ */
+export const ElIdiomaViajaEnCadaPedido: Story = {
+  render: () => <EnEspanol />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Whichever company the process is in, the list was read — and its request said the language.
+    await canvas.findAllByText(/^F-2026-\d{4}$/);
+    await waitFor(() =>
+      expect(JSON.parse(server.said.at(-1) || "{}")).toHaveProperty("lang", "es"),
+    );
+  },
+};

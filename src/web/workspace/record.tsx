@@ -3,15 +3,17 @@
 import { type Entity, TRAIL_PARAM } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
 import { labelOf, nameOf } from "@sincpro/criteria";
-import { useCrumbs, type ViewProps } from "@sincpro/web-composer";
+import { useCrumbs, usePhone, type ViewProps } from "@sincpro/web-composer";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { explain } from "@sincpro/web-framework/core/explain";
 import { formOf } from "@sincpro/web-framework/core/form";
+import { summaryFieldsOf } from "@sincpro/web-framework/core/summary";
 import { placeOf, stepIn } from "@sincpro/web-framework/core/trail";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useHistory } from "@sincpro/web-framework/react/useHistory";
 import { type RecordReading, useRecord } from "@sincpro/web-framework/react/useRecord";
 import { useSummaryOf } from "@sincpro/web-framework/react/useSummary";
+import { presentationOf } from "@sincpro/web-framework/web/list/presentation";
 import { dirtyOf, RecordField } from "@sincpro/web-framework/web/record/edit";
 import { RecordLifecycle } from "@sincpro/web-framework/web/record/RecordLifecycle";
 import { Refused } from "@sincpro/web-framework/web/Refused";
@@ -49,7 +51,9 @@ export type Stamp = { at: string; by?: string };
  * does, as values: read the record for editing, follow the workspace's breadcrumb, tell the
  * workspace its name and its unsaved work, read its history, step to its neighbours in the list
  * it was opened from, and say its name, state, unsaved work, refusal and authorship the way
- * web-ui's `Record` takes them.
+ * web-ui's `Record` takes them. A screen that draws its own history passes `history: false`, and
+ * nothing asks for it. The state's tag and each fact of the history take the colours the entity
+ * was presented with (`presented(entity, { tones, facts })`).
  *
  *     function InvoiceScreen(props: ViewProps) {
  *       const screen = useRecordScreen(invoices, props);
@@ -74,12 +78,22 @@ export type Stamp = { at: string; by?: string };
 export function useRecordScreen<T extends AnyRecord>(
   entity: Entity<T>,
   { api, resource }: Pick<ViewProps, "api" | "resource">,
-  options: { title?: ((record: T) => string | null) | undefined } = {},
+  options: {
+    title?: ((record: T) => string | null) | undefined;
+    /** `false`: the screen draws its own history — it is not read here. */
+    history?: boolean | undefined;
+  } = {},
 ) {
   const reading = useRecord(entity, resource);
   const crumbs = useCrumbs(api);
   useRecordInWorkspace(api, reading, options);
-  const history = useHistory(entity, reading.isNew ? "" : reading.id, [reading.record]);
+  const look = presentationOf(entity);
+  const history = useHistory(
+    entity,
+    reading.isNew || options.history === false ? "" : reading.id,
+    [reading.record],
+    { tones: look.facts },
+  );
   const summarize = useSummaryOf(entity);
   const copy = frameworkCopy().record;
   // Opened from a list: where it stands in it, and its neighbours (`Trail`).
@@ -99,6 +113,14 @@ export function useRecordScreen<T extends AnyRecord>(
   const ready = reading.status === "ready";
   const summary =
     ready && !reading.isNew ? summarize(reading.record, reading.meta) : undefined;
+  // The state's colour is the application's, declared once with the entity.
+  const stateField = ready
+    ? summaryFieldsOf(reading.meta, reading.record, entity.summary).state
+    : undefined;
+  const tone =
+    stateField === undefined || !ready
+      ? undefined
+      : look.tones?.[stateField as keyof T & string]?.[String(reading.record[stateField])];
   const dirty = ready ? dirtyOf(reading) : undefined;
   const failure = reading.edit.failure;
   // Who, only when the record says it (an author is optional: the line then says only when).
@@ -131,7 +153,9 @@ export function useRecordScreen<T extends AnyRecord>(
           summary?.name ??
           (reading.isNew ? copy.creating(nameOf(reading.meta, reading.locale) || "") : ""),
         ...(summary?.type == null ? {} : { subtitle: summary.type }),
-        ...(summary?.state == null ? {} : { tag: { label: summary.state } }),
+        ...(summary?.state == null
+          ? {}
+          : { tag: { label: summary.state, ...(tone === undefined ? {} : { tone }) } }),
       },
       ...(dirty === undefined ? {} : { dirty }),
       // The refusal in words; its heading when the server said nothing more (no detail).
@@ -176,6 +200,9 @@ export function EntityRecord<T extends AnyRecord>({
   const { reading, crumbs, history, pager } = screen;
   const [page, setPage] = useState<string | undefined>(undefined);
   const copy = frameworkCopy().record;
+  // On a phone a form is one column, its label over its value: two side by side at 400 px
+  // squeezed a text area beside its word (web-ui's grid does not narrow by itself).
+  const phone = usePhone(api);
 
   if (reading.status === "loading") return <Skeleton rows={6} label={copy.loading} />;
   if (reading.status === "failed")
@@ -183,7 +210,16 @@ export function EntityRecord<T extends AnyRecord>({
 
   const { meta, locale, edit } = reading;
   const layout = formOf(meta, entity.summary);
-  const shown = fields ?? layout.fields;
+  // What the header already says — the name, the state, the type — is not said again as a
+  // field, unless it can be typed in now: then the field is its control, not a repetition.
+  const parts = summaryFieldsOf(meta, reading.record ?? {}, entity.summary);
+  const said = new Set([meta?.display, parts.state, parts.type]);
+  const shown =
+    fields ??
+    layout.fields.filter(
+      (name) => reading.isNew || !said.has(name) || !edit.state(name).readonly,
+    );
+  const columns = phone || (api.surface !== "page" && api.surface !== "modal") ? 1 : 2;
   // The record's own lifecycle (its `Delete`, its trash) beside the screen's commands; once it is
   // out of every reading the surface closes — every list that showed it reads again by itself.
   const lifecycle =
@@ -217,7 +253,7 @@ export function EntityRecord<T extends AnyRecord>({
           {ownActions === null ? null : <Record.Actions>{ownActions}</Record.Actions>}
         </Record.Rail>
       )}
-      <Record.Paper layout="horizontal">
+      <Record.Paper layout={phone ? "stacked" : "horizontal"}>
         {edit.conflict || edit.restored ? (
           <div className="flex flex-col gap-3">
             {edit.conflict ? (
@@ -237,11 +273,22 @@ export function EntityRecord<T extends AnyRecord>({
         {/* web-ui's form grid (its «Operación» template): two columns on a page and in a modal,
             one in a side panel, a window or a peek — web-ui's grid does not narrow by itself
             (ROADMAP). A hand-made column left half the sheet empty on a page. */}
-        <FormSection columns={api.surface === "page" || api.surface === "modal" ? 2 : 1}>
+        <FormSection columns={columns}>
           {shown.map((name) => (
             <RecordField key={name} record={reading} name={name} />
           ))}
         </FormSection>
+        {/* A value the record embeds (a payment's receipt) is a section of its own fields,
+            from its definition — read only when the record is. */}
+        {fields !== undefined
+          ? null
+          : layout.sections.map((name) => (
+              <FormSection key={name} title={labelOf(meta, name, locale)} columns={columns}>
+                {Object.keys(meta?.fields[name]?.definition?.fields ?? {}).map((part) => (
+                  <RecordField key={part} record={reading} name={`${name}.${part}`} />
+                ))}
+              </FormSection>
+            ))}
         {/* A line's warning goes on its line (`RecordField` of the lines): here, the rest. */}
         {edit.advice
           .filter((one) => (one.path?.length ?? 0) <= 1)

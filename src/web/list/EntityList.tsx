@@ -12,6 +12,7 @@ import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { explain } from "@sincpro/web-framework/core/explain";
 import type { GroupLevel, NamedFilter } from "@sincpro/web-framework/core/list";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
+import { summaryFieldsOf } from "@sincpro/web-framework/core/summary";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useGroups } from "@sincpro/web-framework/react/useGroups";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
@@ -226,7 +227,9 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   // A named list (`defineList`) brings its own columns, filters, faces and words; what the
   // screen passes wins.
   const definition = listing.definition;
-  const columns = askedColumns ?? definition?.columns;
+  // The entity's own look (`presented`): its columns, the tones of its choices, its row and card.
+  const look = presentationOf(listing.entity);
+  const columns = askedColumns ?? definition?.columns ?? look.columns;
   const views =
     askedViews ??
     definition?.views ??
@@ -255,7 +258,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   // Opened by `api.pick` (`entity.chooserRef()`): a row ANSWERS whoever asked, it does not open.
   const choosing = api?.self.params?.[PICK_PARAM] !== undefined;
   // The record opened from a row knows the page it came from: «3 / 64» and its neighbours.
-  const { trails } = useFramework();
+  const { trails, dateStyle } = useFramework();
   const trailKey = `trail:${useId()}`;
   // Kept current with the page on screen: the row and its name (`RecordLink`) open the same
   // reference, and whichever opens it, the record finds where it came from.
@@ -341,20 +344,28 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
         onOpen={(to) => openingNow.current?.(row, to)}
       />
     );
+  // The column that names a row carries its link and «Abrir en…»: the identity, or — in a list
+  // that does not show it (a relation inside a record) — the record's name, else the first.
+  const named =
+    columns === undefined || columns.includes(identity)
+      ? identity
+      : meta?.display && columns.includes(meta.display)
+        ? meta.display
+        : (columns[0] ?? identity);
+  const rowName = (row: T) =>
+    named === identity ? idOf(row) : (textOf(meta, named, row[named], locale) ?? idOf(row));
   const linked: typeof cells =
-    choosing ||
-    cells?.[identity] !== undefined ||
-    (api === undefined && elsewhere.length === 0)
+    choosing || cells?.[named] !== undefined || (api === undefined && elsewhere.length === 0)
       ? cells
       : {
           ...cells,
-          [identity]: (row: T) => (
+          [named]: (row: T) => (
             <span className="inline-flex items-center gap-1">
               {api === undefined ? (
-                idOf(row)
+                rowName(row)
               ) : (
                 <RecordLink api={api} resource={refOf(row)}>
-                  {idOf(row)}
+                  {rowName(row)}
                 </RecordLink>
               )}
               {openInOf(row)}
@@ -392,18 +403,31 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   // `cells` by identity, since its functions may close over state — memoise it to keep this.
   const names = columns?.join("\u0000");
   const shown = useMemo(
-    () => columnsOf<T>(meta, columns, { locale, ...(linked ? { cells: linked } : {}) }),
+    () =>
+      columnsOf<T>(meta, columns, {
+        locale,
+        ...(linked ? { cells: linked } : {}),
+        ...(look.tones === undefined ? {} : { tones: look.tones }),
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [meta, locale, names, cells, api, elsewhere.join(), openingIn === undefined],
+    [meta, locale, names, cells, api, elsewhere.join(), openingIn === undefined, dateStyle],
   );
 
+  // A state the application gave colours to is the row's tag — and not again among its facts.
+  const stateField = summaryFieldsOf(meta, {}, listing.entity.summary).state;
+  const stateTones =
+    stateField === undefined ? undefined : look.tones?.[stateField as keyof T & string];
   // A row and a card read the record by its display and the first fields shown beside it.
   const display = meta?.display || identity;
   const facts = shown
-    .filter((c) => c.id !== display && c.id !== identity && !c.defaultHidden)
+    .filter(
+      (c) =>
+        c.id !== display &&
+        c.id !== identity &&
+        !c.defaultHidden &&
+        (stateTones === undefined || c.id !== stateField),
+    )
     .slice(0, 3);
-  // The entity's own look of a row and a card (`presented`) goes over these defaults.
-  const look = presentationOf(listing.entity);
   // The pivot asks the server only while it is the face on screen.
   const axes =
     pivotAsked === undefined || present !== "pivot" || !views.includes("pivot")
@@ -464,10 +488,26 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
       {
         name: textOf(meta, display, row[display], locale) ?? idOf(row),
         meta: [
-          ...(display === identity ? [] : [idOf(row)]),
+          // The key only where the list reads it: one that leaves it out (a relation inside a
+          // record) does not print a UUID on every row.
+          ...(display === identity || named !== identity ? [] : [idOf(row)]),
           ...facts.map((c) => textOf(meta, c.id, row[c.id], locale)).filter(Boolean),
         ].join(" · "),
         ...(elsewhere.length === 0 ? {} : { actions: openInOf(row) }),
+        ...(stateTones === undefined || stateField === undefined
+          ? {}
+          : (() => {
+              const word = textOf(meta, stateField, row[stateField], locale);
+              return word === null
+                ? {}
+                : {
+                    tags: (
+                      <Tag tone={stateTones[String(row[stateField])] ?? "neutral"}>
+                        {word}
+                      </Tag>
+                    ),
+                  };
+            })()),
       },
       look.row?.(row),
     );
@@ -541,6 +581,18 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
       }
     : {};
   const records = groups.buckets.reduce((sum, bucket) => sum + bucket.count, 0);
+  // The foot adds up what the model says adds up (`total`) — over the rows in hand, never a
+  // grouped set (each group says its own, counted by the server). While the rows are not the
+  // whole set the list says the figures are this page's (`pageTotals`): the server's total over
+  // everything filtered waits on a reading of measures (sincpro_framework, PRD_09).
+  const totalled =
+    !grouped &&
+    listing.rows.length > 0 &&
+    shown.some((column) => column.aggregate !== undefined && !column.defaultHidden);
+  const partial =
+    listing.paging === "pages"
+      ? page.hasPrev || page.hasNext
+      : listing.hasMore || listing.capped;
 
   // A row's actions: the entity's Commands, then whatever else the screen offers.
   // The trash (`trashOf`): each row is brought back from where it is, with the entity's own
@@ -657,6 +709,9 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
           </List.Actions>
         )}
         <List.Pagination>
+          {totalled && partial && present === "table" ? (
+            <span className="text-meta text-muted">{copy.pageTotals}</span>
+          ) : null}
           {dropped.length === 0 ? null : (
             <Tag tone="warn" title={copy.dropped(dropped)}>
               {copy.dropped(dropped)}
@@ -708,6 +763,8 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
       {views.includes("table") ? (
         <List.Table<T>
           columns={shown}
+          // On the table, as its row actions: on the root a spread drops it silently.
+          {...(totalled ? { totals: true } : {})}
           {...(rowActions === undefined ? {} : { rowActions })}
         />
       ) : null}

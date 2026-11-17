@@ -39,6 +39,8 @@ export type FrameworkCopy = {
     groupsCapped: (shown: number) => string;
     /** «12 groups · 187 records»: what the grouping split. */
     groups: (groups: number, records: number) => string;
+    /** The foot adds up the rows in hand, and they are not the whole set. */
+    pageTotals: string;
   };
   record: {
     /** A draft this caller kept is back on screen. */
@@ -98,8 +100,12 @@ export type FrameworkCopy = {
     /** It answered with a status and no problem to read. */
     status: (status: number) => string;
     retry: string;
-    /** What each kind of refusal is called when the server sent no title of its own. */
+    /** What each kind of refusal is called — the heading, before the server's own `title`. */
     kind: Record<FailureKind, string>;
+    /** What to do next, by kind, when it is the same whatever was refused. A kind left out
+     *  (`invalid`, `domain`) keeps the server's `guidance`: only the use case knows what fixes
+     *  its own refusal. */
+    next: Partial<Record<FailureKind, string>>;
   };
 };
 
@@ -126,6 +132,7 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
     groupsCapped: (shown) => `The first ${shown} groups. Narrow the search to see the rest.`,
     groups: (groups, records) =>
       `${groups} ${groups === 1 ? "group" : "groups"} · ${records} ${records === 1 ? "record" : "records"}`,
+    pageTotals: "Totals of this page",
   },
   record: {
     restored: "A draft you kept is back. Save it or discard it.",
@@ -179,6 +186,17 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
       unknown_outcome: "It is not known whether it was done",
       internal: "Something failed on the server",
     },
+    next: {
+      permission_denied: "Ask whoever administers it for access.",
+      not_found: "It may have been deleted, or the link is old.",
+      conflict: "Read it again before changing it.",
+      in_progress: "Wait a moment and look again.",
+      key_reused: "Read it again to see whether it was done.",
+      exhausted: "Wait a moment and try again.",
+      unavailable: "Try again in a few minutes.",
+      unknown_outcome: "Read it again before repeating it.",
+      internal: "If it happens again, report it.",
+    },
   },
 };
 
@@ -208,6 +226,7 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
       `Los primeros ${shown} grupos. Acotá la búsqueda para ver el resto.`,
     groups: (groups, records) =>
       `${groups} ${groups === 1 ? "grupo" : "grupos"} · ${records} ${records === 1 ? "registro" : "registros"}`,
+    pageTotals: "Totales de esta página",
   },
   record: {
     restored: "Volvió un borrador que guardaste. Guardalo o descartalo.",
@@ -261,6 +280,17 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
       unavailable: "El servicio no está disponible",
       unknown_outcome: "No se sabe si se hizo",
       internal: "Algo falló en el servidor",
+    },
+    next: {
+      permission_denied: "Pedí acceso a quien lo administra.",
+      not_found: "Puede que lo hayan eliminado, o el enlace es viejo.",
+      conflict: "Volvé a leerlo antes de cambiarlo.",
+      in_progress: "Esperá un momento y volvé a mirar.",
+      key_reused: "Volvé a leerlo para ver si se hizo.",
+      exhausted: "Esperá un momento y reintentá.",
+      unavailable: "Reintentá en unos minutos.",
+      unknown_outcome: "Volvé a leerlo antes de repetirlo.",
+      internal: "Si vuelve a pasar, avisá a soporte.",
     },
   },
 };

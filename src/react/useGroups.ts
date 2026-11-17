@@ -1,6 +1,12 @@
 "use client";
 
-import { type AnyRecord, type Bucket, type Criteria, resumingFrom } from "@sincpro/criteria";
+import {
+  type AnyRecord,
+  type Bucket,
+  type Criteria,
+  type Measure,
+  resumingFrom,
+} from "@sincpro/criteria";
 import type { GroupLevel } from "@sincpro/web-framework/core/list";
 import { measuresOf, sumsOf } from "@sincpro/web-framework/core/measure";
 import { useFramework } from "@sincpro/web-framework/react/context";
@@ -94,6 +100,9 @@ export function useGroups<T extends AnyRecord>(
   // Written by anyone — a save, a use case, a panel beside: the groups are counted again.
   const writes = useWrites(route);
   const sums = (options.sums ?? sumsOf(listing.meta)).join(",");
+  // Each by the function the model adds it up with (`total`), as text: compared by content.
+  const measured =
+    sums === "" ? "" : JSON.stringify(measuresOf(sums.split(","), listing.meta));
   // What adds up by default is read from the model: without it yet, asking now and again when
   // it arrives would be two questions — and the groups on screen replaced under the pointer.
   const waiting = options.sums === undefined && listing.meta === null;
@@ -112,7 +121,9 @@ export function useGroups<T extends AnyRecord>(
       ...(JSON.parse(question) as Criteria<T>),
       grouping: {
         group_by: levels.map((level) => ({ ...level })) as never,
-        ...(sums === "" ? {} : { measures: measuresOf(sums.split(",")) }),
+        ...(measured === ""
+          ? {}
+          : { measures: JSON.parse(measured) as Record<string, Measure> }),
         pagination: { limit: MAX_GROUPS },
       } as never,
       // One id per group is the least a grouped answer carries; the rows come on opening.
@@ -128,7 +139,7 @@ export function useGroups<T extends AnyRecord>(
       },
     );
     return () => aborter.abort();
-  }, [transport, route, question, levels, sums, waiting, context, writes]);
+  }, [transport, route, question, levels, measured, waiting, context, writes]);
 
   /** One page of a group: the first (`after` null) or the one the cursor points at. */
   const read = useCallback(
