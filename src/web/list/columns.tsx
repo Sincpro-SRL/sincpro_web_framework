@@ -1,3 +1,5 @@
+"use client";
+
 import type { AnyRecord, Meta } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { type Total, totalOf } from "@sincpro/web-framework/core/measure";
@@ -10,6 +12,9 @@ import {
   valueAt,
   viewOf,
 } from "@sincpro/web-framework/core/present";
+import { relationFieldOf } from "@sincpro/web-framework/core/relation";
+import { useEntityFor } from "@sincpro/web-framework/react/context";
+import { useNameOf } from "@sincpro/web-framework/react/useNameOf";
 import type { ChoiceTones } from "@sincpro/web-framework/web/list/presentation";
 import { type Aggregate, type DataColumn, Tag } from "@sincpro/web-ui";
 import { Check } from "lucide-react";
@@ -25,7 +30,9 @@ import type { ReactNode } from "react";
  * can be ordered is what the server said (`sortable`). A cell is drawn by its TYPE: a choice is a
  * tag in the tone the application declared for its value (`presented(entity, { tones })`), a
  * yes/no a check, an amount the model draws as money is money. A cell that needs more — a link,
- * a figure of its own — is the one thing a screen writes (`cells`).
+ * a figure of its own — is the one thing a screen writes (`cells`). A column that holds a key of
+ * another record (`organo_id`, an `EntityID`) reads the record's name, as its picker does: every
+ * key of the page asked in ONE request per entity (`useNameOf`), the key until it answers.
  *
  * A column the model adds up at a list's foot (`total`: `sum`, `avg`, `min`, `max`) declares it
  * (`aggregate`), with its own format: the foot reads «Bs 1.204,50» like the cells above it.
@@ -61,6 +68,12 @@ export function aggregateOf(
   return total === undefined ? undefined : AGGREGATES[total];
 }
 
+/** A key's cell: the name of the record it points at, the key until it answers or when the
+ *  application declared no entity for it. */
+function KeyName({ target, id }: { target: string; id: string }) {
+  return <>{useNameOf(useEntityFor(target), id) ?? id}</>;
+}
+
 function columnOf<T extends AnyRecord>(
   meta: Meta | null | undefined,
   name: string,
@@ -78,6 +91,23 @@ function columnOf<T extends AnyRecord>(
   const tones = options.tones?.[name as keyof T & string];
   const choice = (field?.choices?.length ?? 0) > 0;
   const aggregate = aggregateOf(meta, name);
+  // The column IS a key of another record: `customer_id` beside its relation, or a key alone.
+  const relation = relationFieldOf(meta, name);
+  const pointing =
+    relation !== undefined && !relation.many && relation.key === name ? relation : undefined;
+  const named =
+    pointing === undefined
+      ? undefined
+      : (row: T) => {
+          const key = raw(row);
+          if (key === null || key === undefined || key === "") return null;
+          // Held beside its key, the record names itself; a key alone asks its name.
+          const held =
+            pointing.relation === name
+              ? null
+              : textOf(meta, pointing.relation, row[pointing.relation], options.locale);
+          return held ?? <KeyName target={pointing.target} id={String(key)} />;
+        };
   return {
     id: name,
     header: view.label,
@@ -85,6 +115,7 @@ function columnOf<T extends AnyRecord>(
     value: (row) => sortKeyOf(meta, name, raw(row)),
     cell:
       own ??
+      named ??
       (choice
         ? // A state reads at a glance: its word in a tag, in the tone the application gave it.
           (row: T) => {

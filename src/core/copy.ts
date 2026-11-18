@@ -95,6 +95,8 @@ export type FrameworkCopy = {
     cancel: string;
     /** While the dry run is asked. */
     rehearsing: string;
+    /** Sends what an action asked for (`ask`). */
+    send: string;
   };
   failure: {
     /** The server could not be reached at all — nothing it said is known. */
@@ -172,6 +174,7 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
     confirm: "Do it",
     cancel: "Cancel",
     rehearsing: "Checking what it would do…",
+    send: "Confirm",
   },
   failure: {
     unreachable: "The server could not be reached",
@@ -269,6 +272,7 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
     confirm: "Hacerlo",
     cancel: "Cancelar",
     rehearsing: "Revisando qué haría…",
+    send: "Confirmar",
   },
   failure: {
     unreachable: "No se pudo hablar con el servidor",

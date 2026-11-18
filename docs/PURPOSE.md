@@ -54,7 +54,7 @@ asking us for permission. So:
 | `useRecord`                  | 1 record: read, edit, preview, hints, **draft**, save, conflict                       | ✅                          |
 | `useCommand`                 | An entity's actions, with a dry-run before anything destructive                       | ✅                          |
 | `useHistory`                 | Business events (and comments, once the backend has them) → `Record.Activity`         | ✅                          |
-| `entityView()`               | The entity as composer views: open, search in ⌘K, its actions                         | ✅ (`entityView`)           |
+| `entityView()`               | The entity as composer views: open, search in ⌘K (each hit says what it is), actions  | ✅ (`entityView`, `noun`)   |
 | `<SincproApp>`               | The application's context: transport, language, metas, composer, shortcuts            | ✅                          |
 | `defineList` / `listView`    | An entity with a fixed cut (receivable, drafts): data, list and view                  | ✅                          |
 | `useGroups`                  | Group on the server: groups counted over the whole set, rows on open                  | ✅                          |

@@ -144,6 +144,9 @@ export type EntityListProps<T extends AnyRecord, C extends CommandBodies = Comma
   sums?: readonly string[] | false;
   /** The cuts this list offers by name: «sólo pagadas», «vencidas». */
   filters?: readonly NamedFilter<T>[];
+  /** The fields the search bar offers to look a typed text up in. Without it, the list
+   *  definition's, else the entity's search template's, else its display (`facetsOf`). */
+  facets?: readonly string[];
   /** The fields «Group by» offers, in this order — among those the model lets split the set.
    *  Without it, the list definition's, else every one the model does. */
   groupable?: readonly string[];
@@ -215,6 +218,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   search = "bar",
   sums,
   filters: askedFilters,
+  facets: askedFacets,
   groupable: askedGroupable,
   selectable = false,
   selectionActions,
@@ -236,6 +240,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
     (embedded ? ["table"] : pivotAsked === undefined ? EVERY_VIEW : [...EVERY_VIEW, "pivot"]);
   const filters = askedFilters ?? definition?.filters ?? [];
   const groupable = askedGroupable ?? definition?.groupable;
+  const facets = askedFacets ?? definition?.facets;
   const title = askedTitle ?? definition?.title;
   const description = askedDescription ?? definition?.description;
   const copy = frameworkCopy().list;
@@ -585,14 +590,17 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   // grouped set (each group says its own, counted by the server). While the rows are not the
   // whole set the list says the figures are this page's (`pageTotals`): the server's total over
   // everything filtered waits on a reading of measures (sincpro_framework, PRD_09).
-  const totalled =
-    !grouped &&
-    listing.rows.length > 0 &&
-    shown.some((column) => column.aggregate !== undefined && !column.defaultHidden);
   const partial =
     listing.paging === "pages"
       ? page.hasPrev || page.hasNext
       : listing.hasMore || listing.capped;
+  // Inside a record or a panel a list is its rows: a page's sum there reads as THE total, so an
+  // embedded list adds up only when every row is in hand.
+  const totalled =
+    !grouped &&
+    !(embedded && partial) &&
+    listing.rows.length > 0 &&
+    shown.some((column) => column.aggregate !== undefined && !column.defaultHidden);
 
   // A row's actions: the entity's Commands, then whatever else the screen offers.
   // The trash (`trashOf`): each row is brought back from where it is, with the entity's own
@@ -620,6 +628,64 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
       : (row: T) => [...rowCommands.rowActions(row), ...(askedRowActions?.(row) ?? [])];
   const refused = rowCommands.error === null ? null : explain(rowCommands.error);
 
+  // The way through the set. Inside a record or a panel, only while there is more than what is
+  // on screen: «1–5 / 5» repeats the rows.
+  const fits = embedded && !partial;
+  const through = grouped ? (
+    groups.status !== "ready" ? null : (
+      <span className="text-meta text-muted">
+        {groups.capped
+          ? copy.groupsCapped(groups.buckets.length)
+          : copy.groups(groups.buckets.length, records)}
+      </span>
+    )
+  ) : fits ? null : listing.paging === "pages" ? (
+    page.from === 0 ? null : (
+      <Pagination
+        from={page.from}
+        to={page.to}
+        total={count?.value ?? page.to}
+        {...(page.hasPrev ? { onPrev: listing.prev } : {})}
+        {...(page.hasNext ? { onNext: listing.next } : {})}
+      />
+    )
+  ) : (
+    <>
+      {count === null ? null : (
+        <span className="text-meta text-muted">
+          {copy.shown(listing.rows.length, count.value, count.exact)}
+        </span>
+      )}
+      {listing.capped ? (
+        <span className="text-meta text-muted">{copy.capped(listing.rows.length)}</span>
+      ) : listing.hasMore ? (
+        <Button
+          size="sm"
+          role="secondary"
+          disabled={listing.status === "loadingMore"}
+          onClick={listing.more}
+        >
+          {listing.status === "loadingMore" ? copy.loading : copy.loadMore}
+        </Button>
+      ) : null}
+    </>
+  );
+  const pageTotals = totalled && partial && present === "table";
+  // Written only when it says something: web-ui draws an embedded list's bar for any slot
+  // written, an empty one too.
+  const paging =
+    !pageTotals && dropped.length === 0 && through === null ? null : (
+      <>
+        {pageTotals ? <span className="text-meta text-muted">{copy.pageTotals}</span> : null}
+        {dropped.length === 0 ? null : (
+          <Tag tone="warn" title={copy.dropped(dropped)}>
+            {copy.dropped(dropped)}
+          </Tag>
+        )}
+        {through}
+      </>
+    );
+
   return (
     <List<T>
       items={listing.rows}
@@ -632,8 +698,9 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
       // the sort menu reorders them — the same list the criteria builder writes.
       sort={sortStates}
       // The faces with no headers (rows, board) sort too, by the fields the model marks
-      // sortable — on the server, so no `value` is given.
-      sortable={sortable}
+      // sortable — on the server, so no `value` is given. Not inside a record or a panel: a
+      // handful of rows has no «Ordenar» to offer, and the table's headers still sort.
+      {...(embedded ? {} : { sortable })}
       onSortChange={(next) =>
         listing.orderBy(
           next.map((one) => ({ field: one.key, descending: one.direction === "desc" })),
@@ -679,6 +746,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
               filters={filters}
               groups={groups}
               {...(groupable === undefined ? {} : { groupable })}
+              {...(facets === undefined ? {} : { facets })}
               {...(asked === "" ? {} : { seed: asked })}
             />
           </List.Search>
@@ -708,57 +776,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
             )}
           </List.Actions>
         )}
-        <List.Pagination>
-          {totalled && partial && present === "table" ? (
-            <span className="text-meta text-muted">{copy.pageTotals}</span>
-          ) : null}
-          {dropped.length === 0 ? null : (
-            <Tag tone="warn" title={copy.dropped(dropped)}>
-              {copy.dropped(dropped)}
-            </Tag>
-          )}
-          {grouped ? (
-            groups.status !== "ready" ? null : (
-              <span className="text-meta text-muted">
-                {groups.capped
-                  ? copy.groupsCapped(groups.buckets.length)
-                  : copy.groups(groups.buckets.length, records)}
-              </span>
-            )
-          ) : listing.paging === "pages" ? (
-            page.from === 0 ? null : (
-              <Pagination
-                from={page.from}
-                to={page.to}
-                total={count?.value ?? page.to}
-                {...(page.hasPrev ? { onPrev: listing.prev } : {})}
-                {...(page.hasNext ? { onNext: listing.next } : {})}
-              />
-            )
-          ) : (
-            <>
-              {count === null ? null : (
-                <span className="text-meta text-muted">
-                  {copy.shown(listing.rows.length, count.value, count.exact)}
-                </span>
-              )}
-              {listing.capped ? (
-                <span className="text-meta text-muted">
-                  {copy.capped(listing.rows.length)}
-                </span>
-              ) : listing.hasMore ? (
-                <Button
-                  size="sm"
-                  role="secondary"
-                  disabled={listing.status === "loadingMore"}
-                  onClick={listing.more}
-                >
-                  {listing.status === "loadingMore" ? copy.loading : copy.loadMore}
-                </Button>
-              ) : null}
-            </>
-          )}
-        </List.Pagination>
+        {paging === null ? null : <List.Pagination>{paging}</List.Pagination>}
       </List.Bar>
       {views.includes("table") ? (
         <List.Table<T>

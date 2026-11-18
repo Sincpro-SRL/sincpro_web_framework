@@ -1,11 +1,19 @@
 "use client";
 
+import type { Entity } from "@sincpro/client-framework";
+import type { AnyRecord } from "@sincpro/criteria";
+import { entityFor } from "@sincpro/web-framework/core/relation";
+import { useFrameworkIfAny } from "@sincpro/web-framework/react/context";
 import type { Rehearsal } from "@sincpro/web-framework/react/useCommand";
 import { useService } from "@sincpro/web-framework/react/useService";
-import { ActionButton } from "@sincpro/web-framework/web/record/ActionButton";
+import { ActionButton, type Asked } from "@sincpro/web-framework/web/record/ActionButton";
+import { type AskField, askFormOf } from "@sincpro/web-framework/web/record/ask";
 
 /** What the button runs when there is no dry run: nothing. */
-const NO_REHEARSAL = async (): Promise<Rehearsal | undefined> => undefined;
+const NO_REHEARSAL = async (_asked: Asked): Promise<Rehearsal | undefined> => undefined;
+
+/** What a use case that asks nothing receives. */
+const NOTHING_ASKED: Asked = {};
 
 /**
  * One of the application's use cases as a button — its Feature or ApplicationService, run on its
@@ -25,6 +33,12 @@ const NO_REHEARSAL = async (): Promise<Rehearsal | undefined> => undefined;
  * and shows what it would do. What it changed, every screen hears by itself: the use case's
  * client announces its write (`processChanges`), so `onDone` is for what only this screen does
  * next — a toast, closing a window —, never to read again.
+ *
+ * A use case that needs input names the fields it asks for (`ask`), read as `entity`'s fields of
+ * the same name and filled from `record`; `run` and `rehearse` receive what was filled.
+ *
+ *     <ServiceButton label="Delegar áreas" entity={cuentas} record={cuenta} ask={["areas"]}
+ *       run={(asked) => cuentaBoundedContext.execute(new CommandDelegarAreas(cuenta.id, asked.areas))} />
  */
 export function ServiceButton<R>({
   label,
@@ -32,22 +46,50 @@ export function ServiceButton<R>({
   rehearse,
   role = "secondary",
   disabled = false,
+  ask,
+  entity,
+  record,
   onDone,
 }: {
   label: string;
-  /** The use case, executed on its bounded context. */
-  run: () => Promise<R>;
+  /** The use case, executed on its bounded context — with what was asked, when it asks. */
+  run: (asked: Asked) => Promise<R>;
   /** The same use case run dry — what it would do, nothing touched —, asked before `run`. */
-  rehearse?: () => Promise<Rehearsal>;
+  rehearse?: (asked: Asked) => Promise<Rehearsal>;
   role?: "primary" | "secondary" | "ghost";
   /** Not offered right now. The use case still decides. */
   disabled?: boolean;
+  /** The fields it asks for before it runs: `["areas"]`. */
+  ask?: readonly AskField[];
+  /** Whose fields `ask` names: their labels, choices and controls. */
+  entity?: Entity;
+  /** The record it acts on: what the asked fields start with. */
+  record?: AnyRecord;
   onDone?: (answer: R) => void;
 }) {
-  const running = useService(run);
-  const rehearsing = useService(rehearse ?? NO_REHEARSAL);
+  const running = useService((asked?: Asked) => run(asked ?? NOTHING_ASKED));
+  const rehearsing = useService((asked?: Asked) =>
+    (rehearse ?? NO_REHEARSAL)(asked ?? NOTHING_ASKED),
+  );
+  // Outside a provider it still runs: the asked fields are then drawn by what `ask` says.
+  const framework = useFrameworkIfAny();
+  const form =
+    ask === undefined
+      ? undefined
+      : askFormOf(ask, {
+          meta: entity === undefined ? undefined : framework?.metas.get(entity.key),
+          locale: framework?.locale,
+          record,
+          ...(framework === null
+            ? {}
+            : {
+                entityFor: (target: string) =>
+                  entityFor(framework.entities, target, framework.metas.get),
+              }),
+        });
   return (
     <ActionButton
+      {...(form === undefined ? {} : { ask: form })}
       action={{
         run: running.run,
         ...(rehearse === undefined ? {} : { rehearse: rehearsing.run }),

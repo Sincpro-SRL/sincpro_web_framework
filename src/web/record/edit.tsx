@@ -279,6 +279,17 @@ export function RecordField<T extends Record<string, unknown>>({
     );
   }
 
+  // A list of checks names itself, as a checkbox does: inside a `Field` it would read twice.
+  const choices = choicesOf(place.meta, place.name, locale);
+  if (
+    as === undefined &&
+    !state.readonly &&
+    view.type.endsWith("[]") &&
+    choices.length > 0 &&
+    relation === undefined
+  )
+    return controlFor(control, view.type, false, choices, field?.widget);
+
   if (view.type === "boolean" && as === undefined)
     return (
       <Checkbox
@@ -303,13 +314,7 @@ export function RecordField<T extends Record<string, unknown>>({
       ) : state.readonly ? (
         <ReadValue value={textOf(meta, name, value, locale) ?? "—"} />
       ) : (
-        controlFor(
-          control,
-          view.type,
-          field?.exact === true,
-          choicesOf(place.meta, place.name, locale),
-          field?.widget,
-        )
+        controlFor(control, view.type, field?.exact === true, choices, field?.widget)
       )}
     </Field>
   );

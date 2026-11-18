@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
 
-import { scopeNameOf, scopeOfRef, type Transport } from "@sincpro/client-framework";
+import {
+  memoryTransport,
+  scopeNameOf,
+  scopeOfRef,
+  type Transport,
+} from "@sincpro/client-framework";
 import type { ViewProps } from "@sincpro/web-composer";
 import { entityView, trashOf } from "@sincpro/web-framework";
 import { test } from "vitest";
 
+import { cuentas, inscripciones, servidorColegio } from "../stories/support/colegio";
 import { facturaMeta, facturas } from "../stories/support/ventas";
 
 function asking() {
@@ -102,4 +108,29 @@ test("an entity's trash is its own list under archived_at not null, offering res
     value: false,
   });
   assert.equal(trashOf(facturas, { title: "Anuladas" }).title, "Anuladas");
+});
+
+test("⌘K says what each hit is, and beside it its description — never its key", async () => {
+  const servidor = servidorColegio();
+  const transport = memoryTransport(servidor.tables);
+  const view = entityView(inscripciones, { transport, name: "Inscripciones" });
+  // Before a search the model is unknown: nothing to call one by.
+  assert.equal(view.noun, undefined);
+  const [hit] = (await view.search?.("María")) ?? [];
+  assert.equal(hit?.label, "María Fernanda Apaza Quispe");
+  assert.equal(hit?.detail, "Excel para contadores");
+  // The model's own name, singular, read once a search brought the model.
+  assert.equal(view.noun, "Inscripción");
+});
+
+test("⌘K's noun is the view's when it declares one, and none without a model's name", async () => {
+  const servidor = servidorColegio();
+  const transport = memoryTransport(servidor.tables);
+  const declared = entityView(cuentas, { transport, name: "Cuentas", noun: "Cuenta" });
+  assert.equal(declared.noun, "Cuenta");
+  const unnamed = entityView(cuentas, { transport, name: "Cuentas" });
+  const [hit] = (await unnamed.search?.("María")) ?? [];
+  // Never the plural list name as one record's kind, never its key beside it.
+  assert.equal(unnamed.noun, undefined);
+  assert.equal(hit?.detail, undefined);
 });

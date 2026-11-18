@@ -11,6 +11,7 @@ import type { AnyRecord } from "@sincpro/criteria";
 import { EntityPicker } from "@sincpro/web-framework/web/record/EntityPicker";
 import {
   Checkbox,
+  CheckList,
   DatePicker,
   DateTimePicker,
   NumberInput,
@@ -34,8 +35,8 @@ export type FieldControl = {
 };
 
 /**
- * The control a field's TYPE asks for — a choice, a number, a date, a date and time, a yes/no, a
- * list of words, a text — or the one its `widget` names when the model names one of the
+ * The control a field's TYPE asks for — a choice, several of a choice (checks), a number, a
+ * date, a date and time, a yes/no, a list of words, a text — or the one its `widget` names when the model names one of the
  * framework's own: `textarea`, several lines of prose.
  * Shared by a record's field (`RecordField`) and a line's cell and dialog (`RecordLinesEditor`):
  * one rule for what a value is edited with.
@@ -55,6 +56,17 @@ export function controlFor(
 ): ReactNode {
   const { value, set } = control;
   const named = control.standalone === true ? { "aria-label": control.label } : {};
+  // Several of the values at once — a list whose values are a choice: each one a check, the
+  // list's label above them.
+  if (choices.length > 0 && type.endsWith("[]"))
+    return (
+      <CheckList
+        label={control.label}
+        items={choices.map((one) => ({ value: String(one.value), label: one.label }))}
+        value={Array.isArray(value) ? value.map(String) : []}
+        onChange={set}
+      />
+    );
   if (choices.length > 0)
     return (
       <Select

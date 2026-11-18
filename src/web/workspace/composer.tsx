@@ -5,11 +5,12 @@ import {
   isEntityId,
   listRoute,
   NEW_PARAM,
+  processContext,
   scopeNameOf,
   scopeOfRef,
   type Transport,
 } from "@sincpro/client-framework";
-import { type AnyRecord, matching, type Meta } from "@sincpro/criteria";
+import { type AnyRecord, matching, type Meta, nameOf } from "@sincpro/criteria";
 import {
   type ResourceRef,
   type SearchHit,
@@ -20,6 +21,7 @@ import {
 } from "@sincpro/web-composer";
 import type { ListDefinition } from "@sincpro/web-framework/core/list";
 import { lookupOf } from "@sincpro/web-framework/core/lookup";
+import { summaryOf } from "@sincpro/web-framework/core/summary";
 import { ListScopeProvider } from "@sincpro/web-framework/react/scope";
 import { useListing } from "@sincpro/web-framework/react/useListing";
 import { EntityList } from "@sincpro/web-framework/web/list/EntityList";
@@ -47,8 +49,10 @@ import { type ComponentType, type ReactNode, useMemo } from "react";
  * (`entity.newRef(values)`), which `useRecord(entity, resource)` fills with the model's defaults
  * and what the reference carries.
  *
- * ⌘K asks the server with `matching` — 8 records, identity and display — the same question a
- * many2one asks. The model definition is asked for once, on the first search, unless `meta`
+ * ⌘K asks the server with `matching` — 8 records — the same question a many2one asks. Each hit
+ * says what it is (`noun`, composer's) and, beside it, what tells it apart: the entity's own
+ * `option` look, else its summary's description or type — never its key, which tells a person
+ * nothing a UUID long («María Fernanda Apaza Quispe 01a1ebd4…»). The model definition is asked for once, on the first search, unless `meta`
  * is handed over. A list whose route answers a SCOPE by its params (forge's `/projects`
  * without `tenant_id` is the projects with NO tenant) is searched in the one ⌘K should see:
  * `search: { params }`.
@@ -64,6 +68,9 @@ export type EntityViewOptions = {
   transport: Transport;
   /** How it reads in the palette, a panel's frame and the breadcrumb. */
   name: string;
+  /** What ONE of its records is called — «Colegiado» —, beside each record ⌘K finds, so two
+   *  «María» of different kinds say which is which. Without it, the model's own name. */
+  noun?: string;
   /** Its list. Without it, `EntityList` over the entity: search bar, pages, «Nuevo». */
   list?: ComponentType<ViewProps>;
   /** Its record. Without it, `EntityRecord`: the form the model describes. */
@@ -149,6 +156,12 @@ function recordOf<T extends AnyRecord>(
   };
 }
 
+/** The language the screens speak now — the provider puts it in the process's context. */
+function localeNow(): string | undefined {
+  const lang = processContext.get("lang");
+  return typeof lang === "string" && lang !== "" ? lang : undefined;
+}
+
 /**
  * What a reference reads as before its view names it — a crumb whose view is not mounted, a
  * record still loading: the list is the view's name (with its cut's, `entity.listRef`); a record
@@ -199,6 +212,11 @@ export function entityView<T extends AnyRecord>(
   return {
     domain: entity.domain,
     kind: entity.kind,
+    // Read when ⌘K draws a hit, so the model's own name is there once a search brought it.
+    get noun() {
+      if (options.noun !== undefined) return options.noun;
+      return meta?.name === undefined ? undefined : nameOf(meta, localeNow());
+    },
     title: (ref) => titleOf(ref, options.name),
     goto: options.goto ?? true,
     ...(options.icon === undefined ? {} : { icon: options.icon }),
@@ -209,12 +227,21 @@ export function entityView<T extends AnyRecord>(
         meta = (await options.transport.list(route, { pagination: { limit: 1 } })).meta;
       if (meta?.search == null) return [];
       const page = await options.transport.list<AnyRecord>(route, matching(meta, query));
+      const known = meta;
+      const locale = localeNow();
       // ⌘K writes text: of the entity's look of a choice, its name and its meta.
       const look = presentationOf(entity).option;
-      return lookupOf(meta, page.rows, entity.summary).map((one) => {
+      return lookupOf(known, page.rows, entity.summary).map((one) => {
         const own =
           look === undefined || one.record === undefined ? {} : look(one.record as T);
-        const detail = own.meta ?? one.detail;
+        const summary =
+          one.record === undefined
+            ? undefined
+            : summaryOf(known, one.record, {
+                fields: entity.summary ?? {},
+                ...(locale === undefined ? {} : { locale }),
+              });
+        const detail = own.meta ?? summary?.description ?? summary?.type ?? undefined;
         return {
           ref: entity.ref(one.id),
           label: own.name ?? one.label,

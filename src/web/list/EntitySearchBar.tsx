@@ -35,7 +35,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
  *   - a free text is the entity's LITERAL search — its whole template, every field at once
  *     (sincpro_framework's `LiteralSearch`, the same question a many2one and ⌘K ask): it is
  *     what Enter puts, unless the model reads the text as a question of its own;
- *   - «search by name»: facets are the fields the entity's search template names first;
+ *   - «search by name»: facets are the fields the screen names (`facets`), else the ones the
+ *     entity's search template names — never every text field;
  *   - a typed question («total > 5000») is checked against each field's operators;
  *   - a named filter is one click; the builder writes what nobody foresaw (all/any/not);
  *   - everything put becomes ONE `selection` the SERVER answers (`listing.filter`) — web-ui
@@ -55,6 +56,7 @@ export function EntitySearchBar<T extends AnyRecord>({
   filters = [],
   groups,
   groupable: only,
+  facets: named,
   seed,
 }: {
   listing: Listing<T>;
@@ -65,6 +67,9 @@ export function EntitySearchBar<T extends AnyRecord>({
   /** The fields «Group by» offers, in this order — among those the model lets split the set.
    *  Without it, every one it does. */
   groupable?: readonly string[];
+  /** The fields a typed text is offered to be looked up in, in order. Without it, the ones the
+   *  entity's search template names, else its display (`facetsOf`). */
+  facets?: readonly string[];
   /** A text to start on, put as the literal search chip — what was typed in a picker whose
    *  «Buscar más…» opened this list. */
   seed?: string;
@@ -74,7 +79,25 @@ export function EntitySearchBar<T extends AnyRecord>({
   const [put, setPut] = useState<SearchCriteria[]>([]);
   const [building, setBuilding] = useState(false);
   const model = useMemo(() => (meta ? modelOf(meta, locale) : undefined), [meta, locale]);
-  const facets = useMemo(() => (meta ? facetsOf(meta, locale) : []), [meta, locale]);
+  // Compared by content: a screen usually writes the list inline.
+  const naming = named?.join("\u0000");
+  const facets = useMemo(
+    () => (meta ? facetsOf(meta, locale, named) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [meta, locale, naming],
+  );
+  // The bar's model: its text fields are only the facets — every other one is the builder's.
+  const asked = useMemo(
+    () =>
+      meta
+        ? modelOf(
+            meta,
+            locale,
+            facets.map((one) => one.id),
+          )
+        : undefined,
+    [meta, locale, facets],
+  );
   const groupable = useMemo(() => groupableOf(meta, locale, only), [meta, locale, only]);
   const ui = useUiCopy();
   const seeded = useRef(false);
@@ -107,7 +130,7 @@ export function EntitySearchBar<T extends AnyRecord>({
     <>
       <SearchBar
         facets={facets}
-        model={model}
+        model={asked ?? model}
         criteria={put}
         onCriteriaChange={place}
         placeholder={copy.searchBar}

@@ -208,6 +208,12 @@ export function useFramework(): FrameworkContextValue {
   return value;
 }
 
+/** The provider's values, or `null` outside one: for a piece that works without it
+ *  (`ServiceButton` runs a use case, which needs no provider). */
+export function useFrameworkIfAny(): FrameworkContextValue | null {
+  return useContext(FrameworkContext);
+}
+
 /** The declared entity a relation points at (`"Cliente"`), or `undefined`. */
 export function useEntityFor(target: string | undefined): Entity | undefined {
   const { entities, metas } = useFramework();

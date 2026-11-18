@@ -1757,3 +1757,41 @@ already publishes it.
   `scroll="view"` (web-ui 2.3; quipu set `--sticky-top: 0px` by hand). Composer should reset
   `--sticky-top` in its own scroll boxes (web-ui's rule in `foundations/sticky.ts`) — to be
   raised in sincpro_web_composer.
+
+## quipu's demo (2026-11-17)
+
+Reviewing quipu's back office with its product owner (web-framework#43, #45), on web-ui 2.4 and
+composer 1.8 — the floor in development; the peers stay `^2.1.0` / `^1.7.0`, nothing here needs
+them at run time. Every story passes on both.
+
+- **The bar suggests where a person searches** (`facets`, story 56). It offered every text field:
+  «Excel» found sixteen places, «ID» and a storage key among them. Now the screen names them
+  (`defineList facets`, `EntityList facets`), else the entity's search template, else its display.
+  The cause was web-ui's: its bar reads `facets` only without a `model`, and with one offers every
+  text field — so the bar is handed the model with only those text fields (`modelOf texts`) and
+  the builder the whole one. **web-ui:** a bar that keeps its `facets` with a model would let this
+  package hand one model to both.
+- **An action that asks** (`ask` on `CommandButton` / `ServiceButton`, `askFormOf`, story 57):
+  «Delegar áreas» lives in `Record.Actions`, asks for the areas in a dialog — each field read as
+  the entity's field of that name, filled from the record, its key never asked — and sends them
+  on «Confirmar»; a refusal stays over the fields, and an action that rehearses asks first. A
+  list whose values are a choice (`text[]` with `choices`) is now web-ui's `CheckList`, in a form
+  too.
+- **An embedded list is its rows** (story 58): no «Ordenar», no pager while every row fits, no sum
+  of a page. Same rule #42 item 3 asked for related lists.
+- **⌘K never shows a key** (stories 60, `tests/view.test.ts`): beside a hit, the entity's own
+  `option` look, else its summary's description or type, else nothing. Each hit says what it is
+  (composer 1.8's `noun`): `entityView(…, { noun })`, else the model's own name once a search read
+  it. Never the view's `name` — a plural reads wrong beside one record («Colegiados · …»).
+- **A relation column reads its record's name** (story 59): `organo: EntityID[Organo]` read
+  «CONSEJO_TECNICO»; now «Consejo Técnico», the page's keys in one request (`useNameOf`).
+- **A hierarchy is a grouping, not a face** (#43 item 5, moved to its own issue): web-ui decided
+  there is no «tree» archetype (`listing/tree.ts`: collapse is how N is folded), and a face that
+  read the whole set would break «built for millions». The directory is `groupBy` + `rows` + the
+  row look's `avatar`, grouped and counted by the server. Two gaps remain: groups that start open
+  (a short directory) and a group's head that names a key alone's record, as a cell now does.
+- **Tours (#44) wait on web-ui.** web-ui 2.4 shipped `Guide` (targets `{ part, key }`, `GuideSpot`,
+  a selector, a function) instead of the `Tour` and `data-tour` #44 was written for. The parts a
+  tour of an entity's screens points at — a record's actions and each action by its command, its
+  smart buttons, a list's views, «Nuevo» — are not web-ui parts yet, and wrapping a `Record.*` /
+  `List.*` slot in a `GuideSpot` would hide it from web-ui's slot lookup. Asked of web-ui first.
