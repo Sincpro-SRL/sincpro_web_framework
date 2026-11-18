@@ -101,6 +101,7 @@ export {
   instantTextOf,
   moneyTextOf,
   numberTextOf,
+  shortTextOf,
   sortKeyOf,
   STAMPS,
   textOf,

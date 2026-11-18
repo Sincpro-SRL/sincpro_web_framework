@@ -1,7 +1,8 @@
 import { type AnyRecord, type Bucket, labelOf, type Meta } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import type { GroupLevel } from "@sincpro/web-framework/core/list";
-import { textOf } from "@sincpro/web-framework/core/present";
+import { totalOf } from "@sincpro/web-framework/core/measure";
+import { shortTextOf, textOf } from "@sincpro/web-framework/core/present";
 import type { Pivot, PivotCell, PivotKey } from "@sincpro/web-ui";
 
 /**
@@ -98,6 +99,11 @@ export function pivotOf<T extends AnyRecord>({
       id: name,
       header: labelOf(meta, name, locale),
       format: (value: number) => textOf(meta, name, value, locale) ?? String(value),
+      // Under a chart's tick: «Bs 120 k», never the bare number.
+      formatShort: (value: number) => shortTextOf(meta, name, value, locale) ?? String(value),
+      // Folded by a sum (`measuresOf`'s default): two piles together are the sum of their folds,
+      // so a chart may gather a tail into «otros». An average, a minimum, a maximum are not.
+      additive: (totalOf(meta, name) ?? "sum") === "sum",
     })),
     cell: (row, column) => at.get(`${row[0] ?? ""}\u0000${column[0] ?? ""}`),
     rowTotal: (row) => rowTotals.get(row[0] ?? ""),

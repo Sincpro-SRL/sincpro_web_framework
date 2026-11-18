@@ -73,3 +73,29 @@ test("a chart over a pivot by month fills the months nothing fell in, the undate
   // October is a month with nothing, not a missing one.
   assert.deepEqual(chart.categories[1]?.key, ["2026-10"]);
 });
+
+test("a measure reads short under a chart's tick, and says whether it adds up", () => {
+  const [total] = pivot.measures;
+  // «Total» is a number the model sums (`measuresOf`'s default): to the million, and additive.
+  // (`Intl` puts a no-break space before the unit: `\s`.)
+  assert.match(total?.formatShort?.(1204933) ?? "", /^1,2\sM$/);
+  assert.equal(total?.additive, true);
+  // An average is not a sum: a chart must not add two of them into «otros».
+  const averaged = {
+    ...facturaMeta,
+    fields: {
+      ...facturaMeta.fields,
+      amount_total: { ...facturaMeta.fields["amount_total"]!, total: "avg" },
+    },
+  };
+  const [average] = pivotOf({
+    crossed,
+    byColumn,
+    rows: { field: "invoice_date", grain: "month" },
+    columns: { field: "state" },
+    measures: ["amount_total"],
+    meta: averaged as never,
+    locale: "es",
+  }).measures;
+  assert.equal(average?.additive, false);
+});

@@ -1875,6 +1875,11 @@ three places where the framework handed web-ui less than it can draw:
   in the grid, «nov» under a chart's tick, and `chartFromPivot` fills the months nothing fell in.
   An undated bucket is web-ui's empty key («sin fecha», last). quipu relabelled the months itself
   (`porMes`); that can go. `tests/pivot.test.ts`.
+- **A measure reads short and says whether it adds up** (`pivotOf`). Each measure gives web-ui
+  `formatShort` — `shortTextOf`, new in `core/`: «Bs 120 k» under a chart's tick, a money still in
+  its currency, where the axis wrote the bare number — and `additive` when the model folds it by
+  a sum (`measuresOf`'s default), so a chart may gather a tail into «otros»; an average, a
+  minimum, a maximum never are.
 - **An edit is audited in sight** (`historyOf`). Each field an edit moved is a
   `HistoryEntry.changes` item — `{ field, from, to }`, each side as the record's model writes it,
   an empty side `null` — drawn by web-ui's activity under the event, struck → as it is, «vacío»
@@ -1889,7 +1894,8 @@ three places where the framework handed web-ui less than it can draw:
 
 - **criteria:** the in-memory engine handed every record back whole whatever the specification
   asked, so a fake server never spoke the reference the backend answers
-  (Sincpro-SRL/sincpro_criteria#27, fixed there). With it, story 60 fails without the ⌘K change.
+  (Sincpro-SRL/sincpro_criteria#27, fixed in 2.4.0, the floor now). On it, story 60 fails without
+  the ⌘K change.
 - **Not done, on purpose:** `useRecord` starting from a record the server already read (the SSR
   step after #55). No public page draws one record yet; it waits for the first that does.
 - **Server rendering under Next.js:** `installFrameworkCopy` is a process global, the trap web-ui

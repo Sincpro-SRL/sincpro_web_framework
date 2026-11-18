@@ -486,6 +486,56 @@ export function textOf(
   }
 }
 
+function compactFormat(
+  locale: string | undefined,
+  currency: string | undefined,
+): Intl.NumberFormat | null {
+  const key = `k|${locale ?? ""}|${currency ?? ""}`;
+  let format = formatters.get(key) as Intl.NumberFormat | undefined;
+  if (format === undefined) {
+    try {
+      format = new Intl.NumberFormat(locale, {
+        notation: "compact",
+        maximumFractionDigits: 1,
+        ...(currency === undefined ? {} : { style: "currency", currency }),
+      });
+    } catch {
+      // A currency `Intl` does not know: the long text says it whole.
+      return null;
+    }
+    formatters.set(key, format);
+  }
+  return format;
+}
+
+/**
+ * A number where room is short — a chart's axis, beside a sparkline: the same value `textOf`
+ * reads, to the thousand or the million, money still in its currency.
+ *
+ *     shortTextOf(meta, "monto", 120000, "es-BO")   -> "Bs 120 k"   (widget money, BOB installed)
+ *     shortTextOf(meta, "bytes", 79691776, "es")    -> "79,7 M"
+ *     shortTextOf(meta, "state", "paid", "es")      -> "Pagada"     (not a number: as textOf)
+ *
+ * Context: web-ui's `PivotMeasure.formatShort`. Without it an axis wrote the bare number, and a
+ * money lost its currency under every tick.
+ */
+export function shortTextOf(
+  meta: Meta | null | undefined,
+  name: string,
+  value: unknown,
+  locale?: string,
+): string | null {
+  const field = fieldOf(meta, name);
+  const money = field.widget === "money" && field.kind === "scalar";
+  const number = value === null || value === undefined || value === "" ? NaN : Number(value);
+  if ((!money && field.type !== "number" && field.type !== "integer") || Number.isNaN(number))
+    return textOf(meta, name, value, locale);
+  return (
+    compactFormat(locale, money ? currency : undefined)?.format(number) ??
+    textOf(meta, name, value, locale)
+  );
+}
+
 /**
  * The value a column orders and groups on: the raw scalar, never the text. ISO dates order
  * as text; a decimal that travels as text orders as a number.
