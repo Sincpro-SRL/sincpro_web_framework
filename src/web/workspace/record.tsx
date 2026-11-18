@@ -18,7 +18,14 @@ import { dirtyOf, RecordField } from "@sincpro/web-framework/web/record/edit";
 import { RecordLifecycle } from "@sincpro/web-framework/web/record/RecordLifecycle";
 import { Refused } from "@sincpro/web-framework/web/Refused";
 import { useRecordInWorkspace } from "@sincpro/web-framework/web/workspace/workspace";
-import { Button, Callout, FormSection, Record, Skeleton } from "@sincpro/web-ui";
+import {
+  Button,
+  Callout,
+  FormSection,
+  Record,
+  Skeleton,
+  useFormStyle,
+} from "@sincpro/web-ui";
 import { type ReactNode, useState } from "react";
 
 /**
@@ -203,6 +210,7 @@ export function EntityRecord<T extends AnyRecord>({
   // On a phone a form is one column, its label over its value: two side by side at 400 px
   // squeezed a text area beside its word (web-ui's grid does not narrow by itself).
   const phone = usePhone(api);
+  const settings = useFormStyle() === "settings";
 
   if (reading.status === "loading") return <Skeleton rows={6} label={copy.loading} />;
   if (reading.status === "failed")
@@ -273,7 +281,14 @@ export function EntityRecord<T extends AnyRecord>({
         {/* web-ui's form grid (its «Operación» template): two columns on a page and in a modal,
             one in a side panel, a window or a peek — web-ui's grid does not narrow by itself
             (ROADMAP). A hand-made column left half the sheet empty on a page. */}
-        <FormSection columns={columns}>
+        {/* In web-ui's «settings» style each section is a card in the index of the sections:
+            beside others, the main one needs its name too. */}
+        <FormSection
+          columns={columns}
+          {...(settings && fields === undefined && layout.sections.length > 0
+            ? { title: copy.general }
+            : {})}
+        >
           {shown.map((name) => (
             <RecordField key={name} record={reading} name={name} />
           ))}

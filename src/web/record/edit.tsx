@@ -37,6 +37,7 @@ import {
   ReadValue,
   RelationValue,
   type RelationValueProps,
+  useFormStyle,
 } from "@sincpro/web-ui";
 import type { ReactNode } from "react";
 
@@ -130,6 +131,7 @@ export function RecordField<T extends Record<string, unknown>>({
   const target = useEntityFor(relation?.target);
   const opening = useRecordOpening();
   const { metas } = useFramework();
+  const settings = useFormStyle() === "settings";
   if (!state.visible) return null;
   // A one2many is a BLOCK, named by a section — never a `Field`: web-ui's controls read the
   // id and the label of the `Field` around them, and every cell and the list's search bar
@@ -320,6 +322,8 @@ export function RecordField<T extends Record<string, unknown>>({
     <Field
       label={view.label}
       required={state.required && !state.readonly}
+      // Said only in web-ui's «settings» form style: a field that may stay empty, and is typed in.
+      optional={!state.required && !state.readonly}
       {...(view.help === undefined ? {} : { hint: view.help })}
       {...(error === undefined ? {} : { error })}
     >
@@ -330,7 +334,14 @@ export function RecordField<T extends Record<string, unknown>>({
       ) : state.readonly ? (
         <ReadValue value={textOf(meta, name, value, locale) ?? "—"} />
       ) : (
-        controlFor(control, view.type, field?.exact === true, choices, field?.widget)
+        controlFor(
+          control,
+          view.type,
+          field?.exact === true,
+          choices,
+          field?.widget,
+          settings && state.required,
+        )
       )}
     </Field>
   );
