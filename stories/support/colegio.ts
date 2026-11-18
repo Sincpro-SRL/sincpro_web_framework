@@ -73,7 +73,7 @@ export const cuentaMeta = defineMeta({
     id: field.text({ label: "ID", readonly: true }),
     nombre: field.text({ label: "Nombre" }),
     areas: {
-      ...field.tags({ label: "Áreas" }),
+      ...field.tags({ label: "Áreas", help: "Lo que la cuenta ve en el panel." }),
       choices: [...AREAS],
       choice_labels: {
         CONTROL_PAGOS: { default: "Control de pagos" },

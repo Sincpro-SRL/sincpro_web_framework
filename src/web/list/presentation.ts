@@ -68,6 +68,37 @@ export type Presentation<T> = {
   /** The fields a table of its records shows when the screen names none — on its own list and
    *  inside another record (a one2many) alike. Without it, every field but the stamps. */
   columns?: readonly (keyof T & string)[];
+  /**
+   * How the parts its records hold look — the rows of a relation with no entity of its own (an
+   * issue's runs, a tenant's members), by the relation's name, typed by the part:
+   *
+   *     presented(issues, { tones: { status: ISSUE_TONE }, parts: { runs: { tones: { status: RUN_TONE } } } })
+   *
+   * Context: a part has no route, so there is no `presented(runs, …)` to declare it with; its
+   * look belongs to the record that holds it. Declared here, every place that draws those rows
+   * reads it — `RecordLines`, the lines editor, a `RecordField` — and a screen passes its own
+   * only to change it.
+   */
+  parts?: PartLooks<T>;
+};
+
+/** How a record's part looks: what `Presentation` says of an entity, for a row it holds. */
+export type PartLook<P> = Pick<Presentation<P>, "tones" | "columns">;
+
+/** The record a field holds many of — an `EntityCollection<Run>`, a `Run[]` — or `never`. */
+export type PartOf<V> = unknown extends V
+  ? AnyRecord
+  : NonNullable<V> extends { readonly items: readonly (infer P)[] }
+    ? P
+    : NonNullable<V> extends readonly (infer P)[]
+      ? P
+      : never;
+
+/** A part's look by the name of the field that holds it — only fields that hold many. */
+export type PartLooks<T> = {
+  readonly [K in keyof T & string as [PartOf<T[K]>] extends [never] ? never : K]?: PartLook<
+    PartOf<T[K]>
+  >;
 };
 
 export type Presented<
@@ -94,6 +125,35 @@ export function presentationOf<T extends AnyRecord>(
 ): Presentation<T> {
   const base = isList(source) ? source.entity : source;
   return "presentation" in base ? (base as Presented<T>).presentation : {};
+}
+
+/** How the parts an entity's records hold under `name` look; `{}` when it declares nothing. */
+export function partLookOf(
+  entity: Entity | ListDefinition<AnyRecord> | undefined,
+  name: string,
+): PartLook<AnyRecord> {
+  if (entity === undefined) return {};
+  const parts = presentationOf(entity).parts as
+    Readonly<Record<string, PartLook<AnyRecord> | undefined>> | undefined;
+  return parts?.[name] ?? {};
+}
+
+/**
+ * The tones of each layer over the one before, value by value — the entity's, then a part's
+ * declaration, then the screen's: a screen that colours `failed` keeps the declared `done`.
+ * `undefined` when no layer says anything.
+ */
+export function tonesOver<T>(
+  ...layers: readonly (ChoiceTones<T> | undefined)[]
+): ChoiceTones<T> | undefined {
+  const said = layers.filter((one): one is ChoiceTones<T> => one !== undefined);
+  if (said.length === 0) return undefined;
+  if (said.length === 1) return said[0];
+  const out: Record<string, Readonly<Record<string, Tone>>> = {};
+  for (const layer of said)
+    for (const [field, tones] of Object.entries(layer) as [string, Record<string, Tone>][])
+      out[field] = { ...out[field], ...tones };
+  return out as ChoiceTones<T>;
 }
 
 /** `look` over `base`, leaving out what `look` sets to `undefined`: «no tags» is not a hole. */

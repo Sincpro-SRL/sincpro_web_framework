@@ -9,7 +9,11 @@ import type { AnyRecord } from "@sincpro/criteria";
 import { entityFor } from "@sincpro/web-framework/core/relation";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { type AnswerOf, useCommand } from "@sincpro/web-framework/react/useCommand";
-import { ActionButton, type Asked } from "@sincpro/web-framework/web/record/ActionButton";
+import {
+  ActionButton,
+  type ActionDialog,
+  type Asked,
+} from "@sincpro/web-framework/web/record/ActionButton";
 import { type AskField, askFormOf } from "@sincpro/web-framework/web/record/ask";
 
 /**
@@ -41,6 +45,7 @@ export function CommandButton<
   disabled = false,
   ask,
   record,
+  dialog,
   onDone,
 }: {
   entity: Entity<T, C, A>;
@@ -59,6 +64,8 @@ export function CommandButton<
   ask?: readonly AskField[];
   /** The record it acts on: what the asked fields start with. */
   record?: AnyRecord;
+  /** What its window says — its title (the label without «…» by default), a sentence under it. */
+  dialog?: ActionDialog;
   onDone?: (answer: AnswerOf<R, A, N>) => void;
 }) {
   const sending = useCommand<T, R, C, N, A>(entity, command);
@@ -77,6 +84,7 @@ export function CommandButton<
   return (
     <ActionButton
       {...(form === undefined ? {} : { ask: form })}
+      {...(dialog === undefined ? {} : { dialog })}
       action={{
         run: (asked) => sending.run(id, bodyWith(asked)),
         ...(destructive

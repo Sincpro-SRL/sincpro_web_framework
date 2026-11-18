@@ -27,6 +27,7 @@ import {
 } from "@sincpro/web-framework/core/relation";
 import { useEntityFor, useFramework } from "@sincpro/web-framework/react/context";
 import type { RecordReading } from "@sincpro/web-framework/react/useRecord";
+import type { ChoiceTones } from "@sincpro/web-framework/web/list/presentation";
 import {
   controlFor,
   type FieldControl,
@@ -36,12 +37,14 @@ import {
   RecordOpeningProvider,
   useRecordOpening,
 } from "@sincpro/web-framework/web/record/opening";
+import { usePartLook } from "@sincpro/web-framework/web/record/record";
 import {
   Field,
   type LineEditorState,
   type LineItemColumn,
   LineItems,
   ReadValue,
+  Tag,
 } from "@sincpro/web-ui";
 import { type ReactNode, useRef } from "react";
 
@@ -82,6 +85,9 @@ export type LinesLook = {
   columns?: readonly string[];
   /** A field's cell drawn the screen's way, while it reads. */
   cells?: Readonly<Partial<Record<string, (line: AnyRecord) => ReactNode>>>;
+  /** The colour of each value of a choice, read as a tag — over what the record's entity
+   *  declared for these lines (`presented(…, { parts })`). */
+  tones?: ChoiceTones<AnyRecord>;
   /** A field written with the screen's own widget — in its cell and in the dialog. */
   controls?: Readonly<Partial<Record<string, (control: LineControl) => ReactNode>>>;
   /** Columns that are not fields, after the fields. */
@@ -255,8 +261,14 @@ export function RecordLinesEditor<T extends AnyRecord>({
       ? (definition?.identity ?? "")
       : definition?.identity || "id";
   const fields = lineFields(definition);
+  // What the record's entity declared for these lines, under what the screen says.
+  const part = usePartLook<AnyRecord>(meta, name, {
+    entity: record.entity,
+    columns: look.columns,
+    tones: look.tones,
+  });
   const shown =
-    look.columns === undefined ? fields : look.columns.filter((one) => fields.includes(one));
+    part.columns === undefined ? fields : part.columns.filter((one) => fields.includes(one));
   const controls = look.controls ?? {};
   const own = new Set(Object.keys(controls));
   const declared: Declared = (target) => entityFor(entities, target, metas.get) !== undefined;
@@ -295,12 +307,23 @@ export function RecordLinesEditor<T extends AnyRecord>({
       definition.fields[field]?.readonly !== true &&
       (own.has(field) || writtenInCell(definition, field, declared));
     const ownCell = look.cells?.[field];
+    const tones = part.tones?.[field];
+    const toned =
+      tones !== undefined && (definition?.fields[field]?.choices?.length ?? 0) > 0
+        ? (line: AnyRecord) => {
+            const word = textIn(definition, field, relation, line, locale);
+            return word === "" ? null : (
+              <Tag tone={tones[String(line[field])] ?? "neutral"}>{word}</Tag>
+            );
+          }
+        : undefined;
     return {
       id: field,
       header: view.label,
       value: (line) => line[field] as never,
       // Drawn as read: «Cemento 50 kg», not «CEM-50»; «1.552,00», not «1552.00».
-      cell: ownCell ?? ((line) => textIn(definition, field, relation, line, locale)),
+      // A choice the record's entity coloured reads as its tag, as in a list.
+      cell: ownCell ?? toned ?? ((line) => textIn(definition, field, relation, line, locale)),
       text: (line) => textIn(definition, field, relation, line, locale),
       numeric: view.type === "number" || view.type === "integer",
       ...(inCell

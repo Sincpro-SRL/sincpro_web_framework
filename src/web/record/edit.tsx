@@ -164,7 +164,15 @@ export function RecordField<T extends Record<string, unknown>>({
     const whole = editableLines(edit.values[name]);
     const lines =
       whole === null ? (
-        <RecordLines record={record.record ?? {}} meta={meta} name={name} locale={locale} />
+        <RecordLines
+          record={record.record ?? {}}
+          meta={meta}
+          name={name}
+          entity={record.entity}
+          locale={locale}
+          {...(look?.columns === undefined ? {} : { columns: look.columns })}
+          {...(look?.tones === undefined ? {} : { tones: look.tones })}
+        />
       ) : (
         <RecordLinesEditor
           record={record}
@@ -181,7 +189,15 @@ export function RecordField<T extends Record<string, unknown>>({
     const whole = editableLines(edit.values[name], relation.field);
     const lines =
       whole === null ? (
-        <RecordLines record={record.record ?? {}} meta={meta} name={name} locale={locale} />
+        <RecordLines
+          record={record.record ?? {}}
+          meta={meta}
+          name={name}
+          entity={record.entity}
+          locale={locale}
+          {...(look?.columns === undefined ? {} : { columns: look.columns })}
+          {...(look?.tones === undefined ? {} : { tones: look.tones })}
+        />
       ) : (
         <RecordLinesEditor
           record={record}
