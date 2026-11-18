@@ -25,9 +25,11 @@ import { textOf } from "@sincpro/web-framework/core/present";
  *
  * An edit (`EntityUpdated`) carries each field it moved as `changes: {field: [before, after]}`
  * and the word it was called then (`field_labels`, kept because an audit says what a person saw
- * at the time): it reads «Título: Bienvenidos → Bienvenidos al CAUOR», each side as the record's
- * own model writes it (a state by its word, an amount as money, a date in the installed style).
- * quipu wrote this formatter itself, because the detail read `changes: {…} · field_labels: {…}`.
+ * at the time): each becomes one of the entry's `changes` — «Título», «Bienvenidos» →
+ * «Bienvenidos al CAUOR» —, each side as the record's own model writes it (a state by its word,
+ * an amount as money, a date in the installed style), an empty side `null`. web-ui's activity
+ * draws them under the event, in sight and scannable (`ActivityEvent.changes`), where they were
+ * one line of text in the detail, «Observación: — → test», that could only be read.
  */
 export type HistoryEntry = {
   id: string;
@@ -36,8 +38,17 @@ export type HistoryEntry = {
   /** Who did it, as the fact says (`actor`); absent: the system, or a backend before 3.37. */
   by?: string;
   detail?: string;
+  /** What an edit moved, field by field — web-ui's `ActivityChange`. */
+  changes?: HistoryChange[];
   /** The colour of this kind of fact (`FACT_TONES`, or the application's by `name`). */
   tone?: FactTone;
+};
+
+/** One field an edit moved: its word, what it held and what it holds; `null` is empty. */
+export type HistoryChange = {
+  field: string;
+  from: string | null;
+  to: string | null;
 };
 
 /** The tones a fact may take — web-ui's `Tone`, named here because `core/` imports no UI. */
@@ -79,7 +90,7 @@ const ENVELOPE = new Set([
   "actor",
   "correlation_id",
   "causation_id",
-  // An edit's own: drawn as «Field: before → after», never as JSON.
+  // An edit's own: the entry's `changes`, never JSON in the detail.
   "changes",
   "field_labels",
 ]);
@@ -99,13 +110,13 @@ function wordOf(
   return (locale ? word?.[locale] : undefined) ?? word?.["default"];
 }
 
-/** One side of a change, as the record's model writes the field; nothing is «—». */
+/** One side of a change, as the record's model writes the field; nothing is `null`. */
 function sideOf(
   record: Meta | null | undefined,
   field: string,
   value: unknown,
   locale: string | undefined,
-): string {
+): string | null {
   // A record's own model writes it (a choice by its word, money as money); without one, a
   // boolean is still the copy table's word and never «true».
   const text =
@@ -114,15 +125,15 @@ function sideOf(
         ? frameworkCopy().value.yes
         : frameworkCopy().value.no
       : (textOf(record, field, value, locale) ?? said(value));
-  return text ?? "—";
+  return text === "" ? null : text;
 }
 
-/** What an edit moved: «Título: Bienvenidos → Bienvenidos al CAUOR», one per field. */
+/** What an edit moved: «Título», «Bienvenidos» → «Bienvenidos al CAUOR», one per field. */
 function changesOf(
   row: AnyRecord,
   record: Meta | null | undefined,
   locale: string | undefined,
-): string[] {
+): HistoryChange[] {
   const changes = row["changes"];
   if (typeof changes !== "object" || changes === null || Array.isArray(changes)) return [];
   const labels = (row["field_labels"] ?? {}) as Readonly<
@@ -133,7 +144,11 @@ function changesOf(
     const [before, after] = Array.isArray(pair) ? pair : [undefined, pair];
     // The word it had THEN, else the record's model's, else its name.
     const word = wordOf(labels[field], locale) ?? labelOf(record, field, locale);
-    return `${word}: ${sideOf(record, field, before, locale)} → ${sideOf(record, field, after, locale)}`;
+    return {
+      field: word,
+      from: sideOf(record, field, before, locale),
+      to: sideOf(record, field, after, locale),
+    };
   });
 }
 
@@ -141,7 +156,8 @@ function changesOf(
  * The facts of a record as entries of web-ui's activity.
  *
  *     historyOf(rows, eventsMeta, "es", { record: pagoMeta, tones: { pago_aprobado: "good" } })
- *       -> [{ label: "Se actualizó", detail: "Estado: En revisión → Validado", by: "ana", … }]
+ *       -> [{ label: "Se actualizó", by: "ana",
+ *             changes: [{ field: "Estado", from: "En revisión", to: "Validado" }], … }]
  *
  * `meta` is the history route's definition; `events` each event's own, by its wire name
  * (`eventMetasOf(contract)`), which names a fact's own fields first; `record` is the record's,
@@ -165,8 +181,8 @@ export function historyOf(
     const word = wordOf(label, locale) ?? frameworkCopy().summary.recorded;
     // This kind of fact's own definition names its fields; the route's, when it is not known.
     const own = (typeof row["name"] === "string" && options.events?.[row["name"]]) || meta;
+    const changes = changesOf(row, options.record, locale);
     const parts = [
-      ...changesOf(row, options.record, locale),
       ...Object.entries(row)
         .filter(([key]) => !ENVELOPE.has(key))
         .map(([key, value]) => [key, said(value)] as const)
@@ -181,6 +197,7 @@ export function historyOf(
       at: String(row["created_at"] ?? ""),
       ...(actor === null ? {} : { by: actor }),
       ...(parts.length === 0 ? {} : { detail: parts.join(" · ") }),
+      ...(changes.length === 0 ? {} : { changes }),
       ...(tone === undefined ? {} : { tone }),
     };
   });

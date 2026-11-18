@@ -2,7 +2,7 @@ import type { ResourceRef } from "@sincpro/web-composer";
 import { entityView, SincproApp } from "@sincpro/web-framework";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo } from "react";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 
 import { cuotaMeta, cuotas, PAGO, pagoMeta, pagos, servidorPagos } from "./support/pagos";
 
@@ -93,12 +93,22 @@ export const ElHistorialDiceQueCambio: Story = {
     const canvas = await abierto(canvasElement);
     // Each kind of fact in its colour; the approval is quipu's own fact.
     await canvas.findByText("Se aprobó el pago");
-    // An edit, field by field in the words it had then, each side as the record writes it.
-    await userEvent.click(await canvas.findByText("Se actualizó"));
-    const edicion = await canvas.findByText(/^Concepto: Cuota → Cuota de noviembre/);
+    // An edit, field by field in the words it had then, each side as the record writes it —
+    // in sight under the event (`ActivityEvent.changes`), not a line of text in its detail.
+    await canvas.findByText("Se actualizó");
+    const cambios = await waitFor(() => {
+      const found = canvasElement.querySelector<HTMLElement>('[data-ui="activity.changes"]');
+      if (found === null) throw new Error("no changes drawn");
+      return found;
+    });
+    const campos = [...cambios.querySelectorAll("dt")].map((dt) => dt.textContent);
+    await expect(campos).toEqual(["Concepto", "Monto (Bs.)"]);
+    const antes = [...cambios.querySelectorAll("del")].map((del) => del.textContent);
+    const ahora = [...cambios.querySelectorAll("ins")].map((ins) => ins.textContent);
     // (`Intl` puts a no-break space before the currency: `\s`.)
-    await expect(edicion.textContent).toMatch(/Monto \(Bs\.\): 20,00\sBOB → 25,00\sBOB$/);
-    await expect(canvas.queryByText(/field_labels|changes/)).toBeNull();
+    await expect(antes.join(" | ")).toMatch(/Cuota \| .*20,00\sBOB$/);
+    await expect(ahora.join(" | ")).toMatch(/Cuota de noviembre \| .*25,00\sBOB$/);
+    await expect(canvas.queryByText(/→|field_labels|changes/)).toBeNull();
   },
 };
 

@@ -79,3 +79,39 @@ export const EstadoPorFormaDePago: Story = {
     ).toBe(true);
   },
 };
+
+/**
+ * A date cut by its grain is read as its period — «Enero de 2026» —, the way a list's groups
+ * say it: the engine's key («2026-01») is what identifies the row, never an instant shifted
+ * into the browser's zone («31/12/2025 20:00» in La Paz). A chart of the same pivot fills the
+ * months nobody counted and writes «ene» under its ticks.
+ */
+export const PorMes: Story = {
+  render: function Render() {
+    const listing = useListing(facturas, { pageSize: 10 });
+    return (
+      <EntityList
+        listing={listing}
+        columns={["number", "invoice_date", "payment", "amount_total"]}
+        pivot={{ rows: { field: "invoice_date", grain: "month" }, columns: "payment" }}
+      />
+    );
+  },
+  decorators: [
+    (Story) => (
+      <Escenario tables={VENTAS}>
+        <Story />
+      </Escenario>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findAllByText(/^F-2026-\d{4}$/);
+    await userEvent.click(canvas.getByLabelText("Pivote"));
+
+    const pivote = await canvas.findByRole("table");
+    await expect(await within(pivote).findByText("Enero de 2026")).toBeVisible();
+    await expect(within(pivote).getByText("Octubre de 2026")).toBeVisible();
+    await expect(within(pivote).queryByText(/^\d{2}\/\d{2}\/\d{4}/)).toBeNull();
+  },
+};

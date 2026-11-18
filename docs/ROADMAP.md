@@ -1863,3 +1863,25 @@ workspace (story 62 renders `SincproApp` inside it). Three things were ours:
   web-ui's `Checkbox` with its own `hint`, then a row.
 - **web-ui:** the floating bar carries Discard · Save only. The record's Delete stays where its
   lifecycle puts it (`Record.Actions`).
+
+## Months by their grain, edits you can audit (2026-11-18, #54)
+
+quipu's admin dashboard drew web-ui 2.5's charts over `usePivot` and found two things the
+framework said worse than web-ui could draw them:
+
+- **`pivotOf` keys a grained level by its period** (`periodKeyOf`): «2026-11», as the engine
+  writes it, where `textOf` read it as an instant («31/10/2026 20:00» in La Paz). web-ui then says
+  it by its grain — the same words a list's groups use —, and `chartFromPivot` fills the empty
+  periods and writes short ticks. An ISO date-time is cut by the day the server wrote, never
+  shifted into the browser's zone. Story 35 «Por mes», `tests/pivot.test.ts`.
+- **`historyOf` hands an edit's fields to `changes`** (`HistoryChange`, web-ui's
+  `ActivityChange`): each field by the word it had then, each side as the record's model writes
+  it, an empty side `null` — web-ui writes «vacío». The detail keeps only the fact's own fields.
+  Story 54, `tests/edit.test.ts`.
+
+### Found on the way
+
+- **web-framework (#42, open):** money still reads in the language's way («1650,00 BOB») and not
+  the business's region's («Bs 1.650,00»): the framework knows the currency, not the region. A
+  pivot's money measure inherits it, so it gets no `formatShort` here either — web-ui's default
+  (the bare number, compact from the millions) reads better on an axis than «BOB» would.

@@ -45,6 +45,7 @@ export { areGroups, NotGrouped } from "@sincpro/web-framework/core/groups";
 export {
   FACT_TONES,
   type FactTone,
+  type HistoryChange,
   type HistoryEntry,
   historyOf,
   toneOfFact,
