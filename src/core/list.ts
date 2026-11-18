@@ -1,5 +1,19 @@
-import { type Entity, type ResourceRef } from "@sincpro/client-framework";
-import type { AnyRecord, Criteria, Expression, Grain, Sort } from "@sincpro/criteria";
+import {
+  type Entity,
+  listRoute,
+  type ResourceRef,
+  screensTransport,
+  type Transport,
+} from "@sincpro/client-framework";
+import {
+  type AnyRecord,
+  type Criteria,
+  type Expression,
+  type Grain,
+  merge,
+  type Page,
+  type Sort,
+} from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 
 /**
@@ -96,6 +110,70 @@ export function scopeOf<T extends AnyRecord>(list: ListDefinition<T>): Criteria<
     ...list.scope,
     ...(list.order === undefined ? {} : { order: [list.order] }),
   };
+}
+
+/** What a listing's first page depends on, besides the entity or the named list. */
+export type ListingQuestion<T> = {
+  /** The route's own parameters: `{ tenant_id: "acme" }` → `/projects?tenant_id=acme`. */
+  params?: Readonly<Record<string, string>>;
+  /** What the listing always asks — a scope. Search, filter and order AND it. */
+  criteria?: Criteria<T>;
+  /** Rows per page. 50 by default; the server's own default too. */
+  pageSize?: number;
+};
+
+/**
+ * The route and the criteria of a listing's first page: the named list's scope, a screen's cut
+ * and the caller's criteria ANDed, the page size set.
+ *
+ *     listingAsk(porCobrar, { pageSize: 25 })
+ *       → { route: "/facturas", criteria: { selection: state = posted, pagination: { limit: 25 } } }
+ *
+ * Context: `useListing` asks it on mount and `readListing` asks it on a server, so a page read
+ * there is the very page the screen would have asked for, and hydrating it reads nothing twice.
+ */
+export function listingAsk<T extends AnyRecord>(
+  given: Entity<T> | ListDefinition<T>,
+  own: ListingQuestion<T> = {},
+  cut?: Expression<T>,
+): { route: string; criteria: Criteria<T> } {
+  const definition = isList(given) ? given : undefined;
+  const entity = definition?.entity ?? (given as Entity<T>);
+  const parts: Criteria<T>[] = [
+    ...(definition === undefined ? [] : [scopeOf(definition)]),
+    ...(cut === undefined ? [] : [{ selection: cut } as Criteria<T>]),
+    ...(own.criteria === undefined ? [] : [own.criteria]),
+  ];
+  const asked =
+    parts.length === 0 ? undefined : parts.reduce((all, one) => merge<T>(all, one));
+  const size = own.pageSize ?? asked?.pagination?.limit ?? 50;
+  return {
+    route: listRoute(entity.list, own.params),
+    criteria: { ...asked, pagination: { ...asked?.pagination, limit: size } },
+  };
+}
+
+/**
+ * A listing's first page, read outside React — on the server that renders the screen, in a
+ * route's loader —, through the same transport the `FrameworkProvider` is given. Handed to
+ * `useListing(list, { ...own, page })`, the screen starts from it and asks nothing on mount.
+ *
+ *     // the loader, on the server
+ *     const page = await readListing(transport, misPagos, { criteria: delColegiado });
+ *     // the screen, rendered there and hydrated in the browser
+ *     const listing = useListing(misPagos, { criteria: delColegiado, page });
+ *
+ * A chooser's cut (`ListScopeProvider`) lives in the screen and is not read here: a listing
+ * under one is asked with it by the screen, as a SPA does.
+ */
+export function readListing<T extends AnyRecord>(
+  transport: Transport,
+  given: Entity<T> | ListDefinition<T>,
+  own: ListingQuestion<T> = {},
+  signal?: AbortSignal,
+): Promise<Page<T>> {
+  const { route, criteria } = listingAsk(given, own);
+  return screensTransport(transport).list<T>(route, criteria, signal);
 }
 
 /**

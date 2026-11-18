@@ -1282,15 +1282,15 @@
   resolved "https://registry.yarnpkg.com/@sincpro/client-framework/-/client-framework-2.2.0.tgz#ec5b41f797f200192f853744f5cf9df8b0dbf701"
   integrity sha512-j+5I9pkKrC2EicRii22gm60WdKHKUO5IqqYoMECz/KZKFNfS9pyj8aSinBMp7QlmHHH6x1e0lyL5YccoB3B+fA==
 
-"@sincpro/criteria-react@^2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/criteria-react/-/criteria-react-2.1.0.tgz#2bdf22a455fa5a00defcb17a197e2b672e97ead4"
-  integrity sha512-IzhviGe8oNV3tfjP+gIx27+vtMoLh3GskTltepH1bx8nwBubBDU0r130Kj7NzY8alQtdP1ZpwoYvL0eGTrxIuA==
+"@sincpro/criteria-react@^2.3.0":
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/criteria-react/-/criteria-react-2.3.0.tgz#d540b0e7e61f6f1ea1fe476e639591393bce3640"
+  integrity sha512-DtjTytBy696aM2Cp762uRnT4qak5RZ6nbz/N08DTY/Qu8EHrigFxHFiqRiLi+9JoWjX8DiySzyaJrthU6iqhAA==
 
-"@sincpro/criteria@^2.2.2":
-  version "2.2.2"
-  resolved "https://registry.yarnpkg.com/@sincpro/criteria/-/criteria-2.2.2.tgz#577919b518a7494ce43dbbbb2c4b97bf61cadaca"
-  integrity sha512-QwTxTnS41M4teiguBOH5Hcswza59SYhBG1/gKU2xLPrOuiByiJFSxGP2CX82+2OcSuYng5LSrYf4jM5KpzRRkQ==
+"@sincpro/criteria@^2.3.0":
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/criteria/-/criteria-2.3.0.tgz#0ad3ed839ebd082578304c8f9367fcedad672013"
+  integrity sha512-quBpQXvyAcAdAxSBiRAxLZ0zzKDRMO57yOmawJ+evwgDSnN2bpepa5F1AV98IkqdToCpi/MIUy8/jbrDNHKuww==
 
 "@sincpro/web-composer@^1.8.0":
   version "1.8.0"

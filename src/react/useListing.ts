@@ -1,6 +1,6 @@
 "use client";
 
-import { type CommandBodies, type Entity, listRoute } from "@sincpro/client-framework";
+import { type CommandBodies, type Entity } from "@sincpro/client-framework";
 import {
   type AnyRecord,
   type Count,
@@ -9,6 +9,7 @@ import {
   type Expression,
   merge,
   type Meta,
+  type Page,
   type ReadingStatus,
   resource,
   resumingFrom,
@@ -16,7 +17,7 @@ import {
   type Sort,
 } from "@sincpro/criteria";
 import { useReading } from "@sincpro/criteria-react";
-import { isList, type ListDefinition, scopeOf } from "@sincpro/web-framework/core/list";
+import { isList, type ListDefinition, listingAsk } from "@sincpro/web-framework/core/list";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useListScope } from "@sincpro/web-framework/react/scope";
 import { useWrites } from "@sincpro/web-framework/react/useWrites";
@@ -115,6 +116,12 @@ export type ListingOptions<T> = {
   pageSize?: number;
   /** `more` mode: the most rows ever on screen. 500 by default. */
   maxRows?: number;
+  /**
+   * The first page already read — on the server, by `readListing` with this same list and
+   * these same options. The listing starts `ready` with it, renders its rows there, and in the
+   * browser keeps it instead of asking again. Without it, the listing reads on mount (a SPA).
+   */
+  page?: Page<T>;
 };
 
 /** How long typing has to pause before the search goes out. */
@@ -137,20 +144,9 @@ export function useListing<T extends AnyRecord, C extends CommandBodies = Comman
   const entity = (definition?.entity ?? given) as Entity<T, C>;
   // The screen's cut for this entity (a chooser's, `ListScopeProvider`) ANDs like a scope.
   const cut = useListScope(entity.key);
-  const scopes = [
-    ...(definition === undefined ? [] : [scopeOf(definition)]),
-    ...(cut === undefined ? [] : [{ selection: cut } as Criteria<T>]),
-  ];
-  const options: ListingOptions<T> =
-    scopes.length === 0
-      ? own
-      : {
-          ...own,
-          criteria: [...scopes, ...(own.criteria === undefined ? [] : [own.criteria])].reduce(
-            (all, one) => merge<T>(all, one),
-          ),
-        };
-  const route = listRoute(entity.list, options.params);
+  // The first page's question — the list's scope, the cut, the caller's criteria, the page
+  // size —: the same `readListing` asks on a server, so a page read there is this one.
+  const { route, criteria: asked } = listingAsk(given, own, cut);
   const source = useMemo(
     () => resource<T>((criteria, signal) => transport.list<T>(route, criteria, signal)),
     [transport, route],
@@ -159,15 +155,11 @@ export function useListing<T extends AnyRecord, C extends CommandBodies = Comman
   // A definition already known draws the columns before the first page arrives; the one the
   // transport reads from the discovery document comes with it.
   const [preloaded] = useState(() => metas.get(entity.key));
-  const paging = options.paging ?? "pages";
-  const size = options.pageSize ?? options.criteria?.pagination?.limit ?? 50;
-  const maxRows = options.maxRows ?? 500;
-  const asked: Criteria<T> = {
-    ...options.criteria,
-    pagination: { ...options.criteria?.pagination, limit: size },
-  };
+  const paging = own.paging ?? "pages";
+  const size = asked.pagination?.limit ?? 50;
+  const maxRows = own.maxRows ?? 500;
   const base: Criteria<T> = asked;
-  const reading = useReading(source, base);
+  const reading = useReading(source, base, own.page === undefined ? {} : { page: own.page });
   // `pages` mode: the cursor that opens each page walked so far — page 0 opens with none.
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
 

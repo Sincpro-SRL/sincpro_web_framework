@@ -52,17 +52,30 @@ function routeOf(entity: Entity): string | undefined {
  * screen until the new one lands. The last question wins: an answer to arguments no longer on
  * screen is dropped. The use case is the latest the screen gave (a bounded context answers a new
  * function per `scoped(…)`); its trace and report are the service's, never this hook's.
+ *
+ * `initial` is the answer to these same arguments already read — on the server that renders the
+ * screen, in a route's loader, by calling the same use case. The reading starts `ready` with it,
+ * renders it there, and in the browser keeps it on mount instead of reading again; a change of
+ * arguments, a followed write or `reload()` read as always.
+ *
+ *     const portada = useServiceReading(sitio.portada, [], { initial: loaderData.portada });
  */
 export function useServiceReading<A extends unknown[], R>(
   useCase: UseCase<A, R>,
   args: A,
-  options: { follows?: readonly Entity[] } = {},
+  options: { follows?: readonly Entity[]; initial?: Awaited<R> } = {},
 ): ServiceReading<Awaited<R>> {
   const { context, changes, entities } = useFramework();
   const key = JSON.stringify(args);
   const latest = useRef({ useCase, args });
   latest.current = { useCase, args };
-  const [answered, setAnswered] = useState<Answered<Awaited<R>> | null>(null);
+  const [answered, setAnswered] = useState<Answered<Awaited<R>> | null>(() =>
+    options.initial === undefined
+      ? null
+      : { key, status: "ready", answer: options.initial, error: null },
+  );
+  // Born answered: the first read on mount is the one the server already made.
+  const seeded = useRef(options.initial !== undefined);
   const [again, setAgain] = useState(0);
 
   // A write anyone sends — a save, another use case, a panel beside — to what it follows.
@@ -79,6 +92,10 @@ export function useServiceReading<A extends unknown[], R>(
   }, [changes, entities, followed]);
 
   useEffect(() => {
+    if (seeded.current) {
+      seeded.current = false;
+      return;
+    }
     let current = true;
     const { useCase: read, args: now } = latest.current;
     // Through the promise: a use case that throws before it answers is a failure like any other.
