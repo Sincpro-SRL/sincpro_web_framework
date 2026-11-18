@@ -70,6 +70,8 @@ export type FrameworkCopy = {
     archive: string;
     /** Out of the trash (`Restore`): read again. */
     restore: string;
+    /** The record's main card in web-ui's «settings» form style, beside its other sections. */
+    general: string;
   };
   picker: {
     /** The button beside a many2one that opens the chooser over the whole set. */
@@ -157,6 +159,7 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
     delete: "Delete",
     archive: "Move to the trash",
     restore: "Restore",
+    general: "General",
   },
   picker: {
     browse: "Search all",
@@ -254,6 +257,7 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
     delete: "Eliminar",
     archive: "Mover a la papelera",
     restore: "Restaurar",
+    general: "Datos generales",
   },
   picker: {
     browse: "Buscar en todos",

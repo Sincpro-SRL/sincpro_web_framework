@@ -1839,3 +1839,27 @@ criteria` scopes it to the tenant — if the user model can be filtered by tenan
   `Field` does, and that is web-ui's to offer (a `Checkbox` with its own `hint`).
 - **forge:** a user's memberships (`user/form_view.tsx`) are an `ActionTable` over another
   reading, not `RecordLines`: the role's tag there stays forge's own cell.
+
+## A form of settings (2026-11-18, #52)
+
+web-ui added an opt-in form STYLE beside the layout (Sincpro-SRL/sincpro_web_ui#45): an
+application sets `FormStyleProvider value="settings"` once and each field is a row with its help
+written out, each section a card with an index, and Save floats at the bottom. quipu (CAUOR's back
+office) asked for it. Almost all of it reached the framework's records with no change — they
+already draw web-ui's `Record`, `FormSection` and `Field` —, and the provider crosses the composer's
+workspace (story 62 renders `SincproApp` inside it). Three things were ours:
+
+- `RecordField` passes `optional` to `Field` from the form hints (not required, not read-only now):
+  web-ui writes «(opcional)» only in that style.
+- `controlFor(…, segmented)`: a REQUIRED choice of up to three short options is a segmented control
+  in that style; one that may stay empty is still a select — a segmented control cannot be emptied.
+- `EntityRecord` names its main card (`record.general`) when the record has other sections: the
+  index lists cards by title, and an untitled first card was missing from it.
+
+### Found on the way
+
+- **web-framework:** a yes/no (`Checkbox`) and a list of checks still go outside a `Field` (see
+  above), so in the settings style they are rows without a label column. Same answer as before:
+  web-ui's `Checkbox` with its own `hint`, then a row.
+- **web-ui:** the floating bar carries Discard · Save only. The record's Delete stays where its
+  lifecycle puts it (`Record.Actions`).

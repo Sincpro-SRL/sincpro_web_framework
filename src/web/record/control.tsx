@@ -15,6 +15,7 @@ import {
   DatePicker,
   DateTimePicker,
   NumberInput,
+  SegmentedControl,
   Select,
   TagsField,
   TextArea,
@@ -34,6 +35,11 @@ export type FieldControl = {
   standalone?: boolean;
 };
 
+/** A choice answered with one press — a segmented control — instead of a select: up to three
+ *  options that fit side by side. */
+const FEW_CHOICES = 3;
+const SHORT_LABEL = 24;
+
 /**
  * The control a field's TYPE asks for — a choice, several of a choice (checks), a number, a
  * date, a date and time, a yes/no, a list of words, a text — or the one its `widget` names when the model names one of the
@@ -46,6 +52,10 @@ export type FieldControl = {
  * note, so every application passed `as` for each long text. Only the framework's own names are
  * read here: a name an application registers is drawn with `as`, never looked up in a registry
  * of strings.
+ *
+ * `segmented`: the form asks for a short choice to be a segmented control — web-ui's «settings»
+ * form style, for a REQUIRED choice (a segmented control cannot be emptied). It still is a select
+ * in a cell, and with more than three options or a label that would not fit beside the others.
  */
 export function controlFor(
   control: FieldControl,
@@ -53,6 +63,7 @@ export function controlFor(
   exact: boolean,
   choices: { value: unknown; label: string }[],
   widget?: string,
+  segmented = false,
 ): ReactNode {
   const { value, set } = control;
   const named = control.standalone === true ? { "aria-label": control.label } : {};
@@ -64,6 +75,20 @@ export function controlFor(
         label={control.label}
         items={choices.map((one) => ({ value: String(one.value), label: one.label }))}
         value={Array.isArray(value) ? value.map(String) : []}
+        onChange={set}
+      />
+    );
+  if (
+    segmented &&
+    control.standalone !== true &&
+    choices.length > 0 &&
+    choices.length <= FEW_CHOICES &&
+    choices.every((one) => one.label.length <= SHORT_LABEL)
+  )
+    return (
+      <SegmentedControl
+        value={value === null || value === undefined ? "" : String(value)}
+        options={choices.map((one) => ({ value: String(one.value), label: one.label }))}
         onChange={set}
       />
     );
