@@ -1292,17 +1292,17 @@
   resolved "https://registry.yarnpkg.com/@sincpro/criteria/-/criteria-2.2.2.tgz#577919b518a7494ce43dbbbb2c4b97bf61cadaca"
   integrity sha512-QwTxTnS41M4teiguBOH5Hcswza59SYhBG1/gKU2xLPrOuiByiJFSxGP2CX82+2OcSuYng5LSrYf4jM5KpzRRkQ==
 
-"@sincpro/web-composer@^1.7.0":
-  version "1.7.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/web-composer/-/web-composer-1.7.0.tgz#2abf3fa8c80d868965835e00a7392d24d992e925"
-  integrity sha512-ojtgRAw8hCogmQRhO9J0GSWUr59gP0URSMdBEDleq00+Bsi/lZ8nMVxAENd4y0ArpfXtbNy1cyRjVMBrmKqRfg==
+"@sincpro/web-composer@^1.8.0":
+  version "1.8.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/web-composer/-/web-composer-1.8.0.tgz#79ba3434b68ac82e08ebb72059dc9005f07e8f7d"
+  integrity sha512-pdCB/HXADw5UzyGxr0GzPy/1ejOt+7ALwXRpSTm5GHtSS/xA/Fq12kboSjV+QhhMSsi4vAawLDdc0ztQzxoYkQ==
   dependencies:
     "@atlaskit/pragmatic-drag-and-drop" "^4.0.0"
 
-"@sincpro/web-ui@^2.3.0":
-  version "2.3.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/web-ui/-/web-ui-2.3.0.tgz#087fb3bda4d05bd32ba67adf4d1ee4bcb275633f"
-  integrity sha512-wP+lUql59do6NXGT7E+HyACr4EHn2j6ZZMm6D07A0DyWVssCgRNF01LTh6O4DrILXotnJKWfyNC315W7k9ZGeQ==
+"@sincpro/web-ui@^2.4.0":
+  version "2.4.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/web-ui/-/web-ui-2.4.0.tgz#a703031bc9fc6a59b5428c1ac9971e5ee5b26821"
+  integrity sha512-mgTbVuAQm2t2IqL/JtPXwHX0xttZ+WMl7wcDfWER2oTga1o6bwY7pxwUUa1PbuoFDYQr/Q/WYvny+Q1z3hY/UA==
   dependencies:
     "@codemirror/lang-json" "^6.0.2"
     "@codemirror/lint" "^6.9.7"

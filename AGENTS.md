@@ -156,6 +156,16 @@ built; this file is how to keep it.
 - **The cuts panel opens in the overlay layer** (web-ui 2.2: filters, grouping, favourites, «Abrir
   el constructor»): a play finds its controls in the page (`within(document.body)`), never in
   the story's canvas.
+- **web-ui's search bar reads `facets` only without a `model`**: handed one, it offers a typed
+  word in EVERY text field of it. So the bar gets the model with only the facets' text fields
+  (`modelOf(meta, locale, texts)`) and the criteria builder the whole one — which fields a person
+  types into is the screen's (`facets`), else the search template's, never every text field.
+- **An embedded list writes a bar slot only when it says something**: web-ui draws an embedded
+  list's bar for any slot written, an empty `List.Pagination` too — and offers «Ordenar» for any
+  `sortable`. Inside a record or a panel a list is its rows, and the pager while there is more.
+- **An action that needs input names its fields (`ask`)**, read as the entity's fields of that
+  name (`askFormOf`); one the entity lacks is described by the action, with `as` for the
+  application's control — `widget` takes only the framework's own names.
 - **Lists of records search with the BAR** (filters, builder, grouping) — the one2many and the
   «Buscar más…» chooser too. `search="box"` is a screen's explicit choice. With Enter the bar
   takes its FIRST suggestion, which may be a field filter (web-ui): a play picks the literal
@@ -300,7 +310,8 @@ built; this file is how to keep it.
 - **A key alone is a relation with `held: false`** (`relationFieldOf`): `EntityID[Tenant]` has no
   relation field beside it, so `relation` IS the key. Never write the chosen record beside it —
   the lines editor did (`{ [key]: id, [relation]: chosen }`) and the record went INTO the key.
-  Its name is asked once by key (`useNameOf`); in a table it stays the key.
+  Its name is asked once by key (`useNameOf`) — in a table too: a column that holds a key reads
+  its record's name (`columns.tsx`), the page's keys in one request per entity.
 - **A list under a record fills its path keys from `params`** (`listRoute`): a key it lacks is
   refused before anything is sent, and a new record of such an entity needs its definition
   preloaded (`metasOf`) — there is no list to ask without the key.

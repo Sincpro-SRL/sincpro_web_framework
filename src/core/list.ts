@@ -42,6 +42,9 @@ export type ListDefinition<T extends AnyRecord = AnyRecord> = {
   columns?: readonly string[];
   /** The cuts it offers by name in the search bar. */
   filters?: readonly NamedFilter<T>[];
+  /** The fields the search bar offers to look a typed text up in, in order — «Buscar Nombres:
+   *  Excel». Without it, the ones the entity's search template names, else its display. */
+  facets?: readonly string[];
   /** The faces it offers, the first one shown. */
   views?: readonly ("table" | "rows" | "board" | "sheet" | "pivot")[];
   /** Grouped from the start — the server counts the groups. */

@@ -76,7 +76,8 @@ test("⌘K reads an entity's own look of a choice: its name and its detail, whic
   const [hit] = (await spec.search?.("Globex")) ?? [];
   assert.equal(hit?.label, "Globex Bolivia");
   assert.equal(hit?.detail, `NIT ${CLIENTES[3]?.tax_id}`);
-  // Without a look of its own, the key: what told two «Globex» apart before.
+  // Without a look of its own, never the key: a UUID long it tells a person nothing
+  // (web-framework#43). A customer has no description nor type to say instead.
   const [plain] =
     (await entityView(clientes, {
       transport: memoryTransport(VENTAS),
@@ -84,5 +85,5 @@ test("⌘K reads an entity's own look of a choice: its name and its detail, whic
       list: Nothing,
       record: Nothing,
     }).search?.("Globex")) ?? [];
-  assert.equal(plain?.detail, "C-004");
+  assert.equal(plain?.detail, undefined);
 });

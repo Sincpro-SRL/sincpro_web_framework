@@ -6,8 +6,11 @@ import {
   type Entity,
 } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
+import { entityFor } from "@sincpro/web-framework/core/relation";
+import { useFramework } from "@sincpro/web-framework/react/context";
 import { type AnswerOf, useCommand } from "@sincpro/web-framework/react/useCommand";
-import { ActionButton } from "@sincpro/web-framework/web/record/ActionButton";
+import { ActionButton, type Asked } from "@sincpro/web-framework/web/record/ActionButton";
+import { type AskField, askFormOf } from "@sincpro/web-framework/web/record/ask";
 
 /**
  * An entity's Command as a button: sent as it is, over the screens' transport.
@@ -16,6 +19,10 @@ import { ActionButton } from "@sincpro/web-framework/web/record/ActionButton";
  * server's dry run first and show what it would do; a refusal where it happened. An action that is
  * one of the application's own use cases — logic of its own, composed, traced as
  * `<context>/<Service>` — is a `ServiceButton`.
+ *
+ * One that needs input names the fields it asks for (`ask`): a dialog draws them as the
+ * record's fields of the same name, filled from `record`, and what is filled goes in the body
+ * beside `body`.
  */
 export function CommandButton<
   T extends AnyRecord,
@@ -32,6 +39,8 @@ export function CommandButton<
   destructive = false,
   role = "secondary",
   disabled = false,
+  ask,
+  record,
   onDone,
 }: {
   entity: Entity<T, C, A>;
@@ -46,14 +55,33 @@ export function CommandButton<
   role?: "primary" | "secondary" | "ghost";
   /** Not offered right now — «Mover» with no other tenant chosen. The server still decides. */
   disabled?: boolean;
+  /** The fields it asks for before it runs, sent in its body: `["areas"]`. */
+  ask?: readonly AskField[];
+  /** The record it acts on: what the asked fields start with. */
+  record?: AnyRecord;
   onDone?: (answer: AnswerOf<R, A, N>) => void;
 }) {
   const sending = useCommand<T, R, C, N, A>(entity, command);
+  const { metas, entities, locale } = useFramework();
+  const form =
+    ask === undefined
+      ? undefined
+      : askFormOf(ask, {
+          meta: metas.get(entity.key),
+          locale,
+          record,
+          entityFor: (target) => entityFor(entities, target, metas.get),
+        });
+  const bodyWith = (asked?: Asked) =>
+    (asked === undefined ? body : { ...body, ...asked }) as C[N] | undefined;
   return (
     <ActionButton
+      {...(form === undefined ? {} : { ask: form })}
       action={{
-        run: () => sending.run(id, body),
-        ...(destructive ? { rehearse: () => sending.rehearse(id, body) } : {}),
+        run: (asked) => sending.run(id, bodyWith(asked)),
+        ...(destructive
+          ? { rehearse: (asked) => sending.rehearse(id, bodyWith(asked)) }
+          : {}),
         busy: sending.busy,
         error: sending.error,
         rehearsal: sending.rehearsal,
