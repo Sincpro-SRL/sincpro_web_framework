@@ -11,7 +11,11 @@ import type { Pivot, PivotCell, PivotKey } from "@sincpro/web-ui";
  * Nothing is added up here — a margin is read from the base, never summed from cells.
  *
  * A key is how its value READS («Pagada», «Efectivo»): the grid draws keys, and the server's
- * value («paid») is not a word for a person.
+ * value («paid») is not a word for a person. A level cut by a grain is the exception: its key
+ * is the period the server counted («2026-11»), which web-ui reads by the level's grain —
+ * «Noviembre de 2026» in the grid, «nov» under a chart's tick — and which lets a chart fill the
+ * months nothing fell in. Read as the field's value, a month was an instant: «31/10/2026 20:00»
+ * in La Paz.
  */
 export function pivotOf<T extends AnyRecord>({
   crossed,
@@ -33,10 +37,19 @@ export function pivotOf<T extends AnyRecord>({
   locale: string | undefined;
 }): Pivot {
   const none = frameworkCopy().list.noValue;
-  const keyOf = (bucket: Bucket<T>): string =>
-    bucket.value === null || bucket.value === undefined || bucket.value === ""
-      ? none
-      : (textOf(meta, bucket.field, bucket.value, locale) ?? String(bucket.value));
+  // A period without a date is web-ui's empty key: it says «sin fecha» and a chart keeps it last.
+  const keyFor =
+    (level: GroupLevel) =>
+    (bucket: Bucket<T>): string =>
+      bucket.value === null || bucket.value === undefined || bucket.value === ""
+        ? level.grain === undefined
+          ? none
+          : ""
+        : level.grain === undefined
+          ? (textOf(meta, bucket.field, bucket.value, locale) ?? String(bucket.value))
+          : String(bucket.value);
+  const rowKeyOf = keyFor(rows);
+  const columnKeyOf = keyFor(columns);
   const cellOf = (bucket: Bucket<T>): PivotCell => ({
     count: bucket.count,
     values: Object.fromEntries(
@@ -47,13 +60,13 @@ export function pivotOf<T extends AnyRecord>({
     ),
   });
 
-  const rowKeys: PivotKey[] = crossed.map((bucket) => [keyOf(bucket)]);
+  const rowKeys: PivotKey[] = crossed.map((bucket) => [rowKeyOf(bucket)]);
   // Columns in the server's order of the columns alone; any value only a crossing has, after.
-  const seen = new Set<string>(byColumn.map(keyOf));
+  const seen = new Set<string>(byColumn.map(columnKeyOf));
   const columnKeys: string[] = [...seen];
   for (const outer of crossed)
     for (const inner of outer.groups ?? []) {
-      const key = keyOf(inner);
+      const key = columnKeyOf(inner);
       if (!seen.has(key)) {
         seen.add(key);
         columnKeys.push(key);
@@ -63,12 +76,14 @@ export function pivotOf<T extends AnyRecord>({
   const at = new Map<string, PivotCell>();
   const rowTotals = new Map<string, PivotCell>();
   for (const outer of crossed) {
-    const row = keyOf(outer);
+    const row = rowKeyOf(outer);
     rowTotals.set(row, cellOf(outer));
     for (const inner of outer.groups ?? [])
-      at.set(`${row}\u0000${keyOf(inner)}`, cellOf(inner));
+      at.set(`${row}\u0000${columnKeyOf(inner)}`, cellOf(inner));
   }
-  const columnTotals = new Map(byColumn.map((bucket) => [keyOf(bucket), cellOf(bucket)]));
+  const columnTotals = new Map(
+    byColumn.map((bucket) => [columnKeyOf(bucket), cellOf(bucket)]),
+  );
 
   return {
     rows: {

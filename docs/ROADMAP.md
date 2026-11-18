@@ -1863,3 +1863,35 @@ workspace (story 62 renders `SincproApp` inside it). Three things were ours:
   web-ui's `Checkbox` with its own `hint`, then a row.
 - **web-ui:** the floating bar carries Discard · Save only. The record's Delete stays where its
   lifecycle puts it (`Record.Actions`).
+
+## quipu's dashboard on web-ui 2.5 (2026-11-18, #54, #48)
+
+quipu (CAUOR's back office) built its dashboard and its records' activity on web-ui 2.5 and found
+three places where the framework handed web-ui less than it can draw:
+
+- **A month reads as a month** (`pivotOf`). A level cut by a grain is keyed by the period the
+  server counted («2026-11»), not by the field's value read as an instant — a month bucket was
+  «31/10/2026 20:00» in La Paz. web-ui reads the period by the level's grain: «Noviembre de 2026»
+  in the grid, «nov» under a chart's tick, and `chartFromPivot` fills the months nothing fell in.
+  An undated bucket is web-ui's empty key («sin fecha», last). quipu relabelled the months itself
+  (`porMes`); that can go. `tests/pivot.test.ts`.
+- **An edit is audited in sight** (`historyOf`). Each field an edit moved is a
+  `HistoryEntry.changes` item — `{ field, from, to }`, each side as the record's model writes it,
+  an empty side `null` — drawn by web-ui's activity under the event, struck → as it is, «vacío»
+  for nothing. It used to be one line in `detail` («Observación: — → test»): read, not scanned.
+  Story 54.
+- **⌘K reads what tells a hit apart.** `entityView`'s search asks `matching`'s question with each
+  record whole: the `option` look and the summary read fields a reference (identity and display)
+  does not carry, so against the real backend the detail was always empty while every story
+  passed on whole rows. Story 60.
+
+### Found on the way
+
+- **criteria:** the in-memory engine handed every record back whole whatever the specification
+  asked, so a fake server never spoke the reference the backend answers
+  (Sincpro-SRL/sincpro_criteria#27, fixed there). With it, story 60 fails without the ⌘K change.
+- **Not done, on purpose:** `useRecord` starting from a record the server already read (the SSR
+  step after #55). No public page draws one record yet; it waits for the first that does.
+- **Server rendering under Next.js:** `installFrameworkCopy` is a process global, the trap web-ui
+  documented for `installCopy` (Sincpro-SRL/sincpro_web_ui#49). A prerender in one language never
+  meets it; a server rendering several would need a provider, as web-ui's `UiCopyProvider`.

@@ -242,12 +242,14 @@ test("an edit reads as each field before and after, in the words it had then", (
     "es",
     { record: facturaMeta },
   );
-  // The state by the record's own words; a field with no label then, by the model's.
-  assert.equal(
-    entry?.detail,
-    `${labelOf(facturaMeta, "state", "es")}: Borrador → Pagada · Notas: — → Pagada en caja`,
-  );
-  assert.equal(entry?.detail?.includes("field_labels"), false);
+  // Field by field, as web-ui's activity draws them: the state by the record's own words, a
+  // field with no label then by the model's, and an empty side empty — never a «—».
+  assert.deepEqual(entry?.changes, [
+    { field: labelOf(facturaMeta, "state", "es"), from: "Borrador", to: "Pagada" },
+    { field: "Notas", from: null, to: "Pagada en caja" },
+  ]);
+  // Nothing of the edit is repeated as text, and its envelope is never JSON.
+  assert.equal(entry?.detail, undefined);
   assert.equal(entry?.tone, undefined);
 });
 
