@@ -9,6 +9,28 @@ import { useState } from "react";
 /** What a person filled in before the action runs, by field name. */
 export type Asked = Readonly<Record<string, unknown>>;
 
+/** What an action's window says, when the screen says it its way. */
+export type ActionDialog = {
+  /** Its title — the button's label without the «…» that said a window would open. */
+  title?: string;
+  /** One sentence under the title: what the action does, or what it takes. */
+  subtitle?: string;
+};
+
+/**
+ * The words of an action's window. A button that opens one says so with «…» — «Agregar a un
+ * tenant…» —; the window is already open, so its title says it once, without them.
+ */
+function wordsOf(
+  label: string,
+  dialog: ActionDialog | undefined,
+): { title: string; subtitle?: string } {
+  return {
+    title: dialog?.title ?? label.replace(/\s*(?:…|\.\.\.)$/u, ""),
+    ...(dialog?.subtitle === undefined ? {} : { subtitle: dialog.subtitle }),
+  };
+}
+
 /**
  * What a button needs of an action to draw it — whatever runs behind: an entity's Command
  * (`useCommand`) or one of the application's use cases (`useService`).
@@ -30,13 +52,13 @@ export type ButtonAction<R> = {
 function AskDialog<R>({
   action,
   form,
-  label,
+  words,
   onClose,
   onDone,
 }: {
   action: ButtonAction<R>;
   form: AskForm;
-  label: string;
+  words: { title: string; subtitle?: string };
   onClose: () => void;
   onDone: (answer: R) => void;
 }) {
@@ -54,7 +76,7 @@ function AskDialog<R>({
   return (
     <Dialog
       open
-      title={label}
+      {...words}
       onClose={onClose}
       footer={
         <div className="flex justify-end gap-2">
@@ -86,10 +108,21 @@ function AskDialog<R>({
             invalid: false,
             label: field.label,
           };
+          // A control that names itself is not wrapped in a `Field` (its name would double):
+          // what is expected goes under it.
           return field.labelled ? (
-            <div key={field.name}>{field.draw(control)}</div>
+            <div key={field.name} className="flex flex-col gap-1">
+              {field.draw(control)}
+              {field.hint === undefined ? null : (
+                <p className="text-meta text-muted">{field.hint}</p>
+              )}
+            </div>
           ) : (
-            <Field key={field.name} label={field.label}>
+            <Field
+              key={field.name}
+              label={field.label}
+              {...(field.hint === undefined ? {} : { hint: field.hint })}
+            >
               {field.draw(control)}
             </Field>
           );
@@ -113,6 +146,9 @@ function AskDialog<R>({
  * «Confirmar»; when it can rehearse, the first «Confirmar» asks what it would do with them and
  * the second does it. A refusal stays in the dialog over the fields, so they can be put right.
  *
+ * Its window is titled by the label without its «…», and says more only when the screen does
+ * (`dialog`: its own title, a sentence under it).
+ *
  * Internal: the gesture is drawn here once; what runs behind is each button's own.
  */
 export function ActionButton<R>({
@@ -121,6 +157,7 @@ export function ActionButton<R>({
   role = "secondary",
   disabled = false,
   ask: form,
+  dialog,
   onDone,
 }: {
   action: ButtonAction<R>;
@@ -129,10 +166,13 @@ export function ActionButton<R>({
   disabled?: boolean;
   /** What it asks for before it runs — `askFormOf`. */
   ask?: AskForm;
+  /** What its window says, over the default. */
+  dialog?: ActionDialog;
   onDone?: (answer: R) => void;
 }) {
   const copy = frameworkCopy().command;
   const [open, setOpen] = useState(false);
+  const words = wordsOf(label, dialog);
   if (form !== undefined)
     return (
       <>
@@ -148,7 +188,7 @@ export function ActionButton<R>({
           <AskDialog
             action={action}
             form={form}
-            label={label}
+            words={words}
             onClose={() => {
               setOpen(false);
               action.reset();
@@ -192,7 +232,7 @@ export function ActionButton<R>({
       {open ? (
         <Dialog
           open
-          title={label}
+          {...words}
           onClose={close}
           footer={
             destructive && action.error === null ? (

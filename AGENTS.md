@@ -112,6 +112,13 @@ built; this file is how to keep it.
   (`web/list/presentation.ts`), not in `entity()`: `core/` cannot name a React node. Each size
   answers web-ui's PROPS for it, merged over the default (`over`) — a place that draws a record
   of an entity reads `presentationOf(entity)` and applies it, or it is not «everywhere».
+- **A part's look is its record's** (`presented(issues, { parts: { runs: { tones, columns } } })`):
+  a part has no entity, and declaring one only for its colours turns the relation into a
+  `RelatedList` that asks for a route the part does not have. A place that draws a record's parts
+  reads `usePartLook` — `RecordLines`, the lines editor and `RecordField`'s read-only page do.
+- **An `ask` field written as an object is the entity's field with what it says over it**, key by
+  key (`hint`, `initial`, `label`…), never a field that ignores the entity. The record's value
+  wins over `initial`; the dialog's title is the label without its «…».
 - **web-ui's table draws only the rows in view from 200 on** (1.2, `rowWindow`). Counting `<tr>`
   in a play counts what is drawn, not what the list holds: read the table's `aria-rowcount`
   (story 15's `bodyRows`). Under 200 there is no `aria-rowcount`: every row is drawn, count them.

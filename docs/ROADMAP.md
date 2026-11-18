@@ -1795,3 +1795,47 @@ them at run time. Every story passes on both.
   tour of an entity's screens points at — a record's actions and each action by its command, its
   smart buttons, a list's views, «Nuevo» — are not web-ui parts yet, and wrapping a `Record.*` /
   `List.*` slot in a `GuideSpot` would hide it from web-ui's slot lookup. Asked of web-ui first.
+
+## forge on 3.2: a part's colour, an action's window (2026-11-18)
+
+What sincpro_forge found adopting 3.2.0 (web-framework#49, #50).
+
+- **A part is drawn in its colour, declared once with its record** (#49, story 61). `RecordLines`
+  drew a choice of a row as plain text: it handed `columnsOf` no tones, while `EntityList` did.
+  forge wrote a cell per field to get the tag back (a run's state in an issue, a member's role in
+  a tenant). A part has no entity of its own, so there was no `presented(runs, …)` to say it
+  with — and declaring one only for its colours would turn the relation into a `RelatedList` that
+  asks for a route the part does not have. Now the record that holds the parts says how they look:
+  `presented(issues, { parts: { runs: { tones, columns } } })`, typed by the part (`PartOf`: an
+  `EntityCollection<Run>` or a `Run[]`; a field that holds no parts is refused). Every place that
+  draws those rows reads it — `RecordLines` (the record's entity given, or the provider's entity
+  of the model's aggregate), the lines editor (a coloured choice reads as its tag) and
+  `RecordField`'s read-only page — under the related entity's own look when the relation points at
+  a declared one. A screen changes one colour with `tones` (`RecordLines`, `RecordField lines`),
+  value by value (`tonesOver`); `usePartLook` hands a screen of its own the same answer.
+- **An action's window says what it is** (#50, story 57).
+  - A field given as an object is **the entity's field with what the action says over it**, key
+    by key — `{ name: "areas", hint }`, `{ name: "rol", label, choices, initial: "miembro" }` —,
+    not a field that ignores the entity because it was written as an object. Its `initial` is
+    where it starts when the record holds nothing there (forge passed a record that was not the
+    record, `{ role: "member" }`); what the record holds still wins.
+  - **The backend's `help` reaches the dialog** — it was dropped: `AskedField` had no hint. A
+    field's `hint` goes over it. A control that names itself (a checkbox, a list of checks) is
+    not wrapped in a `Field`, so its hint is the line under it.
+  - **The window is titled by the label without its «…»** («Agregar a un tenant…» → «Agregar a
+    un tenant»), in the dialog that asks and in the one that rehearses; `dialog={{ title,
+subtitle }}` says it the screen's way — a sentence under the title is the dialog's description.
+  - `Asked` and `ActionDialog` are exported: `Asked` was already in `ServiceButton`'s signature.
+
+### Found on the way
+
+- **forge:** «sólo usuarios de acme» in the label of «Agregar un usuario…» patches a picker that
+  offers every user (`members_page.tsx` passes `exclude`, never `criteria`). `EntityPicker
+criteria` scopes it to the tenant — if the user model can be filtered by tenant; if not, that
+  is forge's backend to add. A hint is no fix for a chooser that offers what the server refuses.
+- **web-framework:** `RecordField` draws a yes/no and a list of checks outside a `Field`, so the
+  backend's `help` of those two is not shown on a record either. Same answer as the dialog's (the
+  line under the control) — not done here: a record's form should say it the way web-ui's
+  `Field` does, and that is web-ui's to offer (a `Checkbox` with its own `hint`).
+- **forge:** a user's memberships (`user/form_view.tsx`) are an `ActionTable` over another
+  reading, not `RecordLines`: the role's tag there stays forge's own cell.

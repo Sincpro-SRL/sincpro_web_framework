@@ -6,7 +6,11 @@ import { entityFor } from "@sincpro/web-framework/core/relation";
 import { useFrameworkIfAny } from "@sincpro/web-framework/react/context";
 import type { Rehearsal } from "@sincpro/web-framework/react/useCommand";
 import { useService } from "@sincpro/web-framework/react/useService";
-import { ActionButton, type Asked } from "@sincpro/web-framework/web/record/ActionButton";
+import {
+  ActionButton,
+  type ActionDialog,
+  type Asked,
+} from "@sincpro/web-framework/web/record/ActionButton";
 import { type AskField, askFormOf } from "@sincpro/web-framework/web/record/ask";
 
 /** What the button runs when there is no dry run: nothing. */
@@ -49,6 +53,7 @@ export function ServiceButton<R>({
   ask,
   entity,
   record,
+  dialog,
   onDone,
 }: {
   label: string;
@@ -65,6 +70,8 @@ export function ServiceButton<R>({
   entity?: Entity;
   /** The record it acts on: what the asked fields start with. */
   record?: AnyRecord;
+  /** What its window says — its title (the label without «…» by default), a sentence under it. */
+  dialog?: ActionDialog;
   onDone?: (answer: R) => void;
 }) {
   const running = useService((asked?: Asked) => run(asked ?? NOTHING_ASKED));
@@ -90,6 +97,7 @@ export function ServiceButton<R>({
   return (
     <ActionButton
       {...(form === undefined ? {} : { ask: form })}
+      {...(dialog === undefined ? {} : { dialog })}
       action={{
         run: running.run,
         ...(rehearse === undefined ? {} : { rehearse: rehearsing.run }),

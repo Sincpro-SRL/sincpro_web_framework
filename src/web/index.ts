@@ -20,11 +20,16 @@ export {
   type CardLook,
   type ChoiceTones,
   type OptionLook,
+  type PartLook,
+  partLookOf,
+  type PartLooks,
+  type PartOf,
   type Presentation,
   presentationOf,
   type Presented,
   presented,
   type RowLook,
+  tonesOver,
 } from "@sincpro/web-framework/web/list/presentation";
 export {
   type RowCommand,
@@ -32,6 +37,10 @@ export {
   useRowCommands,
 } from "@sincpro/web-framework/web/list/rowCommands";
 export { facetsOf, modelOf } from "@sincpro/web-framework/web/list/search";
+export {
+  type ActionDialog,
+  type Asked,
+} from "@sincpro/web-framework/web/record/ActionButton";
 export {
   type AskedField,
   type AskField,
@@ -58,7 +67,12 @@ export {
   RecordOpeningProvider,
   useRecordOpening,
 } from "@sincpro/web-framework/web/record/opening";
-export { countOf, factsOf, RecordLines } from "@sincpro/web-framework/web/record/record";
+export {
+  countOf,
+  factsOf,
+  RecordLines,
+  usePartLook,
+} from "@sincpro/web-framework/web/record/record";
 export { RecordLifecycle } from "@sincpro/web-framework/web/record/RecordLifecycle";
 export { RelatedList } from "@sincpro/web-framework/web/record/RelatedList";
 export { ServiceButton } from "@sincpro/web-framework/web/record/ServiceButton";

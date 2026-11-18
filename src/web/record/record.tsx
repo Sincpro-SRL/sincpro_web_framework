@@ -1,13 +1,25 @@
 "use client";
 
+import type { Entity } from "@sincpro/client-framework";
 import { type AnyRecord, describeRows, type Meta } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { textOf, valueAt, viewOf } from "@sincpro/web-framework/core/present";
 import { relatedOf } from "@sincpro/web-framework/core/related";
-import { type RelationField, relationFieldOf } from "@sincpro/web-framework/core/relation";
-import { useEntityFor } from "@sincpro/web-framework/react/context";
+import {
+  entityFor,
+  type RelationField,
+  relationFieldOf,
+} from "@sincpro/web-framework/core/relation";
+import { useEntityFor, useFrameworkIfAny } from "@sincpro/web-framework/react/context";
 import { useNameOf } from "@sincpro/web-framework/react/useNameOf";
 import { columnsOf } from "@sincpro/web-framework/web/list/columns";
+import {
+  type ChoiceTones,
+  type PartLook,
+  partLookOf,
+  presentationOf,
+  tonesOver,
+} from "@sincpro/web-framework/web/list/presentation";
 import { useRecordOpening } from "@sincpro/web-framework/web/record/opening";
 import {
   List,
@@ -126,11 +138,53 @@ export function countOf(record: AnyRecord, name: string): number {
 }
 
 /**
+ * How the rows of `name` look, layer over layer: the related entity's own presentation (when the
+ * relation points at a declared one), the parts the record's entity declared
+ * (`presented(issues, { parts: { runs: … } })`), and what the screen passes — each over the one
+ * before, so a screen changes one colour and keeps the rest.
+ *
+ * The record's entity is the one given, or the provider's entity of the model's aggregate.
+ */
+export function usePartLook<T extends AnyRecord>(
+  meta: Meta | null | undefined,
+  name: string,
+  own: {
+    entity?: Entity | undefined;
+    columns?: readonly string[] | undefined;
+    tones?: ChoiceTones<T> | undefined;
+  },
+): PartLook<T> {
+  const framework = useFrameworkIfAny();
+  const find = (target: string | undefined) =>
+    target === undefined || framework === null
+      ? undefined
+      : entityFor(framework.entities, target, framework.metas.get);
+  const declared = partLookOf(own.entity ?? find(meta?.aggregate), name);
+  const relation = relationFieldOf(meta, name);
+  const related = relation?.many === true ? find(relation.target) : undefined;
+  const itself = related === undefined ? {} : presentationOf(related);
+  const columns = own.columns ?? declared.columns ?? itself.columns;
+  const tones = tonesOver<T>(
+    itself.tones as ChoiceTones<T> | undefined,
+    declared.tones as ChoiceTones<T> | undefined,
+    own.tones,
+  );
+  return {
+    ...(columns === undefined ? {} : { columns: columns as readonly (keyof T & string)[] }),
+    ...(tones === undefined ? {} : { tones }),
+  };
+}
+
+/**
  * A one2many / many2many of the record, as an embedded list.
  *
  * Its columns come from the relation's own definition when the server expanded it, and are
  * read off the rows otherwise. When the record brought only one page of them, it says so —
  * «se muestran 50 de 1000» — instead of drawing 50 as if they were all.
+ *
+ * A choice of a row — a run's state, a member's role — is a tag in the colour declared ONCE
+ * with the record's entity (`presented(issues, { parts: { runs: { tones } } })`); `tones` here
+ * changes it for this screen, value by value.
  *
  * `rowActions` acts on a part from its row — a group's member, a project's share — with a
  * Command of the record (`useCommand(projects, "unshareProject")`): the parts have no route of
@@ -144,8 +198,10 @@ export function RecordLines<T extends AnyRecord>({
   record,
   meta,
   name,
+  entity,
   columns,
   cells,
+  tones,
   locale,
   onOpen,
   rowActions,
@@ -153,13 +209,19 @@ export function RecordLines<T extends AnyRecord>({
   record: AnyRecord;
   meta: Meta | null | undefined;
   name: string;
+  /** The record's entity, whose presentation says how these rows look (`parts`). Without it,
+   *  the provider's entity of the model's aggregate. */
+  entity?: Entity | undefined;
   columns?: readonly string[];
   cells?: Readonly<Partial<Record<string, (row: T) => ReactNode>>>;
+  /** The colour of each value of a choice of a row, over what the entities declared. */
+  tones?: ChoiceTones<T> | undefined;
   locale?: string | undefined;
   onOpen?: (row: T) => void;
   /** What a row's part can be acted on with — a Command of the record. */
   rowActions?: (row: T) => readonly RowAction[];
 }) {
+  const look = usePartLook<T>(meta, name, { entity, columns, tones });
   const related = relatedOf<T>(record[name]);
   const definition = meta?.fields[name]?.definition ?? describeRows(related.items);
   const identity = definition.identity || "id";
@@ -178,7 +240,11 @@ export function RecordLines<T extends AnyRecord>({
         {/* web-ui takes a row's actions on the table, not on the list: on the root a spread
             drops them silently (no excess-property check through a spread). */}
         <List.Table<T>
-          columns={columnsOf<T>(definition, columns, { locale, ...(cells ? { cells } : {}) })}
+          columns={columnsOf<T>(definition, look.columns, {
+            locale,
+            ...(cells ? { cells } : {}),
+            ...(look.tones === undefined ? {} : { tones: look.tones }),
+          })}
           {...(rowActions === undefined ? {} : { rowActions })}
         />
       </List>
