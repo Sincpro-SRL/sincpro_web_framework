@@ -1934,3 +1934,30 @@ function (`searchRecords`). What was ours:
   `like`. With sincpro_framework every foreign key is a text that does; the framework hands it
   without, but a screen that hands web-ui a model of its own meets the same trap. Worth a line in
   web-ui's README (or a `relationKind: "key" | "name"` on the field).
+
+## Acting on many records (2026-11-19, #60)
+
+What is chosen in a list was the list's own: the page's keys in its state, reachable by nothing
+outside it, and «Elegir los 187 que coinciden» drawable by web-ui but held by nobody. Each bulk
+gesture — quipu paying several months, «Confirmar» on the invoices ticked — was written by hand.
+client-framework now has the value and the run (Sincpro-SRL/sincpro_client_framework#60:
+`Selection`, `keysOf`, `runBatch`, `BatchResult`); this is where a screen holds and draws them:
+
+- **`useSelection(listing)`** holds a `Selection` for a list — ticks, «all that match» with the
+  server's exact count, clear — and forgets it when the list's question changes (another filter is
+  another set). **`EntityList selection`** takes it from the screen (its own otherwise); «Elegir
+  los N que coinciden» is offered past the page, with an exact count. `selectionActions` may be
+  `(selection) => node`. The workspace still hears what is chosen (`api.select`).
+- **`useBatchCommand(entity, name)`** runs a Command once per chosen record — `for rec in self` —
+  through the screens' transport, each record its own use case with its own idempotency key, kept
+  while unanswered (so «Reintentar» never runs twice what the server did). Keys come from the
+  selection (`keysOf`, at most `BATCH_LIMIT` = 200 by default — past it, nothing runs and it says
+  so). One at a time by default. `retry` runs again what failed or never ran; `stop` starts
+  nothing more.
+- **`BatchProgress`** draws it: the bar while it runs, then «2 hechos · 1 falló» with each failure
+  named by its record and the server's reason, and «Reintentar los que fallaron».
+- **`sendRoute`** (core): a write route sent as a Command for one record — what `useCommand` and
+  `useBatchCommand` both send now (it was inline in `useRouteCommand`).
+
+Story 64. Not here: a batch the server runs in one request, «everything matching» sent as a
+criteria (#32, after Sincpro-SRL/sincpro_framework#185); choosing many into a relation (#61).

@@ -17,6 +17,7 @@ import { useFramework } from "@sincpro/web-framework/react/context";
 import { useGroups } from "@sincpro/web-framework/react/useGroups";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
 import { usePivot } from "@sincpro/web-framework/react/usePivot";
+import { type ListSelection, useSelection } from "@sincpro/web-framework/react/useSelection";
 import { columnsOf } from "@sincpro/web-framework/web/list/columns";
 import { EntitySearchBar } from "@sincpro/web-framework/web/list/EntitySearchBar";
 import { pilesOf } from "@sincpro/web-framework/web/list/groups";
@@ -151,12 +152,17 @@ export type EntityListProps<T extends AnyRecord, C extends CommandBodies = Comma
    *  Without it, the list definition's, else every one the model does. */
   groupable?: readonly string[];
   /**
-   * Rows can be ticked. With `api`, what is ticked is PUBLISHED to the workspace
-   * (`api.select`): a panel beside it follows the selection without knowing this list.
+   * Rows can be ticked — and, past the page, «Elegir los 187 que coinciden». With `api`, what is
+   * chosen is PUBLISHED to the workspace (`api.select`): a panel beside it follows the selection
+   * without knowing this list.
    */
   selectable?: boolean;
-  /** What to do with what is ticked: drawn in the bar while something is. */
-  selectionActions?: ReactNode;
+  /** The selection, held by the screen (`useSelection(listing)`): read and set from outside the
+   *  list. Without it the list holds its own. */
+  selection?: ListSelection<T>;
+  /** What to do with what is chosen, drawn in the bar while something is — handed the selection
+   *  to act on it (`useBatchCommand`). */
+  selectionActions?: ReactNode | ((selection: ListSelection<T>) => ReactNode);
   /** The list is a FIELD of a record — its lines, its members — and not a screen. */
   embedded?: boolean;
   /**
@@ -221,6 +227,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   facets: askedFacets,
   groupable: askedGroupable,
   selectable = false,
+  selection: held,
   selectionActions,
   embedded = false,
   create = true,
@@ -383,23 +390,41 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   usePhone(api ?? NO_WORKSPACE); // where a row opens follows the mode (`targetsFor`)
   const trail = crumbs ?? (embedded || api === undefined ? undefined : following);
 
-  const [ticked, setTicked] = useState<ReadonlySet<string>>(() => new Set());
-  const tick = (next: ReadonlySet<string>) => {
-    setTicked(next);
-    api?.select([...next].map((id) => listing.entity.ref(id)));
-  };
+  const own = useSelection(listing);
+  const chosen = held ?? own;
+  // The workspace hears what is chosen: the keys, or — «all that match» — the ones on screen.
+  const published = (
+    chosen.selection.by === "keys"
+      ? chosen.selection.keys
+      : listing.rows.map((row) => idOf(row)).filter((id) => chosen.isChosen(id))
+  ).join("\u0000");
+  const heard = useRef(published);
+  useEffect(() => {
+    if (!selectable || heard.current === published) return;
+    heard.current = published;
+    api?.select(
+      published === "" ? [] : published.split("\u0000").map((id) => listing.entity.ref(id)),
+    );
+  }, [api, selectable, published, listing.entity]);
+  // «Elegir los 187 que coinciden» only past the page, and only with the server's exact count.
+  const total = listing.count?.exact === true ? listing.count.value : null;
   const selection = selectable
     ? {
-        has: (id: string) => ticked.has(id),
-        toggle: (id: string) => {
-          const next = new Set(ticked);
-          if (next.has(id)) next.delete(id);
-          else next.add(id);
-          tick(next);
-        },
-        count: ticked.size,
-        clear: () => tick(new Set()),
-        ...(selectionActions === undefined ? {} : { actions: selectionActions }),
+        has: chosen.isChosen,
+        toggle: chosen.toggle,
+        count: chosen.size ?? 0,
+        clear: chosen.clear,
+        ...(total !== null && total > listing.rows.length
+          ? { matching: { total, onSelect: chosen.chooseAllMatching } }
+          : {}),
+        ...(selectionActions === undefined
+          ? {}
+          : {
+              actions:
+                typeof selectionActions === "function"
+                  ? selectionActions(chosen)
+                  : selectionActions,
+            }),
       }
     : undefined;
 

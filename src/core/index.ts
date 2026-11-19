@@ -12,6 +12,7 @@ export {
   cachedTransport,
   type CacheOptions,
 } from "@sincpro/web-framework/core/cache";
+export { sendRoute } from "@sincpro/web-framework/core/command";
 export {
   ENGLISH_FRAMEWORK_COPY,
   type FrameworkCopy,

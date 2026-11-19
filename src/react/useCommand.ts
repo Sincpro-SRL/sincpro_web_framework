@@ -1,16 +1,15 @@
 "use client";
 
 import {
-  bodyFor,
   type CommandAnswers,
   type CommandBodies,
   type Entity,
-  pathFor,
   type RetryKeys,
   retryKeys,
   type WriteRoute,
 } from "@sincpro/client-framework";
 import type { AnyRecord } from "@sincpro/criteria";
+import { sendRoute } from "@sincpro/web-framework/core/command";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -99,16 +98,8 @@ export function useRouteCommand<R, B extends AnyRecord = AnyRecord>(
       setBusy(true);
       setError(null);
       const idempotencyKey = gesture.keyFor({ id, body });
-      // A Command whose body names its record (`target`) gets the id there.
-      const sent = bodyFor(route, id, body);
       try {
-        const answer = await transport.send<A>(
-          route.method,
-          pathFor(route, id, sent),
-          sent,
-          undefined,
-          { idempotencyKey },
-        );
+        const answer = await sendRoute<A>(transport, route, id, body, { idempotencyKey });
         gesture.settle(null);
         return answer;
       } catch (failure) {

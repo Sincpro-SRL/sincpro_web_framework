@@ -1,6 +1,7 @@
 /**
  * The web bindings: what draws a `Listing` and a record with `@sincpro/web-ui`.
  */
+export { BatchProgress } from "@sincpro/web-framework/web/list/BatchProgress";
 export {
   aggregateOf,
   type ColumnOptions,

@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 
-import { entity } from "@sincpro/client-framework";
+import { chosen, entity, type Transport } from "@sincpro/client-framework";
 import {
   CommandButton,
+  sendRoute,
+  useBatchCommand,
   useCommand,
   useListing,
   useRowCommands,
@@ -50,6 +52,14 @@ function useMistakesTheCompilerCatches() {
     { command: "send", label: "Enviar", icon: Send, body: () => ({ message: "…" }) },
     { command: "stop", label: "Detener", icon: Send },
   ]);
+  // A Command over many records takes the same names and bodies as over one.
+  const sendAll = useBatchCommand(issues, "send");
+  void sendAll.run(chosen(["i1", "i2"]), { message: "a todos" });
+  // @ts-expect-error — a field the Command does not take, run over many
+  void sendAll.run(chosen(["i1"]), { mesage: "a todos" });
+  // @ts-expect-error — a Command the entity does not declare, run over many
+  useBatchCommand(issues, "sned");
+
   // @ts-expect-error — a Command the entity does not declare, on a row
   useRowCommands(listing, [{ command: "sned", label: "Enviar", icon: Send }]);
   useRowCommands(listing, [
@@ -73,4 +83,33 @@ test("a typed entity keeps the routes its Commands were declared with", () => {
 
 test("what a typed Command takes is the compiler's to check: this file only has to compile", () => {
   assert.equal(typeof useMistakesTheCompilerCatches, "function");
+});
+
+test("a Command for one record goes where its route says, the record's key in its place", async () => {
+  const sent: unknown[][] = [];
+  const transport = {
+    send: async (...args: unknown[]) => {
+      sent.push(args);
+      return { ok: true };
+    },
+  } as unknown as Transport;
+  const answer = await sendRoute(
+    transport,
+    issues.commands.send,
+    "i 7",
+    { message: "hola" },
+    {
+      idempotencyKey: "k-1",
+    },
+  );
+  assert.deepEqual(answer, { ok: true });
+  assert.deepEqual(sent, [
+    [
+      "POST",
+      "/issues/i%207/messages",
+      { message: "hola" },
+      undefined,
+      { idempotencyKey: "k-1" },
+    ],
+  ]);
 });

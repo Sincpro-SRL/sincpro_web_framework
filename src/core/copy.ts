@@ -100,6 +100,20 @@ export type FrameworkCopy = {
     /** Sends what an action asked for (`ask`). */
     send: string;
   };
+  batch: {
+    /** The bar of a Command running once per record: its accessible name. */
+    running: string;
+    /** «2 de 3»: how far it is. */
+    progress: (settled: number, total: number) => string;
+    /** «3 hechos · 1 no», what became of them; `skipped` never ran. */
+    outcome: (done: number, failed: number, skipped: number) => string;
+    /** Runs it again for the records it failed for. */
+    retry: string;
+    /** Stops it: what has not started does not. */
+    stop: string;
+    /** More were chosen than a Command runs on at once. */
+    tooMany: (size: number | null, limit: number) => string;
+  };
   failure: {
     /** The server could not be reached at all — nothing it said is known. */
     unreachable: string;
@@ -178,6 +192,20 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
     cancel: "Cancel",
     rehearsing: "Checking what it would do…",
     send: "Confirm",
+  },
+  batch: {
+    running: "Running on each record",
+    progress: (settled, total) => `${settled} of ${total}`,
+    outcome: (done, failed, skipped) =>
+      [
+        `${done} done`,
+        ...(failed > 0 ? [`${failed} failed`] : []),
+        ...(skipped > 0 ? [`${skipped} not run`] : []),
+      ].join(" · "),
+    retry: "Retry the ones that failed",
+    stop: "Stop",
+    tooMany: (size, limit) =>
+      `${size === null ? "More than " + limit : size} records are chosen; at most ${limit} at once. Narrow the search.`,
   },
   failure: {
     unreachable: "The server could not be reached",
@@ -277,6 +305,20 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
     cancel: "Cancelar",
     rehearsing: "Revisando qué haría…",
     send: "Confirmar",
+  },
+  batch: {
+    running: "Ejecutando en cada registro",
+    progress: (settled, total) => `${settled} de ${total}`,
+    outcome: (done, failed, skipped) =>
+      [
+        `${done} ${done === 1 ? "hecho" : "hechos"}`,
+        ...(failed > 0 ? [`${failed} ${failed === 1 ? "falló" : "fallaron"}`] : []),
+        ...(skipped > 0 ? [`${skipped} sin ejecutar`] : []),
+      ].join(" · "),
+    retry: "Reintentar los que fallaron",
+    stop: "Detener",
+    tooMany: (size, limit) =>
+      `${size === null ? "Son más de " + limit : "Son " + size} registros elegidos; a la vez, como mucho ${limit}. Acotá la búsqueda.`,
   },
   failure: {
     unreachable: "No se pudo hablar con el servidor",

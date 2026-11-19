@@ -499,6 +499,8 @@ hook and draw your own, or go straight to the loose piece.
 | Cross it by two fields           | `EntityList pivot`                                              | `usePivot`                            | `pivotOf`                                                   |
 | Order by several fields          | the bar's criteria builder                                      | `listing.orderBy([...])`              | criteria's `order`                                          |
 | Act on it (with a dry run)       | `ServiceButton` (a use case), `CommandButton`, row commands     | `useService`, `useCommand`            | `transport.send`                                            |
+| What is chosen in a list         | `EntityList selectable selection`                               | `useSelection`                        | `Selection`, `chosen`, `allMatching` (client-framework)     |
+| Act on each chosen one           | `BatchProgress`, `selectionActions={(chosen) => …}`             | `useBatchCommand`                     | `runBatch`, `keysOf` (client-framework), `sendRoute`        |
 | Delete it                        | `EntityRecord` (`RecordLifecycle`)                              | `useRecordLifecycle`                  | `entity.delete`, `useRouteCommand`                          |
 | Its trash                        | `EntityRecord` (`RecordLifecycle`), `listView(trashOf(entity))` | `useRecordLifecycle`                  | `entity.archive`, `entity.restore`, `trashOf`               |
 | Read again when it was written   | every reading of this package, by itself                        | `useWrites`                           | `processChanges` (client-framework)                         |
