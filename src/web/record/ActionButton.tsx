@@ -4,7 +4,7 @@ import type { Rehearsal } from "@sincpro/web-framework/react/useCommand";
 import type { AskForm } from "@sincpro/web-framework/web/record/ask";
 import { Refused } from "@sincpro/web-framework/web/Refused";
 import { Button, Dialog, Field, FormSection } from "@sincpro/web-ui";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 /** What a person filled in before the action runs, by field name. */
 export type Asked = Readonly<Record<string, unknown>>;
@@ -170,97 +170,120 @@ export function ActionButton<R>({
   dialog?: ActionDialog;
   onDone?: (answer: R) => void;
 }) {
-  const copy = frameworkCopy().command;
-  const [open, setOpen] = useState(false);
-  const words = wordsOf(label, dialog);
-  if (form !== undefined)
-    return (
-      <>
-        <Button
-          size="sm"
-          role={role}
-          disabled={disabled || action.busy}
-          onClick={() => setOpen(true)}
-        >
-          {label}
-        </Button>
-        {open ? (
-          <AskDialog
-            action={action}
-            form={form}
-            words={words}
-            onClose={() => {
-              setOpen(false);
-              action.reset();
-            }}
-            onDone={(answer) => {
-              setOpen(false);
-              action.reset();
-              onDone?.(answer);
-            }}
-          />
-        ) : null}
-      </>
-    );
-  const destructive = action.rehearse !== undefined;
-  const run = async () => {
-    const answer = await action.run();
-    if (answer !== undefined) {
-      setOpen(false);
-      action.reset();
-      onDone?.(answer);
-    } else setOpen(true);
-  };
-  const ask = async () => {
-    setOpen(true);
-    await action.rehearse?.();
-  };
-  const close = () => {
-    setOpen(false);
-    action.reset();
-  };
+  const gesture = useActionGesture(action, {
+    label,
+    ...(form === undefined ? {} : { ask: form }),
+    ...(dialog === undefined ? {} : { dialog }),
+    ...(onDone === undefined ? {} : { onDone }),
+  });
+  // One that destroys is never the gold button: what it would do is read first.
+  const destructive = form === undefined && action.rehearse !== undefined;
   return (
     <>
       <Button
         size="sm"
         role={destructive ? "secondary" : role}
-        disabled={disabled || action.busy}
-        onClick={() => void (destructive ? ask() : run())}
+        disabled={disabled || gesture.busy}
+        onClick={gesture.start}
       >
         {label}
       </Button>
-      {open ? (
-        <Dialog
-          open
-          {...words}
-          onClose={close}
-          footer={
-            destructive && action.error === null ? (
-              <div className="flex justify-end gap-2">
-                <Button size="sm" role="secondary" onClick={close}>
-                  {copy.cancel}
-                </Button>
-                <Button
-                  size="sm"
-                  role="primary"
-                  disabled={action.busy || action.rehearsal === null}
-                  onClick={() => void run()}
-                >
-                  {copy.confirm}
-                </Button>
-              </div>
-            ) : undefined
-          }
-        >
-          {action.error !== null ? (
-            <Refused error={action.error} />
-          ) : action.rehearsal === null ? (
-            <p className="text-meta text-muted">{copy.rehearsing}</p>
-          ) : (
-            <p className="text-ink">{action.rehearsal.text}</p>
-          )}
-        </Dialog>
-      ) : null}
+      {gesture.dialog}
     </>
   );
+}
+
+/** An action's gesture, for whatever starts it — a button, a dock's action, a shortcut. */
+export type ActionGesture = {
+  /** Starts it: opens what it asks, asks first what it would do (it destroys), or runs. */
+  start: () => void;
+  /** It runs: not offered again until it ends. */
+  busy: boolean;
+  /** Its window — what it asks, what it would do, a refusal —; `null` while closed. Put it
+   *  anywhere on the screen: it opens over everything. */
+  dialog: ReactNode;
+};
+
+/**
+ * `ActionButton`'s gesture without the button: started by anything, its window put where the
+ * screen puts it.
+ *
+ * Context: web-ui's dock (`Record.Dock`, the modern style's floating pill) takes actions as
+ * data — a label and an `onSelect` —, not buttons. The gesture is the same: `start` is the
+ * button's click, and `dialog` the window it opened.
+ */
+export function useActionGesture<R>(
+  action: ButtonAction<R>,
+  {
+    label,
+    ask: form,
+    dialog,
+    onDone,
+  }: { label: string; ask?: AskForm; dialog?: ActionDialog; onDone?: (answer: R) => void },
+): ActionGesture {
+  const copy = frameworkCopy().command;
+  const [open, setOpen] = useState(false);
+  const words = wordsOf(label, dialog);
+  const close = () => {
+    setOpen(false);
+    action.reset();
+  };
+  const done = (answer: R) => {
+    close();
+    onDone?.(answer);
+  };
+  if (form !== undefined)
+    return {
+      start: () => setOpen(true),
+      busy: action.busy,
+      dialog: open ? (
+        <AskDialog action={action} form={form} words={words} onClose={close} onDone={done} />
+      ) : null,
+    };
+  const destructive = action.rehearse !== undefined;
+  const run = async () => {
+    const answer = await action.run();
+    if (answer !== undefined) done(answer);
+    else setOpen(true);
+  };
+  const rehearse = async () => {
+    setOpen(true);
+    await action.rehearse?.();
+  };
+  return {
+    start: () => void (destructive ? rehearse() : run()),
+    busy: action.busy,
+    dialog: open ? (
+      <Dialog
+        open
+        {...words}
+        onClose={close}
+        footer={
+          destructive && action.error === null ? (
+            <div className="flex justify-end gap-2">
+              <Button size="sm" role="secondary" onClick={close}>
+                {copy.cancel}
+              </Button>
+              <Button
+                size="sm"
+                role="primary"
+                disabled={action.busy || action.rehearsal === null}
+                onClick={() => void run()}
+              >
+                {copy.confirm}
+              </Button>
+            </div>
+          ) : undefined
+        }
+      >
+        {action.error !== null ? (
+          <Refused error={action.error} />
+        ) : action.rehearsal === null ? (
+          <p className="text-meta text-muted">{copy.rehearsing}</p>
+        ) : (
+          <p className="text-ink">{action.rehearsal.text}</p>
+        )}
+      </Dialog>
+    ) : null,
+  };
 }

@@ -63,8 +63,13 @@ export {
   type AskForm,
   askFormOf,
 } from "@sincpro/web-framework/web/record/ask";
-export { CommandButton } from "@sincpro/web-framework/web/record/CommandButton";
+export {
+  type CommandActionProps,
+  CommandButton,
+  useCommandAction,
+} from "@sincpro/web-framework/web/record/CommandButton";
 export { RelationPicker } from "@sincpro/web-framework/web/record/control";
+export { type ActionLook, type DockedAction } from "@sincpro/web-framework/web/record/dock";
 export {
   dirtyOf,
   type FieldControl,
@@ -89,9 +94,17 @@ export {
   RecordLines,
   usePartLook,
 } from "@sincpro/web-framework/web/record/record";
-export { RecordLifecycle } from "@sincpro/web-framework/web/record/RecordLifecycle";
+export {
+  type LifecycleDone,
+  RecordLifecycle,
+  useRecordLifecycleActions,
+} from "@sincpro/web-framework/web/record/RecordLifecycle";
 export { RelatedList } from "@sincpro/web-framework/web/record/RelatedList";
-export { ServiceButton } from "@sincpro/web-framework/web/record/ServiceButton";
+export {
+  type ServiceActionProps,
+  ServiceButton,
+  useServiceAction,
+} from "@sincpro/web-framework/web/record/ServiceButton";
 export { cardOf, relationOf } from "@sincpro/web-framework/web/record/summary";
 export { Refused } from "@sincpro/web-framework/web/Refused";
 export {

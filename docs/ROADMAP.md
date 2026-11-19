@@ -2028,17 +2028,24 @@ a pill of pills. What was ours:
   is the pile's `totals` (`pilesOf`): the grouped table and the sheet say it under each column, as
   Odoo's grouped list. Beside the group's name only what no column shown says.
 - **Paging.** «Totales de esta página» and the pager were drawn glued («…página1–50 / 112»).
+- **A record's actions as data.** `ActionButton`'s gesture — what it asks, its dry run, a refusal
+  — is `useActionGesture` (internal): `start` and the window it opens. On it, a dock's action and
+  its window (`DockedAction`): **`useServiceAction`** (a use case, what `ServiceButton` is as a
+  button), **`useCommandAction`** (a Command; `destructive` is drawn apart, in red) and
+  **`useRecordLifecycleActions`** («Mover a la papelera», «Restaurar», «Eliminar» — apart, in
+  «Más acciones», as Odoo keeps it in its ⚙ menu). `EntityRecord` gives its actions and its
+  lifecycle to `Record.Dock`; a node drawn by hand stays in the rail with the lifecycle's
+  buttons. A screen of its own (`useRecordScreen`) writes `<Record.Dock actions={[…]} />` and puts
+  each action's `dialog` on the screen.
 
-Story 67 (the modern list: the pill, the chosen rows' pill, never two); story 64 gives its
-«Confirmar» as data; `tests/groups.test.ts` (a group's totals, and its words without them).
+Story 67 (the modern list: the pill, the chosen rows' pill, never two; a record's Commands
+floating, «Anular» apart); story 64 gives its «Confirmar» as data; story 52 deletes through «Más
+acciones»; `tests/groups.test.ts` (a group's totals, and its words without them).
 
 ### Found on the way
 
 - **web-ui 2.9 dropped «Elegir los N que coinciden» in the bar** when the chosen rows' actions are
   a dock (traditional style): Sincpro-SRL/sincpro_web_ui#65, fixed in #66. This needs web-ui
   2.9.1 — stories 64 and 65 fail on 2.9.0.
-- **A record's actions** still go in the rail as buttons (`Record.Actions`): its Commands ask,
-  confirm and fail on their own buttons. Floating them (`Record.Dock`) wants each Command as an
-  action plus its dialog — `useRowCommands` already does that for a row; the record's turn is next.
 - **The record's name twice** in the modern style — the trail's last crumb and the paper — is
   web-ui's decision (as Odoo); an application that wants it once leaves out the last crumb.
