@@ -43,7 +43,7 @@ function Facturas({ limit }: { limit?: number }) {
       </div>
       <EntityList
         listing={listing}
-        selectable
+        // No `selectable`: actions for the chosen rows make the rows choosable.
         selection={elegidas}
         // As data: the view style draws it — in the bar here, floating in the modern style.
         selectionActions={(elegidas) => [

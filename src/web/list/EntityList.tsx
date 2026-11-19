@@ -9,6 +9,7 @@ import {
 import { type AnyRecord, type Criteria, nameOf } from "@sincpro/criteria";
 import { RecordLink, useCrumbs, usePhone, type WorkspaceApi } from "@sincpro/web-composer";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
+import { ownCrumbs } from "@sincpro/web-framework/core/crumbs";
 import { explain } from "@sincpro/web-framework/core/explain";
 import {
   choosesMany,
@@ -174,7 +175,8 @@ export type EntityListProps<T extends AnyRecord, C extends CommandBodies = Comma
   selection?: ListSelection<T>;
   /** What to do with what is chosen, while something is — handed the selection to act on it
    *  (`useBatchCommand`). As data, the view style draws it: in the bar in place of the search
-   *  in `traditional`, a pill floating at the bottom in `modern` («3 elegidas ✕ · Confirmar»). */
+   *  in `traditional`, a pill floating at the bottom in `modern` («3 elegidas ✕ · Confirmar»).
+   *  Giving it makes the rows choosable: `selectable` is not needed with it. */
   selectionActions?: ScreenActions | ((selection: ListSelection<T>) => ScreenActions);
   /** The list is a FIELD of a record — its lines, its members — and not a screen. */
   embedded?: boolean;
@@ -287,7 +289,9 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   const choosingMany = choosing && choosesMany(api?.choosing?.question);
   const own = useSelection(listing);
   const chosen = held ?? own;
-  const ticking = selectable || choosingMany;
+  // Actions for the chosen rows make the rows choosable: given without `selectable` they were
+  // silently never shown — no ticks, nothing to act on.
+  const ticking = selectable || choosingMany || selectionActions !== undefined;
   // The record opened from a row knows the page it came from: «3 / 64» and its neighbours.
   const { trails, dateStyle } = useFramework();
   const trailKey = `trail:${useId()}`;
@@ -429,7 +433,9 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   // Without a workspace it reads a trail that never changes — a hook cannot be skipped.
   const following = useCrumbs(api ?? NO_WORKSPACE);
   usePhone(api ?? NO_WORKSPACE); // where a row opens follows the mode (`targetsFor`)
-  const trail = crumbs ?? (embedded || api === undefined ? undefined : following);
+  // The workspace's crumbs say each view's whole name (its tab's); in the trail a crumb says only
+  // what is its own — «Pagos», not «Pagos · María Fernanda» under «María Fernanda».
+  const trail = crumbs ?? (embedded || api === undefined ? undefined : ownCrumbs(following));
 
   // The workspace hears what is chosen: the keys, or — «all that match» — the ones on screen.
   const published = (
