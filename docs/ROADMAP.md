@@ -1901,3 +1901,36 @@ three places where the framework handed web-ui less than it can draw:
 - **Server rendering under Next.js:** `installFrameworkCopy` is a process global, the trap web-ui
   documented for `installCopy` (Sincpro-SRL/sincpro_web_ui#49). A prerender in one language never
   meets it; a server rendering several would need a provider, as web-ui's `UiCopyProvider`.
+
+## The search bar chooses a relation's records and an enum's words (2026-11-18, #58)
+
+web-ui 2.7 (Sincpro-SRL/sincpro_web_ui#53) taught its bar to unfold a relation into its RECORDS —
+«globex» on «Cliente» → the customers that match, chosen by key and read by name — and an enum
+into its WORDS, and its builder to pick both. web-ui draws; the application searches, through one
+function (`searchRecords`). What was ours:
+
+- **The framework answers `searchRecords`** (`recordsSearch` / `useSearchRecords`,
+  `web/list/records.ts`): the relation's aggregate → its entity (`entityFor`) → its literal search,
+  each record read as a choice (`findChoices`: its name and what tells it apart — the `option`
+  look, else its summary). Keys read back from a link are named through the `NameBook` every cell
+  asks (one request per entity, kept). `EntitySearchBar` uses it for its bar and its builder;
+  `SincproApp` puts it in web-ui's `SearchProvider`, so a bar a screen writes by hand gets it too.
+  An application's own `SearchProvider` wins in both. ⌘K reads its hits through the same
+  `findChoices` — one reading of a record as a choice, not two.
+- **The model web-ui reads** (`modelOf`): each enum's words (`translations.choices`, from
+  `choice_labels`) — the gap this file noted, «paid» offered where a cell says «Pagada», is
+  closed —, a to-many relation's `relationKey` from its definition, and a to-one relation's key
+  column kept in the bar's model without «like» / «starts with» (see AGENTS.md: sincpro's
+  `identified_by` is a foreign key, and web-ui read a column that takes `like` as one naming the
+  record).
+- **The builder's chip** reads as the builder says it (`onApply`'s `said`): a chosen record by its
+  name, never its key.
+- Stories 06 and 20 follow web-ui 2.7: the builder's door is «Búsqueda avanzada…», and an enum's
+  value is chosen by its word. Story 63: a customer by name, a state by its word.
+
+### Found on the way
+
+- **web-ui:** a relation's identifying column is read as naming the record whenever it takes
+  `like`. With sincpro_framework every foreign key is a text that does; the framework hands it
+  without, but a screen that hands web-ui a model of its own meets the same trap. Worth a line in
+  web-ui's README (or a `relationKind: "key" | "name"` on the field).

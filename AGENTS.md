@@ -160,9 +160,15 @@ built; this file is how to keep it.
   1.5+; without `rowClick` a row click becomes a peek) — and «Abrir en…» (`OpenInMenu`, web-ui's
   own words) the rest, beside the name in the table and on each row. Never only hover icons;
   never a modal from inside a modal. A one2many gets the same through `RecordOpening`.
-- **The cuts panel opens in the overlay layer** (web-ui 2.2: filters, grouping, favourites, «Abrir
-  el constructor»): a play finds its controls in the page (`within(document.body)`), never in
-  the story's canvas.
+- **The cuts panel opens in the overlay layer** (web-ui 2.2: filters, grouping, favourites, and
+  since 2.7 the builder's door, a button named «Búsqueda avanzada…»): a play finds its controls
+  in the page (`within(document.body)`), never in the story's canvas.
+- **A to-one relation's key column is handed to web-ui's bar without «like»** (`modelOf`).
+  sincpro_framework's `identified_by` is the foreign key, a text that takes `like`; web-ui 2.7
+  reads a relation whose column takes `like` as one that NAMES the record and compares the typed
+  text against it — «globex» on «Cliente» became `customer_id like globex` instead of unfolding
+  the customers (story 63). The column stays in the bar's model: a chosen record is compared by
+  it.
 - **web-ui's search bar reads `facets` only without a `model`**: handed one, it offers a typed
   word in EVERY text field of it. So the bar gets the model with only the facets' text fields
   (`modelOf(meta, locale, texts)`) and the criteria builder the whole one — which fields a person

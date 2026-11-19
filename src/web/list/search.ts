@@ -1,4 +1,4 @@
-import { labelOf, type Meta } from "@sincpro/criteria";
+import { choiceLabelOf, isRelational, labelOf, type Meta } from "@sincpro/criteria";
 import type { ModelDefinition, SearchFacet } from "@sincpro/web-ui";
 
 /**
@@ -10,23 +10,40 @@ import type { ModelDefinition, SearchFacet } from "@sincpro/web-ui";
  * design system and must not depend on one backend — so the translation lives here, the one
  * place that knows both.
  *
- * Known gap: web-ui's field has `choices` but no word for each choice, so the bar offers an
- * enum's raw values («paid») where a cell says «Pagada». Fixing it is web-ui's.
+ * An enum carries the word of each value (`translations.choices`, web-ui 2.7): the bar offers
+ * «Estado: Pagada» for «pagada» typed and sends `paid` — before, it offered the raw value where
+ * a cell said «Pagada». A to-many relation carries the key of the records on the other side
+ * (`relationKey`, from the related definition): what the bar's records are compared by through
+ * it once chosen.
  *
  * `texts` keeps only those plain text fields: web-ui's bar offers a typed word in EVERY text
  * field of the model it is handed (its `facets` are read only without one), so the bar is handed
  * the model with the text fields a person types into (`facetsOf`) — and the criteria builder the
  * whole one.
  */
+/** The comparisons of a text a person types: never asked of a key. */
+const TYPED_TEXT: ReadonlySet<string> = new Set(["like", "starts with"]);
+
 export function modelOf(
   meta: Meta,
   locale?: string,
   texts?: readonly string[],
 ): ModelDefinition {
+  // The column a to-one relation is identified by — sincpro_framework's `identified_by`, its
+  // foreign key — stays: web-ui compares a chosen record by it and never offers it on its own.
+  // It holds a KEY, so it is handed without the comparisons of a text a person types («like»,
+  // «starts with»): with them web-ui read it as a column that names the record, and «globex» on
+  // «Cliente» became «customer_id contains globex» instead of unfolding the customers.
+  const identifying = new Set(
+    Object.values(meta.fields)
+      .filter((field) => isRelational(field) && field.many !== true)
+      .map((field) => field.identified_by)
+      .filter((name): name is string => typeof name === "string" && name !== ""),
+  );
   const kept = (name: string) => {
     const field = meta.fields[name];
     const text = field?.type === "text" && !field.choices?.length;
-    return texts === undefined || !text || texts.includes(name);
+    return texts === undefined || !text || texts.includes(name) || identifying.has(name);
   };
   const names = Object.keys(meta.fields).filter(kept);
   return {
@@ -41,7 +58,9 @@ export function modelOf(
             type: field.type,
             nullable: field.nullable,
             sortable: field.sortable,
-            ops: field.ops,
+            ops: identifying.has(name)
+              ? field.ops.filter((op) => !TYPED_TEXT.has(op))
+              : field.ops,
             kind: field.kind,
             ...(field.many === undefined ? {} : { many: field.many }),
             ...(field.relation === undefined ? {} : { relation: field.relation }),
@@ -49,6 +68,9 @@ export function modelOf(
               ? {}
               : { identifiedBy: field.identified_by }),
             ...(field.choices && field.choices.length > 0 ? { choices: field.choices } : {}),
+            ...(field.many === true && field.definition
+              ? { relationKey: field.definition.get_id || field.definition.identity }
+              : {}),
           },
         ]),
     ),
@@ -58,6 +80,19 @@ export function modelOf(
       },
       labels: Object.fromEntries(
         names.map((name) => [name, { default: labelOf(meta, name, locale) }]),
+      ),
+      choices: Object.fromEntries(
+        names
+          .filter((name) => (meta.fields[name]?.choices?.length ?? 0) > 0)
+          .map((name) => [
+            name,
+            Object.fromEntries(
+              (meta.fields[name]?.choices ?? []).map((value) => [
+                String(value),
+                { default: choiceLabelOf(meta, name, value, locale) },
+              ]),
+            ),
+          ]),
       ),
     },
   };

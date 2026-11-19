@@ -32,6 +32,12 @@ export {
   tonesOver,
 } from "@sincpro/web-framework/web/list/presentation";
 export {
+  type Choice,
+  findChoices,
+  recordsSearch,
+  useSearchRecords,
+} from "@sincpro/web-framework/web/list/records";
+export {
   type RowCommand,
   type RowCommands,
   useRowCommands,

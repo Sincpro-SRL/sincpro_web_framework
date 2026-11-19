@@ -6,6 +6,7 @@ import type { GroupLevel, NamedFilter } from "@sincpro/web-framework/core/list";
 import type { Groups } from "@sincpro/web-framework/react/useGroups";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
 import { groupableOf } from "@sincpro/web-framework/web/list/groups";
+import { useSearchRecords } from "@sincpro/web-framework/web/list/records";
 import { facetsOf, modelOf } from "@sincpro/web-framework/web/list/search";
 import {
   type BuiltFilter,
@@ -21,6 +22,7 @@ import {
   selectionOf,
   toggleNamed,
   useGroupingControl,
+  useSearchSettings,
   useUiCopy,
 } from "@sincpro/web-ui";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -38,6 +40,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
  *   - «search by name»: facets are the fields the screen names (`facets`), else the ones the
  *     entity's search template names — never every text field;
  *   - a typed question («total > 5000») is checked against each field's operators;
+ *   - a relation unfolds into its RECORDS that match what was typed — «andres» → the customers
+ *     —, chosen by key and read by name («Cliente: Andrés Pérez»), and an enum into its words
+ *     («Estado: Pagada», sent as `paid`): the related entity's literal search
+ *     (`useSearchRecords`), unless the application put its own in a web-ui `SearchProvider`;
  *   - a named filter is one click; the builder writes what nobody foresaw (all/any/not);
  *   - everything put becomes ONE `selection` the SERVER answers (`listing.filter`) — web-ui
  *     writes it in criteria's own shape, a filter through a relation included;
@@ -100,6 +106,9 @@ export function EntitySearchBar<T extends AnyRecord>({
   );
   const groupable = useMemo(() => groupableOf(meta, locale, only), [meta, locale, only]);
   const ui = useUiCopy();
+  // The application's own search of records wins; the framework's is the default.
+  const framework = useSearchRecords();
+  const searchRecords = useSearchSettings().searchRecords ?? framework;
   const seeded = useRef(false);
   useEffect(() => {
     if (seeded.current || seed === undefined || seed === "" || meta?.search == null) return;
@@ -134,6 +143,7 @@ export function EntitySearchBar<T extends AnyRecord>({
         criteria={put}
         onCriteriaChange={place}
         placeholder={copy.searchBar}
+        searchRecords={searchRecords}
         {...(filters.length === 0
           ? {}
           : {
@@ -173,6 +183,7 @@ export function EntitySearchBar<T extends AnyRecord>({
         <Dialog open width="lg" title={copy.builder} onClose={() => setBuilding(false)}>
           <CriteriaBuilder
             model={model}
+            searchRecords={searchRecords}
             // What is on: the filter AND the order, by as many fields as were asked — the
             // builder writes `order: [...]` and it goes to the server whole.
             {...(current === undefined && listing.order.length === 0
@@ -190,11 +201,17 @@ export function EntitySearchBar<T extends AnyRecord>({
                         }),
                   },
                 })}
-            onApply={(built) => {
+            // The chip reads as the builder says it — a chosen record by its name, never its key.
+            onApply={(built, said) => {
               place(
                 built?.selection === undefined
                   ? []
-                  : [filterCriteria(built.selection, describeFilter(built.selection, model))],
+                  : [
+                      filterCriteria(
+                        built.selection,
+                        said ?? describeFilter(built.selection, model),
+                      ),
+                    ],
               );
               listing.orderBy(
                 (built?.order ?? []).map((one) => ({
