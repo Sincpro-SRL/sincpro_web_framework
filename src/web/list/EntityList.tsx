@@ -53,6 +53,7 @@ import {
   type RowOf,
   SearchField,
   Tag,
+  type YesNoColumn,
 } from "@sincpro/web-ui";
 import { Plus, RotateCcw } from "lucide-react";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -104,6 +105,14 @@ export type EntityListProps<T extends AnyRecord, C extends CommandBodies = Comma
   columns?: readonly string[];
   /** The cells that are not plain text: a link, a tag. Memoise it: compared by identity. */
   cells?: Readonly<Partial<Record<string, (row: T) => ReactNode>>>;
+  /**
+   * How a yes/no column reads, by field — web-ui's `yesNo`: `check` (the default: ✓ and
+   * nothing), `icon` (a green ✓ and a quiet ✕), `word` — or a `checkbox` / `switch` that
+   * changes it from the list with `onToggle` (an update, a Command). Memoise it.
+   *
+   *     yesNo={{ published: { look: "switch", onToggle: (course, on) => publish.run(course.id, on) } }}
+   */
+  yesNo?: Readonly<Partial<Record<string, YesNoColumn<T>>>>;
   /**
    * The ways to look at the set, the first one shown: `table` (columns), `rows` (a name and
    * its facts, what a narrow panel wants), `board` (cards) and `sheet` (a spreadsheet, every
@@ -225,6 +234,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   api,
   columns: askedColumns,
   cells,
+  yesNo,
   views: askedViews,
   title: askedTitle,
   description: askedDescription,
@@ -371,8 +381,10 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
           ...started.dock,
         ];
   // A press opens the page — the composer's one predictable gesture. Every other place the
-  // record may open is offered beside its name («Abrir en…») and, for a look, as web-ui's 👁
-  // (`onPeek` with `rowClick="open"`: the press stays «open»). A chooser only chooses.
+  // record may open is among the row's ways in, web-ui's (`openTargets` + `onOpenIn`, web-ui
+  // 2.10): 👁 for a look (`onPeek` with `rowClick="open"`: the press stays «open»), and «Abrir
+  // en…» with the rest — in ONE place at the row's end, a pill in the modern style. Drawn beside
+  // the name as well, a row offered three unaligned sets. A chooser only chooses.
   const openingIn =
     onOpenIn ??
     (api === undefined
@@ -389,10 +401,11 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
     (targets.includes("peek") && openingIn !== undefined
       ? (row: T) => openingIn(row, "peek")
       : undefined);
-  // The cells are memoised (below): they reach the opener through a ref, so a screen's inline
-  // `onOpenIn` is always the current one without redrawing every cell.
+  // The cells are memoised (below) and web-ui holds the row ways: both reach the opener through
+  // a ref, so a screen's inline `onOpenIn` is always the current one without redrawing.
   const openingNow = useRef(openingIn);
   openingNow.current = openingIn;
+  // The rows face (not the table) takes «Abrir en…» as its row's actions.
   const openInOf = (row: T) =>
     elsewhere.length === 0 || openingIn === undefined ? null : (
       <OpenInMenu
@@ -401,8 +414,9 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
         onOpen={(to) => openingNow.current?.(row, to)}
       />
     );
-  // The column that names a row carries its link and «Abrir en…»: the identity, or — in a list
-  // that does not show it (a relation inside a record) — the record's name, else the first.
+  // The column that names a row carries its link: the identity, or — in a list that does not
+  // show it (a relation inside a record) — the record's name, else the first. The link is only
+  // the name (`compact`): the places it opens in are the row's ways.
   const named =
     columns === undefined || columns.includes(identity)
       ? identity
@@ -412,21 +426,14 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   const rowName = (row: T) =>
     named === identity ? idOf(row) : (textOf(meta, named, row[named], locale) ?? idOf(row));
   const linked: typeof cells =
-    choosing || cells?.[named] !== undefined || (api === undefined && elsewhere.length === 0)
+    choosing || cells?.[named] !== undefined || api === undefined
       ? cells
       : {
           ...cells,
           [named]: (row: T) => (
-            <span className="inline-flex items-center gap-1">
-              {api === undefined ? (
-                rowName(row)
-              ) : (
-                <RecordLink api={api} resource={refOf(row)}>
-                  {rowName(row)}
-                </RecordLink>
-              )}
-              {openInOf(row)}
-            </span>
+            <RecordLink api={api} resource={refOf(row)} compact>
+              {rowName(row)}
+            </RecordLink>
           ),
         };
   // `useCrumbs`, not `api.crumbs()`: the crumb must follow a name given later (`setTitle`).
@@ -491,9 +498,20 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
         locale,
         ...(linked ? { cells: linked } : {}),
         ...(look.tones === undefined ? {} : { tones: look.tones }),
+        ...(yesNo === undefined ? {} : { yesNo }),
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [meta, locale, names, cells, api, elsewhere.join(), openingIn === undefined, dateStyle],
+    [
+      meta,
+      locale,
+      names,
+      cells,
+      yesNo,
+      api,
+      elsewhere.join(),
+      openingIn === undefined,
+      dateStyle,
+    ],
   );
 
   // A state the application gave colours to is the row's tag — and not again among its facts.
@@ -822,6 +840,12 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
       {...(selection === undefined ? {} : { selection })}
       {...(opening === undefined ? {} : { onOpen: opening })}
       {...(peeking === undefined ? {} : { onPeek: peeking, rowClick: "open" as const })}
+      {...(elsewhere.length === 0 || openingIn === undefined
+        ? {}
+        : {
+            openTargets: elsewhere,
+            onOpenIn: (row: T, to: OpenTarget) => openingNow.current?.(row, to),
+          })}
     >
       <List.Bar>
         {trail === undefined || trail.length === 0 ? null : <List.Crumbs crumbs={trail} />}

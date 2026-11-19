@@ -4,6 +4,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
+import { abrirEn } from "./support/abrir";
 import { Escenario } from "./support/escenario";
 import { servidorVentas } from "./support/servidor";
 import { clienteMeta, clientes, facturaMeta, facturas, VENTAS } from "./support/ventas";
@@ -67,7 +68,7 @@ export const EnLaPaginaDosColumnasAlCostadoUna: Story = {
     const page = within(canvasElement.ownerDocument.body);
     const numero = await primera(canvasElement);
     // Beside, from the list: a narrow panel, one column.
-    await userEvent.click(await canvas.findByRole("button", { name: `Abrir en… ${numero}` }));
+    await userEvent.click(await abrirEn(canvasElement, numero));
     await userEvent.click(await page.findByRole("menuitem", { name: "Abrir al costado" }));
     const enPanel = await page.findByRole("heading", { name: numero });
     const panel = enPanel.closest("article")!;
@@ -97,10 +98,9 @@ export const EnLaPaginaDosColumnasAlCostadoUna: Story = {
 export const EnUnModalEsUnaTarjeta: Story = {
   render: () => <App />,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
     const numero = await primera(canvasElement);
-    await userEvent.click(await canvas.findByRole("button", { name: `Abrir en… ${numero}` }));
+    await userEvent.click(await abrirEn(canvasElement, numero));
     await userEvent.click(await page.findByRole("menuitem", { name: "Abrir en un modal" }));
     const modal = await page.findByRole("dialog");
     // The modal titles itself too (web-ui repeats it): the record's title is the one in an article.

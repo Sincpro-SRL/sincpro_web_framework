@@ -44,7 +44,7 @@
     "@sincpro/criteria": "^2.4.0",
     "@sincpro/criteria-react": "^2.4.0",
     "@sincpro/web-composer": "^1.7.0",
-    "@sincpro/web-ui": "^2.9.0",
+    "@sincpro/web-ui": "^2.10.0",
     "react": ">=19",
     "react-dom": ">=19"
   },
@@ -76,7 +76,7 @@
     "@sincpro/criteria": "^2.4.0",
     "@sincpro/criteria-react": "^2.4.0",
     "@sincpro/web-composer": "^1.8.0",
-    "@sincpro/web-ui": "^2.9.0",
+    "@sincpro/web-ui": "^2.10.0",
     "@storybook/addon-a11y": "10.6.5",
     "@storybook/addon-docs": "10.6.5",
     "@storybook/addon-mcp": "10.6.5",

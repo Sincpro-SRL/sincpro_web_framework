@@ -1299,10 +1299,10 @@
   dependencies:
     "@atlaskit/pragmatic-drag-and-drop" "^4.0.0"
 
-"@sincpro/web-ui@^2.9.0":
-  version "2.9.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/web-ui/-/web-ui-2.9.0.tgz#d46ee632e7a2309c9cfbeea4b1ee8b458a687daa"
-  integrity sha512-8spwePONWSvMsu2HpiGQwqGL2CY764DB3kuVvHTe63bxFgCf1tmC3eabjrKAJrKkIBkEZkNt/8uqnPR6nQZwaA==
+"@sincpro/web-ui@^2.10.0":
+  version "2.10.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/web-ui/-/web-ui-2.10.0.tgz#6da00781252d21d47380d1c20eea4185525ab322"
+  integrity sha512-2O5UhE5kfqsuJ4sNs2GvuT8XUTWlzzx3XHJXko+vELmTt6y+D1/KdC1Oe4n43mABtQer8XqBNt1DF5xLzKxZ6Q==
   dependencies:
     "@codemirror/lang-json" "^6.0.2"
     "@codemirror/lint" "^6.9.7"

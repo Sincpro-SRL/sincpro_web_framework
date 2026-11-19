@@ -1,7 +1,6 @@
 "use client";
 
 import type { AnyRecord, Meta } from "@sincpro/criteria";
-import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { type Total, totalOf } from "@sincpro/web-framework/core/measure";
 import {
   BOOKKEEPING,
@@ -16,8 +15,7 @@ import { relationFieldOf } from "@sincpro/web-framework/core/relation";
 import { useEntityFor } from "@sincpro/web-framework/react/context";
 import { useNameOf } from "@sincpro/web-framework/react/useNameOf";
 import type { ChoiceTones } from "@sincpro/web-framework/web/list/presentation";
-import { type Aggregate, type DataColumn, Tag } from "@sincpro/web-ui";
-import { Check } from "lucide-react";
+import { type Aggregate, type DataColumn, Tag, type YesNoColumn } from "@sincpro/web-ui";
 import type { ReactNode } from "react";
 
 /**
@@ -49,6 +47,9 @@ export type ColumnOptions<T> = {
   cells?: Readonly<Partial<Record<string, (row: T) => ReactNode>>>;
   /** The colour of each value of a choice (`presented(entity, { tones })`). */
   tones?: ChoiceTones<T> | undefined;
+  /** How a yes/no column reads — web-ui's `yesNo`: `check` (the default here: ✓ and nothing),
+   *  `icon`, `word` — or, with `onToggle`, a `checkbox` / `switch` that writes it from the list. */
+  yesNo?: Readonly<Partial<Record<string, YesNoColumn<T>>>> | undefined;
 };
 
 /** The model's `total` as web-ui's aggregate. */
@@ -90,6 +91,7 @@ function columnOf<T extends AnyRecord>(
   const whole = view.name === meta?.identity || view.numeric || money || DATES.has(view.type);
   const tones = options.tones?.[name as keyof T & string];
   const choice = (field?.choices?.length ?? 0) > 0;
+  const boolean = view.type === "boolean";
   const aggregate = aggregateOf(meta, name);
   // The column IS a key of another record: `customer_id` beside its relation, or a key alone.
   const relation = relationFieldOf(meta, name);
@@ -124,21 +126,23 @@ function columnOf<T extends AnyRecord>(
               <Tag tone={tones?.[String(raw(row))] ?? "neutral"}>{word}</Tag>
             );
           }
-        : view.type === "boolean"
-          ? // A yes is a check and a no is nothing: a column of «sí/no» is noise to scan.
-            (row: T) =>
-              raw(row) === true ? (
-                <Check
-                  role="img"
-                  aria-label={frameworkCopy().value.yes}
-                  className="size-(--size-icon-sm)"
-                />
-              ) : null
+        : boolean
+          ? // Drawn by web-ui from the value (`yesNo`, below): no cell of its own.
+            undefined
           : whole
             ? (row: T) => <span className="whitespace-nowrap">{text(row)}</span>
             : text),
-    text,
+    // A yes/no reads by its look (web-ui's `YesNo`): with a `text` of its own the table would
+    // draw the words instead.
+    ...(boolean ? {} : { text }),
     numeric: view.numeric || money,
+    ...(boolean
+      ? {
+          // A yes is a check and a no is nothing by default: a column of «sí/no» is noise to
+          // scan. Every look still says «sí» / «no» to a screen reader.
+          yesNo: { look: "check" as const, ...options.yesNo?.[name] },
+        }
+      : {}),
     sortable: view.sortable,
     ...(view.name === meta?.identity ? { mono: true } : {}),
     ...(hidden ? { optional: true, defaultHidden: true } : {}),

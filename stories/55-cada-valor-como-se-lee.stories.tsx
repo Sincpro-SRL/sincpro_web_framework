@@ -1,7 +1,7 @@
 import { EntityList, FrameworkProvider, useListing } from "@sincpro/web-framework";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useMemo } from "react";
-import { expect, waitFor, within } from "storybook/test";
+import { useMemo, useState } from "react";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { cuotaMeta, cuotas, PAGO, pagoMeta, pagos, servidorPagos } from "./support/pagos";
 
@@ -63,11 +63,15 @@ export const CadaTipoComoSeLee: Story = {
     await expect(pago.getByText("25,00 BOB")).toBeVisible();
     // A day, day first.
     await expect(pago.getByText("30/11/2026")).toBeVisible();
-    // A yes is a check; a no is nothing — never «sí» / «no».
-    await expect(pago.getByRole("img", { name: "sí" })).toBeVisible();
+    // A yes is a check; a no is nothing to see — both say their word to a screen reader
+    // (web-ui's `YesNo`, look `check`).
+    const yes = pago.getByText("sí").closest('[data-ui="yes-no"]')!;
+    await expect(yes.getAttribute("data-value")).toBe("yes");
+    await expect(yes.querySelector("svg")).not.toBeNull();
     const otro = await fila(canvasElement, "P-0028");
-    await expect(otro.queryByRole("img", { name: "sí" })).toBeNull();
-    await expect(otro.queryByText("no")).toBeNull();
+    const no = otro.getByText("no");
+    await expect(no.getAttribute("data-value")).toBe("no");
+    await expect(no.className).toMatch(/sr-only/);
   },
 };
 
@@ -100,5 +104,50 @@ export const TodoEnUnaPaginaSumaTodo: Story = {
     const pie = canvasElement.querySelector("tfoot") as HTMLElement;
     await waitFor(() => expect(within(pie).getByText("75,00 BOB")).toBeVisible());
     await expect(canvas.queryByText("Totales de esta página")).toBeNull();
+  },
+};
+
+/** The same payments, «Urgente» as a switch that changes it from the list (`yesNo`). */
+function PagosQueSeMarcan() {
+  const listing = useListing(pagos, { pageSize: 20 });
+  const [dicho, setDicho] = useState("");
+  // What the screen would write with its update or Command; here, kept beside the list.
+  const yesNo = useMemo(
+    () => ({
+      urgente: {
+        look: "switch" as const,
+        onToggle: (pago: Record<string, unknown>, on: boolean) => {
+          setDicho(`${String(pago["id"])}: ${on ? "urgente" : "no urgente"}`);
+        },
+      },
+    }),
+    [],
+  );
+  return (
+    <>
+      <EntityList listing={listing} search={false} yesNo={yesNo} />
+      <p className="px-5 py-2 text-meta text-muted">{dicho}</p>
+    </>
+  );
+}
+
+/**
+ * **Un sí/no que se cambia desde la lista** (`yesNo`, web-ui 2.10): la pantalla dice cómo se lee
+ * cada columna de sí/no —`check` por defecto, `icon`, `word`— o le da un interruptor o una casilla
+ * con `onToggle`, que escribe con el update de la entidad o un Command. Marcar no abre la fila.
+ */
+export const UnSiNoQueSeMarca: Story = {
+  render: () => (
+    <Escenario>
+      <PagosQueSeMarcan />
+    </Escenario>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const switches = await canvas.findAllByRole("switch", { name: "Urgente" });
+    await userEvent.click(switches[0]!);
+    await expect(await canvas.findByText(/: urgente$|: no urgente$/)).toBeVisible();
+    // Marking does not open the payment.
+    await expect(canvas.queryByRole("dialog")).toBeNull();
   },
 };
