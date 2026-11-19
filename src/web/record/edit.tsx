@@ -4,6 +4,7 @@ import { type Entity } from "@sincpro/client-framework";
 import { type AnyRecord, choicesOf } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { errorAt } from "@sincpro/web-framework/core/edit";
+import { holdsFile } from "@sincpro/web-framework/core/files";
 import { editableLines } from "@sincpro/web-framework/core/lines";
 import {
   fieldAt,
@@ -17,6 +18,7 @@ import { relationFieldOf } from "@sincpro/web-framework/core/relation";
 import { useEntityFor, useFramework } from "@sincpro/web-framework/react/context";
 import { useNameOf } from "@sincpro/web-framework/react/useNameOf";
 import type { RecordReading } from "@sincpro/web-framework/react/useRecord";
+import { attachmentOf } from "@sincpro/web-framework/web/files";
 import type { EntityListProps } from "@sincpro/web-framework/web/list/EntityList";
 import {
   controlFor,
@@ -32,6 +34,7 @@ import {
   Checkbox,
   type DirtyState,
   Field,
+  FileValue,
   FormSection,
   type OpenTarget,
   ReadValue,
@@ -152,6 +155,7 @@ export function RecordField<T extends Record<string, unknown>>({
     own.many !== true &&
     own.definition &&
     own.widget !== "money" &&
+    !holdsFile(own) &&
     !isMoneyDefinition(own.definition)
   ) {
     // One value the record embeds: its fields, each by its label — a section of the record.
@@ -253,6 +257,16 @@ export function RecordField<T extends Record<string, unknown>>({
     label: view.label,
   };
   const field = fieldMetaOf(meta, name);
+  if (as === undefined && holdsFile(field)) {
+    // A file is ONE value — its picture or its kind, the name it was sent with, its type and
+    // size —, never a section of its parts. Sending another is the upload's, not this field's.
+    const file = attachmentOf(value);
+    return (
+      <Field label={view.label} {...(view.help === undefined ? {} : { hint: view.help })}>
+        {file === null ? <ReadValue value="—" /> : <FileValue file={file} size="md" />}
+      </Field>
+    );
+  }
 
   /** A many2one of a declared entity: chosen by the server's literal search, opened where the
    *  view says. Written by its key; read by the record it points at. */

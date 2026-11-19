@@ -41,6 +41,14 @@ export {
   type ServerFieldState,
 } from "@sincpro/web-framework/core/edit";
 export { explain } from "@sincpro/web-framework/core/explain";
+export {
+  FILE_WIDGETS,
+  holdsFile,
+  renditionUrl,
+  type RenditionValue,
+  storedFileOf,
+  type StoredFileValue,
+} from "@sincpro/web-framework/core/files";
 export { type FormLayout, formOf } from "@sincpro/web-framework/core/form";
 export { areGroups, NotGrouped } from "@sincpro/web-framework/core/groups";
 export {

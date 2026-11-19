@@ -1,6 +1,7 @@
 "use client";
 
 import type { AnyRecord, Meta } from "@sincpro/criteria";
+import { holdsFile } from "@sincpro/web-framework/core/files";
 import { type Total, totalOf } from "@sincpro/web-framework/core/measure";
 import {
   BOOKKEEPING,
@@ -14,8 +15,15 @@ import {
 import { relationFieldOf } from "@sincpro/web-framework/core/relation";
 import { useEntityFor } from "@sincpro/web-framework/react/context";
 import { useNameOf } from "@sincpro/web-framework/react/useNameOf";
+import { attachmentOf } from "@sincpro/web-framework/web/files";
 import type { ChoiceTones } from "@sincpro/web-framework/web/list/presentation";
-import { type Aggregate, type DataColumn, Tag, type YesNoColumn } from "@sincpro/web-ui";
+import {
+  type Aggregate,
+  type DataColumn,
+  FileValue,
+  Tag,
+  type YesNoColumn,
+} from "@sincpro/web-ui";
 import type { ReactNode } from "react";
 
 /**
@@ -92,6 +100,8 @@ function columnOf<T extends AnyRecord>(
   const tones = options.tones?.[name as keyof T & string];
   const choice = (field?.choices?.length ?? 0) > 0;
   const boolean = view.type === "boolean";
+  // A file — a photo, a scan — is ONE value: its thumbnail and the name it was sent with.
+  const file = holdsFile(field);
   const aggregate = aggregateOf(meta, name);
   // The column IS a key of another record: `customer_id` beside its relation, or a key alone.
   const relation = relationFieldOf(meta, name);
@@ -114,24 +124,26 @@ function columnOf<T extends AnyRecord>(
     id: name,
     header: view.label,
     field: name,
-    value: (row) => sortKeyOf(meta, name, raw(row)),
+    value: file ? text : (row) => sortKeyOf(meta, name, raw(row)),
     cell:
       own ??
       named ??
-      (choice
-        ? // A state reads at a glance: its word in a tag, in the tone the application gave it.
-          (row: T) => {
-            const word = text(row);
-            return word === "" ? null : (
-              <Tag tone={tones?.[String(raw(row))] ?? "neutral"}>{word}</Tag>
-            );
-          }
-        : boolean
-          ? // Drawn by web-ui from the value (`yesNo`, below): no cell of its own.
-            undefined
-          : whole
-            ? (row: T) => <span className="whitespace-nowrap">{text(row)}</span>
-            : text),
+      (file
+        ? (row: T) => <FileValue file={attachmentOf(raw(row))} />
+        : choice
+          ? // A state reads at a glance: its word in a tag, in the tone the application gave it.
+            (row: T) => {
+              const word = text(row);
+              return word === "" ? null : (
+                <Tag tone={tones?.[String(raw(row))] ?? "neutral"}>{word}</Tag>
+              );
+            }
+          : boolean
+            ? // Drawn by web-ui from the value (`yesNo`, below): no cell of its own.
+              undefined
+            : whole
+              ? (row: T) => <span className="whitespace-nowrap">{text(row)}</span>
+              : text),
     // A yes/no reads by its look (web-ui's `YesNo`): with a `text` of its own the table would
     // draw the words instead.
     ...(boolean ? {} : { text }),
