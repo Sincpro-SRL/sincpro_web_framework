@@ -226,7 +226,12 @@ export function entityView<T extends AnyRecord>(
       if (meta === null)
         meta = (await options.transport.list(route, { pagination: { limit: 1 } })).meta;
       if (meta?.search == null) return [];
-      const page = await options.transport.list<AnyRecord>(route, matching(meta, query));
+      // `matching`'s question — the search template and its short page — with each record
+      // whole: what tells a hit apart (the entity's `option` look, its summary) reads fields a
+      // reference (identity and display) does not carry. Against a real backend the detail was
+      // always empty (#48).
+      const { specification: _reference, ...question } = matching(meta, query);
+      const page = await options.transport.list<AnyRecord>(route, question);
       const known = meta;
       const locale = localeNow();
       // ⌘K writes text: of the entity's look of a choice, its name and its meta.

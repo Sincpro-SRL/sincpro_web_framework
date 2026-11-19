@@ -2,7 +2,7 @@ import type { ResourceRef } from "@sincpro/web-composer";
 import { entityView, SincproApp } from "@sincpro/web-framework";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo } from "react";
-import { expect, userEvent, waitFor, within } from "storybook/test";
+import { expect, waitFor, within } from "storybook/test";
 
 import { cuotaMeta, cuotas, PAGO, pagoMeta, pagos, servidorPagos } from "./support/pagos";
 
@@ -12,7 +12,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          'El registro por defecto (`EntityRecord`) de un **pago** — una entidad que sólo mueven sus comandos: sin `edit` ni `save` — se dibuja **entero de sólo lectura**: nada invita a escribir lo que nadie puede guardar. Dice cada cosa **una vez**: el concepto es su título y el estado su etiqueta, con el color que la aplicación declaró (`presented(pagos, { tones })`), y no vuelven como campos; quién y cuándo lo creó y lo cambió están en la auditoría y la actividad, nunca como campos. El **recibo** que el pago lleva adentro se dibuja desde su definición, campo por campo. Sus **cuotas** son la lista propia de su entidad, sin columnas técnicas (ID, creado, versión) y, siendo tres, sin barra para buscarlas. El **historial** dice cada edición campo por campo — «Concepto: Cuota → Cuota de noviembre» — y cada hecho con su color. En un **teléfono** el formulario es una columna. El estado se llama `estado`, no `state`: la entidad lo nombra (`entity(…, { summary: { state: "estado" } })`).',
+          'El registro por defecto (`EntityRecord`) de un **pago** — una entidad que sólo mueven sus comandos: sin `edit` ni `save` — se dibuja **entero de sólo lectura**: nada invita a escribir lo que nadie puede guardar. Dice cada cosa **una vez**: el concepto es su título y el estado su etiqueta, con el color que la aplicación declaró (`presented(pagos, { tones })`), y no vuelven como campos; quién y cuándo lo creó y lo cambió están en la auditoría y la actividad, nunca como campos. El **recibo** que el pago lleva adentro se dibuja desde su definición, campo por campo. Sus **cuotas** son la lista propia de su entidad, sin columnas técnicas (ID, creado, versión) y, siendo tres, sin barra para buscarlas. El **historial** muestra cada edición a la vista, campo por campo — «Concepto», lo que tenía tachado y lo que tiene ahora — y cada hecho con su color. En un **teléfono** el formulario es una columna. El estado se llama `estado`, no `state`: la entidad lo nombra (`entity(…, { summary: { state: "estado" } })`).',
       },
     },
   },
@@ -93,12 +93,27 @@ export const ElHistorialDiceQueCambio: Story = {
     const canvas = await abierto(canvasElement);
     // Each kind of fact in its colour; the approval is quipu's own fact.
     await canvas.findByText("Se aprobó el pago");
-    // An edit, field by field in the words it had then, each side as the record writes it.
-    await userEvent.click(await canvas.findByText("Se actualizó"));
-    const edicion = await canvas.findByText(/^Concepto: Cuota → Cuota de noviembre/);
+    // An edit, in sight without opening it: each field in the words it had then, as it WAS
+    // (struck) and as it IS, each side as the record writes it.
+    await canvas.findByText("Se actualizó");
+    const cambio = async (campo: string) => {
+      const fila = within(
+        (await canvas.findByText(campo, { selector: "dt" })).parentElement!,
+      );
+      return [
+        fila.getByRole("deletion").textContent,
+        fila.getByRole("insertion").textContent,
+      ];
+    };
+    const [antes, ahora] = await cambio("Concepto");
+    await expect(antes).toMatch(/Cuota$/);
+    await expect(ahora).toMatch(/Cuota de noviembre$/);
     // (`Intl` puts a no-break space before the currency: `\s`.)
-    await expect(edicion.textContent).toMatch(/Monto \(Bs\.\): 20,00\sBOB → 25,00\sBOB$/);
-    await expect(canvas.queryByText(/field_labels|changes/)).toBeNull();
+    const [montoAntes, montoAhora] = await cambio("Monto (Bs.)");
+    await expect(montoAntes).toMatch(/20,00\sBOB$/);
+    await expect(montoAhora).toMatch(/25,00\sBOB$/);
+    // Never one line to read, nor the envelope as JSON.
+    await expect(canvas.queryByText(/Concepto: Cuota|field_labels|changes/)).toBeNull();
   },
 };
 

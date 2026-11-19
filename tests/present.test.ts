@@ -9,6 +9,7 @@ import {
   installDateStyle,
   installFrameworkCopy,
   relatedOf,
+  shortTextOf,
   sortKeyOf,
   SPANISH_FRAMEWORK_COPY,
   textOf,
@@ -162,6 +163,32 @@ test("an amount the model draws as money is money: in the business's currency, r
   }
   // The same decimal without the widget is a number with its digits.
   assert.equal(textOf(meta, "monto", "25", "es-BO"), "25");
+});
+
+test("where room is short a number reads to the thousand, a money still in its currency", () => {
+  const meta = defineMeta({
+    aggregate: "Pago",
+    identity: "id",
+    fields: { id: field.text(), monto: field.number({ exact: true, label: "Monto" }) },
+  });
+  const money = {
+    ...meta,
+    fields: { ...meta.fields, monto: { ...meta.fields["monto"]!, widget: "money" } },
+  };
+  // (`Intl` puts a no-break space before the unit: `\s`.)
+  assert.match(shortTextOf(meta, "monto", 1204933, "es") ?? "", /^1,2\sM$/);
+  installCurrency("BOB");
+  try {
+    // Never the bare number under a tick: the currency stays.
+    assert.match(shortTextOf(money, "monto", "120000", "es-BO") ?? "", /^Bs\s?120\sk$/);
+  } finally {
+    installCurrency(undefined);
+  }
+  // What is not a number reads as `textOf` reads it.
+  assert.equal(
+    shortTextOf(facturaMeta, "state", "paid", "es"),
+    textOf(facturaMeta, "state", "paid", "es"),
+  );
 });
 
 const reciboMeta = defineMeta({
