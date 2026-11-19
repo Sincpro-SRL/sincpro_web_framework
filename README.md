@@ -480,6 +480,7 @@ hook and draw your own, or go straight to the loose piece.
 | What happened, what broke        | `./telemetry`, `./errors` (optional)                            | —                                     | `configureProcess({ tracer, reporter })`                    |
 | What is each field?              | `Meta` from the server, or `defineMeta`                         | —                                     | `textOf`, `viewOf`, `metaFromSchema`                        |
 | A value outside a model          | —                                                               | `useTextOf`                           | `moneyTextOf`, `dayTextOf`, `instantTextOf`, `numberTextOf` |
+| A file or a photo it holds       | `EntityList`, `RecordField`: by its widget, as a `FileValue`    | —                                     | `attachmentOf`, `storedFileOf`, `renditionUrl`              |
 | What is a record, at any size?   | `cardOf`, `relationOf`                                          | `useSummaryOf`                        | `summaryOf`                                                 |
 | How does a record look?          | `presented(entity, { option, row, card })`                      | —                                     | `presentationOf`                                            |
 | N records: search, filter, page  | `EntityList`, `EntitySearchBar`                                 | `useListing`, `useGroups`             | `transport.list(route, criteria)`                           |

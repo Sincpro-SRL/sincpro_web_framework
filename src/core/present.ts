@@ -7,6 +7,7 @@ import {
   type Meta,
 } from "@sincpro/criteria";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
+import { holdsFile, storedFileOf } from "@sincpro/web-framework/core/files";
 import { relatedOf } from "@sincpro/web-framework/core/related";
 
 /**
@@ -124,14 +125,15 @@ export function viewOf(
 }
 
 /**
- * The fields a screen shows when it names none: every scalar the model holds, in the order it
- * declares them. Relations and value objects are left out — they are not a column, they are a
- * page of their own (`RecordLines`) or a section.
+ * The fields a screen shows when it names none: every scalar the model holds, and every file
+ * (`holdsFile` — one value, though it travels as an object), in the order it declares them.
+ * Relations and other value objects are left out — they are not a column, they are a page of
+ * their own (`RecordLines`) or a section.
  */
 export function defaultFields(meta: Meta | null | undefined): string[] {
   if (!meta) return [];
   return Object.entries(meta.fields)
-    .filter(([, field]) => field.kind === "scalar")
+    .filter(([, field]) => field.kind === "scalar" || holdsFile(field))
     .map(([name]) => name);
 }
 
@@ -448,6 +450,9 @@ export function textOf(
 
   if (field.choices && field.choices.length > 0)
     return choiceLabelOf(meta, name, value, locale);
+
+  // A file reads as the name it was sent with — never its storage key, never its JSON.
+  if (holdsFile(field)) return storedFileOf(value)?.name ?? null;
 
   // An amount the model draws as money is money, though it travels bare.
   if (field.widget === "money" && field.kind === "scalar") {

@@ -1,6 +1,7 @@
 /**
  * The web bindings: what draws a `Listing` and a record with `@sincpro/web-ui`.
  */
+export { attachmentOf } from "@sincpro/web-framework/web/files";
 export { BatchProgress } from "@sincpro/web-framework/web/list/BatchProgress";
 export {
   aggregateOf,
