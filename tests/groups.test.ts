@@ -101,6 +101,23 @@ test("«group by» over REST reads the groups the backend answers beside the rec
     ],
   );
   assert.match(piles[0]?.detail ?? "", /^Total 1\.204\.933,00$/);
+  // What it adds up is also a figure, for its column (web-ui 2.9): the exact text as a number.
+  assert.deepEqual(
+    piles.map((pile) => pile.totals),
+    [{ amount_total: 1204933 }, { amount_total: 20.5 }],
+  );
+  // With that column on screen the group's name does not say it again.
+  const shownUnder = pilesOf(
+    page.rows,
+    [{ field: "state" }],
+    facturaMeta,
+    "es",
+    () => [],
+    undefined,
+    new Set(["amount_total"]),
+  );
+  assert.equal(shownUnder.piles[0]?.detail, undefined);
+  assert.deepEqual(shownUnder.piles[0]?.totals, { amount_total: 1204933 });
 });
 
 test("records answered to a grouped question are not groups, and say so", () => {

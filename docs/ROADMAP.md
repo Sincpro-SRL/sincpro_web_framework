@@ -2011,3 +2011,34 @@ browse of several and of one).
 - **The builder in a `Dialog`** cannot open anything of the workspace above it. A builder as a
   workspace view (as web-ui's template does) would browse too, and hold its own place in the
   breadcrumbs — a piece for #30/#31's round.
+
+## The modern style (2026-11-19, #66, web-ui 2.9)
+
+web-ui 2.9 (Sincpro-SRL/sincpro_web_ui#59) takes the **modern style** as the system's direction
+(`ViewStyleProvider value="modern"`). What web-ui draws by itself a screen of this package already
+wears — the record's trail as its heading, the pager as a pill, the counters as links, the state as
+a pill of pills. What was ours:
+
+- **A list's actions as data.** `EntityList` gives «Nuevo», «Agregar (N)» (choosing many) and the
+  screen's actions to `List.Dock` as `DockAction`s, so the application's style draws them: the
+  bar's buttons in `traditional`, ONE pill floating at the bottom in `modern` — the chosen rows'
+  while some are chosen («2 elegidas ✕ · Confirmar (2)»). `actions` and `selectionActions` take
+  `DockAction[]`; a node drawn by hand still works and stays in the bar (`actionsOf`, web/list/dock).
+- **Group totals under their columns.** What the server summed for a group (`Bucket.measures`)
+  is the pile's `totals` (`pilesOf`): the grouped table and the sheet say it under each column, as
+  Odoo's grouped list. Beside the group's name only what no column shown says.
+- **Paging.** «Totales de esta página» and the pager were drawn glued («…página1–50 / 112»).
+
+Story 67 (the modern list: the pill, the chosen rows' pill, never two); story 64 gives its
+«Confirmar» as data; `tests/groups.test.ts` (a group's totals, and its words without them).
+
+### Found on the way
+
+- **web-ui 2.9 dropped «Elegir los N que coinciden» in the bar** when the chosen rows' actions are
+  a dock (traditional style): Sincpro-SRL/sincpro_web_ui#65, fixed in #66. This needs web-ui
+  2.9.1 — stories 64 and 65 fail on 2.9.0.
+- **A record's actions** still go in the rail as buttons (`Record.Actions`): its Commands ask,
+  confirm and fail on their own buttons. Floating them (`Record.Dock`) wants each Command as an
+  action plus its dialog — `useRowCommands` already does that for a row; the record's turn is next.
+- **The record's name twice** in the modern style — the trail's last crumb and the paper — is
+  web-ui's decision (as Odoo); an application that wants it once leaves out the last crumb.

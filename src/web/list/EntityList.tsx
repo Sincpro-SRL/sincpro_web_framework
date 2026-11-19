@@ -23,6 +23,7 @@ import type { Listing } from "@sincpro/web-framework/react/useListing";
 import { usePivot } from "@sincpro/web-framework/react/usePivot";
 import { type ListSelection, useSelection } from "@sincpro/web-framework/react/useSelection";
 import { columnsOf } from "@sincpro/web-framework/web/list/columns";
+import { actionsOf, type ScreenActions } from "@sincpro/web-framework/web/list/dock";
 import { EntitySearchBar } from "@sincpro/web-framework/web/list/EntitySearchBar";
 import { pilesOf } from "@sincpro/web-framework/web/list/groups";
 import { OpenInMenu, openOptions, targetsFor } from "@sincpro/web-framework/web/list/openIn";
@@ -37,6 +38,7 @@ import {
   Button,
   Callout,
   type CardWays,
+  type DockAction,
   List,
   type ListCrumb,
   type ListPresentProps,
@@ -51,7 +53,7 @@ import {
   SearchField,
   Tag,
 } from "@sincpro/web-ui";
-import { RotateCcw } from "lucide-react";
+import { Plus, RotateCcw } from "lucide-react";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 
 /**
@@ -124,7 +126,13 @@ export type EntityListProps<T extends AnyRecord, C extends CommandBodies = Comma
   title?: string;
   description?: string;
   crumbs?: readonly ListCrumb[];
-  actions?: ReactNode;
+  /**
+   * What the list starts — «Importar», «Exportar ▸» —, beside «Nuevo». As data (`DockAction`s)
+   * the application's view style draws them with «Nuevo»: the bar's buttons in `traditional`,
+   * one pill floating at the bottom in `modern` (web-ui's `ViewStyleProvider`). A node drawn
+   * by hand stays in the bar.
+   */
+  actions?: ScreenActions;
   onOpen?: (row: T) => void;
   onPeek?: (row: T) => void;
   /**
@@ -164,9 +172,10 @@ export type EntityListProps<T extends AnyRecord, C extends CommandBodies = Comma
   /** The selection, held by the screen (`useSelection(listing)`): read and set from outside the
    *  list. Without it the list holds its own. */
   selection?: ListSelection<T>;
-  /** What to do with what is chosen, drawn in the bar while something is — handed the selection
-   *  to act on it (`useBatchCommand`). */
-  selectionActions?: ReactNode | ((selection: ListSelection<T>) => ReactNode);
+  /** What to do with what is chosen, while something is — handed the selection to act on it
+   *  (`useBatchCommand`). As data, the view style draws it: in the bar in place of the search
+   *  in `traditional`, a pill floating at the bottom in `modern` («3 elegidas ✕ · Confirmar»). */
+  selectionActions?: ScreenActions | ((selection: ListSelection<T>) => ScreenActions);
   /** The list is a FIELD of a record — its lines, its members — and not a screen. */
   embedded?: boolean;
   /**
@@ -337,6 +346,26 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
     listing.entity.create !== undefined
       ? () => api.open(listing.entity.newRef())
       : undefined;
+  // What the list starts, as data: «Nuevo» — the primary — and the screen's, drawn by the view
+  // style (`List.Dock`). Actions drawn by hand stay in the bar, with «Nuevo» beside them.
+  const started = actionsOf(actions);
+  const startDock: readonly DockAction[] =
+    started.drawn !== null
+      ? []
+      : [
+          ...(creating === undefined
+            ? []
+            : [
+                {
+                  id: "create",
+                  label: frameworkCopy().record.create,
+                  icon: Plus,
+                  primary: true,
+                  onSelect: creating,
+                },
+              ]),
+          ...started.dock,
+        ];
   // A press opens the page — the composer's one predictable gesture. Every other place the
   // record may open is offered beside its name («Abrir en…») and, for a look, as web-ui's 👁
   // (`onPeek` with `rowClick="open"`: the press stays «open»). A chooser only chooses.
@@ -418,15 +447,21 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   }, [api, ticking, published, listing.entity]);
   // «Elegir los 187 que coinciden» only past the page, and only with the server's exact count.
   const total = listing.count?.exact === true ? listing.count.value : null;
-  const onChosen = choosingMany ? (
-    <Button role="primary" size="sm" onClick={() => api?.answer(chosen.selection)}>
-      {frameworkCopy().picker.addChosen(chosen.size)}
-    </Button>
-  ) : typeof selectionActions === "function" ? (
-    selectionActions(chosen)
-  ) : (
-    selectionActions
-  );
+  // What is done to the chosen rows: answering whoever asked for several, else the screen's.
+  const onChosen: ScreenActions = choosingMany
+    ? [
+        {
+          id: "add-chosen",
+          label: frameworkCopy().picker.addChosen(chosen.size),
+          primary: true,
+          onSelect: () => api?.answer(chosen.selection),
+        },
+      ]
+    : typeof selectionActions === "function"
+      ? selectionActions(chosen)
+      : selectionActions;
+  // As data they go to the dock, where the view style draws them; by hand, in the bar.
+  const forChosen = actionsOf(onChosen);
   const selection = ticking
     ? {
         has: chosen.isChosen,
@@ -436,7 +471,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
         ...(total !== null && total > listing.rows.length
           ? { matching: { total, onSelect: chosen.chooseAllMatching } }
           : {}),
-        ...(onChosen === undefined ? {} : { actions: onChosen }),
+        ...(forChosen.drawn === null ? {} : { actions: forChosen.drawn }),
       }
     : undefined;
 
@@ -582,6 +617,18 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   // each says what its next «more» brings (1.5).
   const groups = useGroups(listing, sums === undefined ? {} : { sums: sums || [] });
   const grouped = groups.levels.length > 0;
+  // A table and a sheet say a group's sums under their columns (web-ui 2.9): beside the group's
+  // name, only what no column shown adds up.
+  const columnar = present === "table" || present === "sheet";
+  const underColumns = new Set(
+    columnar
+      ? shown.flatMap((column) =>
+          column.aggregate === undefined || column.defaultHidden || column.field === undefined
+            ? []
+            : [column.field],
+        )
+      : [],
+  );
   const { piles, bucketAt } = pilesOf(
     groups.buckets,
     groups.levels,
@@ -589,6 +636,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
     locale,
     groups.rowsOf,
     groups.brings,
+    underColumns,
   );
   const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
   useEffect(() => setOpened(new Set()), [groups.buckets]);
@@ -709,10 +757,11 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   );
   const pageTotals = totalled && partial && present === "table";
   // Written only when it says something: web-ui draws an embedded list's bar for any slot
-  // written, an empty one too.
+  // written, an empty one too. Its parts side by side and apart: the slot does not space them,
+  // and «Totales de esta página» read glued to «1–50 / 112».
   const paging =
     !pageTotals && dropped.length === 0 && through === null ? null : (
-      <>
+      <span className="flex items-center gap-3">
         {pageTotals ? <span className="text-meta text-muted">{copy.pageTotals}</span> : null}
         {dropped.length === 0 ? null : (
           <Tag tone="warn" title={copy.dropped(dropped)}>
@@ -720,7 +769,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
           </Tag>
         )}
         {through}
-      </>
+      </span>
     );
 
   return (
@@ -803,15 +852,21 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
             />
           </List.Search>
         ) : null}
-        {actions === undefined && creating === undefined ? null : (
+        {started.drawn === null ? null : (
           <List.Actions>
-            {actions}
+            {started.drawn}
             {creating === undefined ? null : (
               <Button role="primary" size="sm" onClick={creating}>
                 {frameworkCopy().record.create}
               </Button>
             )}
           </List.Actions>
+        )}
+        {startDock.length === 0 && forChosen.dock.length === 0 ? null : (
+          <List.Dock
+            {...(startDock.length === 0 ? {} : { actions: startDock })}
+            {...(forChosen.dock.length === 0 ? {} : { selection: forChosen.dock })}
+          />
         )}
         {paging === null ? null : <List.Pagination>{paging}</List.Pagination>}
       </List.Bar>

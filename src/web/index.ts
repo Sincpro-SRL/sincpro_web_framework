@@ -7,6 +7,7 @@ export {
   type ColumnOptions,
   columnsOf,
 } from "@sincpro/web-framework/web/list/columns";
+export { actionsOf, type ScreenActions } from "@sincpro/web-framework/web/list/dock";
 export {
   type EntityFace,
   EntityList,
