@@ -13,9 +13,13 @@ import { useFramework } from "@sincpro/web-framework/react/context";
 import { useHistory } from "@sincpro/web-framework/react/useHistory";
 import { type RecordReading, useRecord } from "@sincpro/web-framework/react/useRecord";
 import { useSummaryOf } from "@sincpro/web-framework/react/useSummary";
+import { actionsOf, type ScreenActions } from "@sincpro/web-framework/web/list/dock";
 import { presentationOf } from "@sincpro/web-framework/web/list/presentation";
 import { dirtyOf, RecordField } from "@sincpro/web-framework/web/record/edit";
-import { RecordLifecycle } from "@sincpro/web-framework/web/record/RecordLifecycle";
+import {
+  LifecycleButtons,
+  useRecordLifecycleActions,
+} from "@sincpro/web-framework/web/record/RecordLifecycle";
 import { Refused } from "@sincpro/web-framework/web/Refused";
 import { useRecordInWorkspace } from "@sincpro/web-framework/web/workspace/workspace";
 import {
@@ -26,7 +30,7 @@ import {
   Skeleton,
   useFormStyle,
 } from "@sincpro/web-ui";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 
 /**
  * The record of an entity, drawn from its model — the screen `entityView` opens when the
@@ -200,8 +204,13 @@ export function EntityRecord<T extends AnyRecord>({
   fields?: readonly string[];
   /** The one2many shown as pages, in this order. Without it, every one the model has. */
   pages?: readonly string[];
-  /** The record's own commands, beside «save / discard». */
-  actions?: (record: RecordReading<T>) => ReactNode;
+  /**
+   * The record's own actions, beside «save / discard» and its lifecycle («Eliminar»). As data
+   * (`DockAction`s) the application's view style draws them with the lifecycle's: the rail's
+   * buttons in `traditional`, one pill floating at the bottom in `modern` (web-ui's
+   * `Record.Dock`). A node drawn by hand stays in the rail.
+   */
+  actions?: (record: RecordReading<T>) => ScreenActions;
 }) {
   const screen = useRecordScreen(entity, { api, resource }, { title });
   const { reading, crumbs, history, pager } = screen;
@@ -211,6 +220,11 @@ export function EntityRecord<T extends AnyRecord>({
   // squeezed a text area beside its word (web-ui's grid does not narrow by itself).
   const phone = usePhone(api);
   const settings = useFormStyle() === "settings";
+  // The record's own lifecycle (its `Delete`, its trash); once it is out of every reading the
+  // surface closes — every list that showed it reads again by itself.
+  const lifecycle = useRecordLifecycleActions(reading, (done) =>
+    done === "restore" ? reading.reload() : api.close(),
+  );
 
   if (reading.status === "loading") return <Skeleton rows={6} label={copy.loading} />;
   if (reading.status === "failed")
@@ -228,102 +242,101 @@ export function EntityRecord<T extends AnyRecord>({
       (name) => reading.isNew || !said.has(name) || !edit.state(name).readonly,
     );
   const columns = phone || (api.surface !== "page" && api.surface !== "modal") ? 1 : 2;
-  // The record's own lifecycle (its `Delete`, its trash) beside the screen's commands; once it is
-  // out of every reading the surface closes — every list that showed it reads again by itself.
-  const lifecycle =
-    reading.isNew ||
-    (entity.delete === undefined &&
-      entity.archive === undefined &&
-      entity.restore === undefined) ? null : (
-      <RecordLifecycle
-        record={reading}
-        onDone={(done) => (done === "restore" ? reading.reload() : api.close())}
-      />
-    );
-  const own = actions?.(reading) ?? null;
-  const ownActions =
-    own === null && lifecycle === null ? null : (
+  // The screen's actions and the lifecycle's. As data they go to the dock, where the view style
+  // draws them; drawn by hand, in the rail with the lifecycle's buttons beside them.
+  const own = actionsOf(actions?.(reading) ?? null);
+  const docked = own.drawn === null ? [...own.dock, ...lifecycle.actions] : [];
+  const drawn =
+    own.drawn === null ? null : (
       <>
-        {own}
-        {lifecycle}
+        {own.drawn}
+        <LifecycleButtons actions={lifecycle.actions} />
       </>
     );
   const tabs = pages ?? layout.pages;
 
   return (
-    <Record {...screen.record}>
-      {/* The rail only when it carries something: an empty one is a blank band under the title
+    <>
+      <Record {...screen.record}>
+        {/* The rail only when it carries something: an empty one is a blank band under the title
           of a modal or a panel. (It used to be needed always — a web-ui remount, fixed.) */}
-      {crumbs.length === 0 && pager === undefined && ownActions === null ? null : (
-        <Record.Rail>
-          {crumbs.length === 0 ? null : <Record.Crumbs crumbs={crumbs} />}
-          {pager === undefined ? null : <Record.Pager {...pager} />}
-          {ownActions === null ? null : <Record.Actions>{ownActions}</Record.Actions>}
-        </Record.Rail>
-      )}
-      <Record.Paper layout={phone ? "stacked" : "horizontal"}>
-        {edit.conflict || edit.restored ? (
-          <div className="flex flex-col gap-3">
-            {edit.conflict ? (
-              <Callout tone="warn" title={copy.conflict}>
-                <Button size="sm" role="secondary" onClick={reading.reload}>
-                  {copy.reload}
-                </Button>
-              </Callout>
-            ) : null}
-            {edit.restored ? (
-              <Callout tone="info" title={copy.restored}>
-                {null}
-              </Callout>
-            ) : null}
-          </div>
-        ) : null}
-        {/* web-ui's form grid (its «Operación» template): two columns on a page and in a modal,
+        {crumbs.length === 0 &&
+        pager === undefined &&
+        docked.length === 0 &&
+        drawn === null ? null : (
+          <Record.Rail>
+            {crumbs.length === 0 ? null : <Record.Crumbs crumbs={crumbs} />}
+            {pager === undefined ? null : <Record.Pager {...pager} />}
+            {drawn === null ? null : <Record.Actions>{drawn}</Record.Actions>}
+            {docked.length === 0 ? null : <Record.Dock actions={docked} />}
+          </Record.Rail>
+        )}
+        <Record.Paper layout={phone ? "stacked" : "horizontal"}>
+          {edit.conflict || edit.restored ? (
+            <div className="flex flex-col gap-3">
+              {edit.conflict ? (
+                <Callout tone="warn" title={copy.conflict}>
+                  <Button size="sm" role="secondary" onClick={reading.reload}>
+                    {copy.reload}
+                  </Button>
+                </Callout>
+              ) : null}
+              {edit.restored ? (
+                <Callout tone="info" title={copy.restored}>
+                  {null}
+                </Callout>
+              ) : null}
+            </div>
+          ) : null}
+          {/* web-ui's form grid (its «Operación» template): two columns on a page and in a modal,
             one in a side panel, a window or a peek — web-ui's grid does not narrow by itself
             (ROADMAP). A hand-made column left half the sheet empty on a page. */}
-        {/* In web-ui's «settings» style each section is a card in the index of the sections:
+          {/* In web-ui's «settings» style each section is a card in the index of the sections:
             beside others, the main one needs its name too. */}
-        <FormSection
-          columns={columns}
-          {...(settings && fields === undefined && layout.sections.length > 0
-            ? { title: copy.general }
-            : {})}
-        >
-          {shown.map((name) => (
-            <RecordField key={name} record={reading} name={name} />
-          ))}
-        </FormSection>
-        {/* A value the record embeds (a payment's receipt) is a section of its own fields,
+          <FormSection
+            columns={columns}
+            {...(settings && fields === undefined && layout.sections.length > 0
+              ? { title: copy.general }
+              : {})}
+          >
+            {shown.map((name) => (
+              <RecordField key={name} record={reading} name={name} />
+            ))}
+          </FormSection>
+          {/* A value the record embeds (a payment's receipt) is a section of its own fields,
             from its definition — read only when the record is. */}
-        {fields !== undefined
-          ? null
-          : layout.sections.map((name) => (
-              <FormSection key={name} title={labelOf(meta, name, locale)} columns={columns}>
-                {Object.keys(meta?.fields[name]?.definition?.fields ?? {}).map((part) => (
-                  <RecordField key={part} record={reading} name={`${name}.${part}`} />
-                ))}
-              </FormSection>
+          {fields !== undefined
+            ? null
+            : layout.sections.map((name) => (
+                <FormSection key={name} title={labelOf(meta, name, locale)} columns={columns}>
+                  {Object.keys(meta?.fields[name]?.definition?.fields ?? {}).map((part) => (
+                    <RecordField key={part} record={reading} name={`${name}.${part}`} />
+                  ))}
+                </FormSection>
+              ))}
+          {/* A line's warning goes on its line (`RecordField` of the lines): here, the rest. */}
+          {edit.advice
+            .filter((one) => (one.path?.length ?? 0) <= 1)
+            .map((one) => (
+              <Callout key={one.message} tone="info" title={one.message}>
+                {null}
+              </Callout>
             ))}
-        {/* A line's warning goes on its line (`RecordField` of the lines): here, the rest. */}
-        {edit.advice
-          .filter((one) => (one.path?.length ?? 0) <= 1)
-          .map((one) => (
-            <Callout key={one.message} tone="info" title={one.message}>
-              {null}
-            </Callout>
-          ))}
-        {tabs.length === 0 || reading.isNew ? null : (
-          <Record.Pages current={page ?? tabs[0]} onChange={setPage}>
-            {tabs.map((name) => (
-              <Record.Page key={name} id={name} label={labelOf(meta, name, locale)}>
-                <RecordField record={reading} name={name} bare />
-              </Record.Page>
-            ))}
-          </Record.Pages>
-        )}
-        {screen.audit === undefined ? null : <Record.Audit {...screen.audit} />}
-      </Record.Paper>
-      {history === undefined ? null : <Record.Activity events={history} />}
-    </Record>
+          {tabs.length === 0 || reading.isNew ? null : (
+            <Record.Pages current={page ?? tabs[0]} onChange={setPage}>
+              {tabs.map((name) => (
+                <Record.Page key={name} id={name} label={labelOf(meta, name, locale)}>
+                  <RecordField record={reading} name={name} bare />
+                </Record.Page>
+              ))}
+            </Record.Pages>
+          )}
+          {screen.audit === undefined ? null : <Record.Audit {...screen.audit} />}
+        </Record.Paper>
+        {history === undefined ? null : <Record.Activity events={history} />}
+      </Record>
+      {/* What a lifecycle action asks or answers — what a deletion would do, a refusal. */}
+      {lifecycle.dialog}
+    </>
   );
 }

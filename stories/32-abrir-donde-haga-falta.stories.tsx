@@ -5,6 +5,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo, useState } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
+import { abrirEn } from "./support/abrir";
 import { Escenario } from "./support/escenario";
 import { servidorVentas } from "./support/servidor";
 import { clienteMeta, clientes, facturaMeta, facturas, VENTAS } from "./support/ventas";
@@ -15,7 +16,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          "Un registro se abre **en cualquier lugar que el workspace pueda ponerlo**, desde donde aparezca: una fila de la tabla, una fila de «filas», una tarjeta, una fila de un one2many. Apretar abre la **página**; el 👁 de web-ui da la **vista previa**; y **«Abrir en…»**, visible al lado del nombre y por teclado, ofrece el resto —un **modal**, **al costado**, una **ventana**— con las palabras de web-ui. Desde adentro de un modal no se ofrece otro modal (lo reemplazaría y perdería lo escrito). Una pantalla que quiere menos lo dice: `openTargets`.",
+          "Un registro se abre **en cualquier lugar que el workspace pueda ponerlo**, desde donde aparezca: una fila de la tabla, una fila de «filas», una tarjeta, una fila de un one2many. Apretar abre la **página**; el 👁 de web-ui da la **vista previa**; y **«Abrir en…»**, entre las entradas de la fila y por teclado, ofrece el resto —un **modal**, **al costado**, una **ventana**— con las palabras de web-ui. Desde adentro de un modal no se ofrece otro modal (lo reemplazaría y perdería lo escrito). Una pantalla que quiere menos lo dice: `openTargets`.",
       },
     },
   },
@@ -55,9 +56,8 @@ const primera = async (canvasElement: HTMLElement) =>
 
 /** The places «Abrir en…» of a record offers, by name. */
 async function lugares(canvasElement: HTMLElement, name: string) {
-  const canvas = within(canvasElement);
   const page = within(canvasElement.ownerDocument.body);
-  await userEvent.click(await canvas.findByRole("button", { name: `Abrir en… ${name}` }));
+  await userEvent.click(await abrirEn(canvasElement, name));
   const menu = await page.findByRole("menu");
   return {
     menu,
@@ -73,11 +73,11 @@ export const DesdeLaTablaYLasFilas: Story = {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
     const PRIMERA = await primera(canvasElement);
-    // Beside the name, seen and reached by keyboard — not only icons for a hovering pointer.
+    // Among the row's ways in, reached by keyboard too — not icons on the name for a hovering
+    // pointer. The look is not repeated here: it is the row's own 👁.
     const { menu, names } = await lugares(canvasElement, PRIMERA);
     await expect(names).toEqual([
       "Abrir en un modal",
-      "Vista previa",
       "Abrir al costado",
       "Abrir en una ventana",
     ]);

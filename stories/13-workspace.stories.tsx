@@ -223,7 +223,8 @@ export const ElVistazoEsDeWebUi: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByText("20 de 64");
-    const [eye] = await canvas.findAllByRole("button", { name: /vistazo/i });
+    // The look is the row's 👁, among its ways in (web-ui 2.10) — not an icon on the name.
+    const [eye] = await canvas.findAllByRole("button", { name: /vista previa/i });
     await userEvent.click(eye!);
     const drawer = await canvas.findByRole("complementary");
     await expect(drawer.querySelector("svg.lucide")).not.toBeNull();

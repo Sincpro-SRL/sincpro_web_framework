@@ -59,9 +59,20 @@ export function groupableOf(
     }));
 }
 
+/** A summed figure as a number — the wire may carry an exact decimal as text («1204.50»). */
+function figureOf(value: unknown): number | undefined {
+  const figure =
+    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return value === "" || !Number.isFinite(figure) ? undefined : figure;
+}
+
 /**
  * The server's groups as piles, with the words a person reads, and each pile's group so that
  * opening one reads its rows. Rows sit only on the deepest level, once read.
+ *
+ * What the server summed for a group is its `totals` — web-ui (2.9) says each figure under its
+ * column in a grouped table and a sheet, as Odoo's grouped list — and, in words beside the
+ * group's name (`detail`), what no column on screen says: a board's card has no columns.
  */
 export function pilesOf<T extends AnyRecord>(
   buckets: readonly Bucket<T>[],
@@ -71,6 +82,8 @@ export function pilesOf<T extends AnyRecord>(
   rowsOf: (bucket: Bucket<T>) => readonly T[] | undefined,
   /** What a group's next «more» brings (`Pile.more`); omitted, web-ui says nothing about it. */
   brings?: (bucket: Bucket<T>) => number | false | undefined,
+  /** The figures a column on screen already says under itself: not said again in words. */
+  underColumns: ReadonlySet<string> = new Set(),
 ): { piles: Pile<T>[]; bucketAt: ReadonlyMap<string, Bucket<T>>; deepest: number } {
   const bucketAt = new Map<string, Bucket<T>>();
   const none = frameworkCopy().list.noValue;
@@ -88,9 +101,20 @@ export function pilesOf<T extends AnyRecord>(
     return textOf(meta, bucket.field, bucket.value, locale) || key;
   };
 
-  const detailed = (bucket: Bucket<T>) => {
-    const detail = detailOf(meta, bucket.measures, locale);
-    return detail === undefined ? {} : { detail };
+  const summed = (bucket: Bucket<T>) => {
+    const measures = Object.entries(bucket.measures ?? {});
+    const totals = Object.fromEntries(
+      measures.flatMap(([field, value]) => {
+        const figure = figureOf(value);
+        return figure === undefined ? [] : [[field, figure] as const];
+      }),
+    );
+    const inWords = measures.filter(([field]) => !underColumns.has(field));
+    const detail = detailOf(meta, Object.fromEntries(inWords), locale);
+    return {
+      ...(Object.keys(totals).length === 0 ? {} : { totals }),
+      ...(detail === undefined ? {} : { detail }),
+    };
   };
 
   const more = (bucket: Bucket<T>, deepest: boolean): { more?: number | false } => {
@@ -116,7 +140,7 @@ export function pilesOf<T extends AnyRecord>(
         key,
         label: labelFor(bucket, depth, key),
         count: bucket.count,
-        ...detailed(bucket),
+        ...summed(bucket),
         items: below.length === 0 ? [...(rowsOf(bucket) ?? [])] : [],
         piles: walk(below, path, depth + 1),
         ...more(bucket, below.length === 0),

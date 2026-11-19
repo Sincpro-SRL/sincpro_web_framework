@@ -13,7 +13,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          'Una entidad que declara el `Delete` de sincpro_framework (`delete: "DELETE /clientes/{id}"`, generado del rol `delete` desde client-framework 1.12) tiene **«Eliminar»** en su registro sin escribir nada: `EntityRecord` dibuja `RecordLifecycle`. Antes de borrar le **pregunta al servidor qué haría** (su `dry_run`) y muestra eso — «Se eliminará Globex Bolivia» —, no un «¿estás seguro?». Con «Hacerlo» el registro se va, la vista se cierra y la lista que lo mostraba vuelve a leer sola. Cada pedido lleva la versión que se leyó (`origin_version`): si alguien lo cambió, el servidor se niega.',
+          'Una entidad que declara el `Delete` de sincpro_framework (`delete: "DELETE /clientes/{id}"`, generado del rol `delete` desde client-framework 1.12) tiene **«Eliminar»** en su registro sin escribir nada: `EntityRecord` lo da a su dock (`useRecordLifecycleActions`), aparte, en «Más acciones». Antes de borrar le **pregunta al servidor qué haría** (su `dry_run`) y muestra eso — «Se eliminará Globex Bolivia» —, no un «¿estás seguro?». Con «Hacerlo» el registro se va, la vista se cierra y la lista que lo mostraba vuelve a leer sola. Cada pedido lleva la versión que se leyó (`origin_version`): si alguien lo cambió, el servidor se niega.',
       },
     },
   },
@@ -55,7 +55,9 @@ export const SeEliminaDespuesDeVerLoQueHaria: Story = {
     const page = within(canvasElement.ownerDocument.body);
     await userEvent.click(await canvas.findByText("Globex Bolivia"));
     await canvas.findByRole("heading", { name: "Globex Bolivia" });
-    await userEvent.click(await canvas.findByRole("button", { name: "Eliminar" }));
+    // What destroys is apart, in «Más acciones» — never beside what moves the record on.
+    await userEvent.click(await canvas.findByRole("button", { name: "Más acciones" }));
+    await userEvent.click(await page.findByRole("menuitem", { name: /Eliminar/ }));
     // The server's word on what would go — nothing touched yet.
     const ventana = await page.findByRole("dialog", { name: "Eliminar" });
     await waitFor(() =>

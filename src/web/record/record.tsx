@@ -22,13 +22,14 @@ import {
 } from "@sincpro/web-framework/web/list/presentation";
 import { useRecordOpening } from "@sincpro/web-framework/web/record/opening";
 import {
+  type DockAction,
   List,
   type OpenTarget,
   RelationValue,
   type RowAction,
   type SheetField,
 } from "@sincpro/web-ui";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 /**
  * The parts of ONE record, from the model.
@@ -193,6 +194,14 @@ export function usePartLook<T extends AnyRecord>(
  *     <RecordLines record={project} meta={meta} name="shares"
  *       rowActions={(share) => [{ id: "unshare", label: "Quitar", icon: X, tone: "danger",
  *         onSelect: () => unshare.run(project.id, { tenant_id: share.tenant_id }) }]} />
+ *
+ * `selectionActions` acts on SEVERAL: the parts get ticks, and what is done to the chosen ones
+ * is web-ui's dock — in the collection's line in the traditional style, floating in the modern
+ * one, where it takes the record's place while parts are chosen. It is handed the chosen parts
+ * and a way to clear the choice once done.
+ *
+ *     selectionActions={(chosen, clear) => [{ id: "unshare", label: `Quitar ${chosen.length}`,
+ *       icon: X, onSelect: () => { void unshareAll(chosen); clear(); } }]}
  */
 export function RecordLines<T extends AnyRecord>({
   record,
@@ -205,6 +214,7 @@ export function RecordLines<T extends AnyRecord>({
   locale,
   onOpen,
   rowActions,
+  selectionActions,
 }: {
   record: AnyRecord;
   meta: Meta | null | undefined;
@@ -220,23 +230,55 @@ export function RecordLines<T extends AnyRecord>({
   onOpen?: (row: T) => void;
   /** What a row's part can be acted on with — a Command of the record. */
   rowActions?: (row: T) => readonly RowAction[];
+  /** What is done to several parts at once; giving it makes the parts choosable. Handed the
+   *  chosen parts, and `clear` to drop the choice once done. */
+  selectionActions?: (chosen: readonly T[], clear: () => void) => readonly DockAction[];
 }) {
   const look = usePartLook<T>(meta, name, { entity, columns, tones });
   const related = relatedOf<T>(record[name]);
   const definition = meta?.fields[name]?.definition ?? describeRows(related.items);
   const identity = definition.identity || "id";
   const copy = frameworkCopy();
+  const keyOf = (row: T) => String(row[identity]);
+  // The choice is the screen's moment, not the record's: held here, by key, and dropped of the
+  // keys no longer among the parts (a part the Command removed is not chosen any more).
+  const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set());
+  const present = new Set(related.items.map(keyOf));
+  const chosenKeys = [...picked].filter((key) => present.has(key));
+  const clear = () => setPicked(new Set());
+  const chosen = related.items.filter((row) => picked.has(keyOf(row)));
 
   return (
     <div className="flex flex-col gap-2">
       <List<T>
         embedded
         items={related.items}
-        keyOf={(row) => String(row[identity])}
+        keyOf={keyOf}
         present="table"
         empty={{ sentence: copy.list.empty }}
         {...(onOpen === undefined ? {} : { onOpen })}
+        {...(selectionActions === undefined
+          ? {}
+          : {
+              selection: {
+                has: (key: string) => picked.has(key),
+                toggle: (key: string) =>
+                  setPicked((now) => {
+                    const next = new Set(now);
+                    if (next.has(key)) next.delete(key);
+                    else next.add(key);
+                    return next;
+                  }),
+                count: chosenKeys.length,
+                clear,
+              },
+            })}
       >
+        {selectionActions === undefined || chosen.length === 0 ? null : (
+          <List.Bar>
+            <List.Dock selection={selectionActions(chosen, clear)} />
+          </List.Bar>
+        )}
         {/* web-ui takes a row's actions on the table, not on the list: on the root a spread
             drops them silently (no excess-property check through a spread). */}
         <List.Table<T>

@@ -501,6 +501,9 @@ hook and draw your own, or go straight to the loose piece.
 | Act on it (with a dry run)       | `ServiceButton` (a use case), `CommandButton`, row commands     | `useService`, `useCommand`            | `transport.send`                                            |
 | What is chosen in a list         | `EntityList selectable selection`                               | `useSelection`                        | `Selection`, `chosen`, `allMatching` (client-framework)     |
 | Act on each chosen one           | `BatchProgress`, `selectionActions={(chosen) => …}`             | `useBatchCommand`                     | `runBatch`, `keysOf` (client-framework), `sendRoute`        |
+| A list's actions, by the style   | `EntityList actions`, `selectionActions` (`DockAction`s)        | —                                     | web-ui's `List.Dock`, `ViewStyleProvider`                   |
+| A record's actions, by the style | `EntityRecord actions`, web-ui's `Record.Dock`                  | `useRecordLifecycleActions`           | `DockedAction`, `ActionLook`                                |
+| A use case or a Command, there   | `ServiceButton`, `CommandButton` (as buttons)                   | `useServiceAction`/`useCommandAction` | —                                                           |
 | Delete it                        | `EntityRecord` (`RecordLifecycle`)                              | `useRecordLifecycle`                  | `entity.delete`, `useRouteCommand`                          |
 | Its trash                        | `EntityRecord` (`RecordLifecycle`), `listView(trashOf(entity))` | `useRecordLifecycle`                  | `entity.archive`, `entity.restore`, `trashOf`               |
 | Read again when it was written   | every reading of this package, by itself                        | `useWrites`                           | `processChanges` (client-framework)                         |

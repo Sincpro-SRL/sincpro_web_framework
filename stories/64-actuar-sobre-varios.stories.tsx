@@ -5,7 +5,6 @@ import {
   useListing,
   useSelection,
 } from "@sincpro/web-framework";
-import { Button } from "@sincpro/web-ui";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
@@ -44,17 +43,17 @@ function Facturas({ limit }: { limit?: number }) {
       </div>
       <EntityList
         listing={listing}
-        selectable
+        // No `selectable`: actions for the chosen rows make the rows choosable.
         selection={elegidas}
-        selectionActions={(elegidas) => (
-          <Button
-            role="primary"
-            size="sm"
-            onClick={() => void confirmar.run(elegidas.selection)}
-          >
-            {`Confirmar (${elegidas.size ?? "todas"})`}
-          </Button>
-        )}
+        // As data: the view style draws it — in the bar here, floating in the modern style.
+        selectionActions={(elegidas) => [
+          {
+            id: "confirmar",
+            label: `Confirmar (${elegidas.size ?? "todas"})`,
+            primary: true,
+            onSelect: () => void confirmar.run(elegidas.selection),
+          },
+        ]}
       />
     </div>
   );
