@@ -10,7 +10,7 @@ import {
   scopeOfRef,
   type Transport,
 } from "@sincpro/client-framework";
-import { type AnyRecord, matching, type Meta, nameOf } from "@sincpro/criteria";
+import { type AnyRecord, type Meta, nameOf } from "@sincpro/criteria";
 import {
   type ResourceRef,
   type SearchHit,
@@ -20,12 +20,10 @@ import {
   type WorkspaceApi,
 } from "@sincpro/web-composer";
 import type { ListDefinition } from "@sincpro/web-framework/core/list";
-import { lookupOf } from "@sincpro/web-framework/core/lookup";
-import { summaryOf } from "@sincpro/web-framework/core/summary";
 import { ListScopeProvider } from "@sincpro/web-framework/react/scope";
 import { useListing } from "@sincpro/web-framework/react/useListing";
 import { EntityList } from "@sincpro/web-framework/web/list/EntityList";
-import { presentationOf } from "@sincpro/web-framework/web/list/presentation";
+import { findChoices } from "@sincpro/web-framework/web/list/records";
 import {
   type RecordOpening,
   RecordOpeningProvider,
@@ -226,33 +224,21 @@ export function entityView<T extends AnyRecord>(
       if (meta === null)
         meta = (await options.transport.list(route, { pagination: { limit: 1 } })).meta;
       if (meta?.search == null) return [];
-      // `matching`'s question — the search template and its short page — with each record
-      // whole: what tells a hit apart (the entity's `option` look, its summary) reads fields a
-      // reference (identity and display) does not carry. Against a real backend the detail was
-      // always empty (#48).
-      const { specification: _reference, ...question } = matching(meta, query);
-      const page = await options.transport.list<AnyRecord>(route, question);
-      const known = meta;
-      const locale = localeNow();
-      // ⌘K writes text: of the entity's look of a choice, its name and its meta.
-      const look = presentationOf(entity).option;
-      return lookupOf(known, page.rows, entity.summary).map((one) => {
-        const own =
-          look === undefined || one.record === undefined ? {} : look(one.record as T);
-        const summary =
-          one.record === undefined
-            ? undefined
-            : summaryOf(known, one.record, {
-                fields: entity.summary ?? {},
-                ...(locale === undefined ? {} : { locale }),
-              });
-        const detail = own.meta ?? summary?.description ?? summary?.type ?? undefined;
-        return {
-          ref: entity.ref(one.id),
-          label: own.name ?? one.label,
-          ...(detail === undefined ? {} : { detail }),
-        };
-      });
+      // A hit reads as a choice anywhere a record is picked by name: its name and what tells it
+      // apart, never its key (`findChoices`).
+      const choices = await findChoices(
+        options.transport,
+        entity,
+        meta,
+        route,
+        query,
+        localeNow(),
+      );
+      return choices.map((one) => ({
+        ref: entity.ref(one.id),
+        label: one.name,
+        ...(one.detail === undefined ? {} : { detail: one.detail }),
+      }));
     },
     load: () => {
       view ??= screens().catch((failure: unknown) => {

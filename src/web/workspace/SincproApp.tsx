@@ -32,8 +32,15 @@ import {
 } from "@sincpro/web-framework/core/copy";
 import type { DateStyle } from "@sincpro/web-framework/core/present";
 import { FrameworkProvider } from "@sincpro/web-framework/react/context";
+import { useSearchRecords } from "@sincpro/web-framework/web/list/records";
 import { webUiSkin } from "@sincpro/web-framework/web/workspace/skin";
-import { installCopy, SPANISH_COPY, ToastProvider } from "@sincpro/web-ui";
+import {
+  installCopy,
+  SearchProvider,
+  SPANISH_COPY,
+  ToastProvider,
+  useSearchSettings,
+} from "@sincpro/web-ui";
 import { type ReactNode, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 /**
@@ -68,6 +75,21 @@ const isPhone = () =>
   typeof window !== "undefined" && window.matchMedia !== undefined
     ? window.matchMedia(PHONE).matches
     : false;
+
+/**
+ * The framework's search of a relation's records for every web-ui bar and builder below — a
+ * screen's own `SearchBar` included —, unless the application put its own around the app.
+ * Inside the `FrameworkProvider`: it searches through the screens' transport.
+ */
+function FrameworkSearch({ children }: { children: ReactNode }) {
+  const framework = useSearchRecords();
+  const outer = useSearchSettings();
+  return (
+    <SearchProvider searchRecords={outer.searchRecords ?? framework}>
+      {children}
+    </SearchProvider>
+  );
+}
 
 /** A view that broke while drawing, told to the process's error reporter: `view <ref>`. */
 const reportViewError: OnViewError = (error, { resource }) =>
@@ -201,20 +223,22 @@ export function SincproApp({
       {...(currency === undefined ? {} : { currency })}
       {...(events === undefined ? {} : { events })}
     >
-      <ToastProvider>
-        <div className="flex h-dvh min-h-0 flex-col bg-ground">
-          {bar}
-          <div className="flex min-h-0 flex-1 flex-col">
-            <Composer
-              workspace={workspace}
-              registry={registry}
-              skin={skin}
-              onViewError={onViewError}
-              {...(empty === undefined ? {} : { empty })}
-            />
+      <FrameworkSearch>
+        <ToastProvider>
+          <div className="flex h-dvh min-h-0 flex-col bg-ground">
+            {bar}
+            <div className="flex min-h-0 flex-1 flex-col">
+              <Composer
+                workspace={workspace}
+                registry={registry}
+                skin={skin}
+                onViewError={onViewError}
+                {...(empty === undefined ? {} : { empty })}
+              />
+            </div>
           </div>
-        </div>
-      </ToastProvider>
+        </ToastProvider>
+      </FrameworkSearch>
     </FrameworkProvider>
   );
 }

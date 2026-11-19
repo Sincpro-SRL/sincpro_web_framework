@@ -147,9 +147,7 @@ export const PorVariosCampos: Story = {
     const builder = async () => {
       await userEvent.click(await canvas.findByRole("button", { name: /Filtrar/ }));
       // The cuts panel opens in the overlay layer (web-ui 2.2): it is looked for in the page.
-      await userEvent.click(
-        await page.findByRole("button", { name: /Abrir el constructor/ }),
-      );
+      await userEvent.click(await page.findByRole("button", { name: /Búsqueda avanzada/ }));
       const dialog = await page.findByRole("dialog", { name: "Constructor de criteria" });
       await waitFor(() => expect(dialog).toBeVisible());
       return within(dialog);
@@ -160,11 +158,9 @@ export const PorVariosCampos: Story = {
     // web-ui 1.11: the field is a path picker (it walks relations) — open it, pick «Estado».
     await userEvent.click(dialog.getByRole("button", { name: /^Campo/ }));
     await userEvent.click(await page.findByRole("option", { name: /^Estado/ }));
-    const valor = dialog
-      .getByLabelText("Comparación")
-      .closest("[role=dialog]")!
-      .querySelector<HTMLInputElement>("input")!;
-    await userEvent.type(valor, "paid");
+    // web-ui 2.7: an enum's value is chosen by its WORD, the model's own («Pagada»); `paid`
+    // is what travels.
+    await userEvent.selectOptions(dialog.getByRole("combobox", { name: "Valor" }), "Pagada");
     // «ordenar por…» opens the fields that may order, named like it: pick one there.
     const ordenarPor = async (field: string) => {
       await userEvent.click(dialog.getByRole("button", { name: "ordenar por…" }));

@@ -110,7 +110,7 @@ export const UnaPreguntaEnElConstructor: Story = {
     // The cuts panel opens in the overlay layer (web-ui 2.2): it is looked for in the page.
     await userEvent.click(await page.findByRole("button", { name: "Por cobrar" }));
     // The panel stays open after a pick: the builder is opened from it, with what was put.
-    await userEvent.click(await page.findByRole("button", { name: /Abrir el constructor/ }));
+    await userEvent.click(await page.findByRole("button", { name: /Búsqueda avanzada/ }));
     // The window fades in: it is in the document before it is visible.
     const dialog = await page.findByRole("dialog", { name: "Constructor de criteria" });
     await waitFor(() => expect(dialog).toBeVisible());
