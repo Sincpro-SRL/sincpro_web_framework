@@ -67,6 +67,8 @@ export {
   writtenInCell,
 } from "@sincpro/web-framework/core/lines";
 export {
+  CHOOSE_MANY,
+  choosesMany,
   defineList,
   type GroupLevel,
   isList,

@@ -10,7 +10,11 @@ import { type AnyRecord, type Criteria, nameOf } from "@sincpro/criteria";
 import { RecordLink, useCrumbs, usePhone, type WorkspaceApi } from "@sincpro/web-composer";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { explain } from "@sincpro/web-framework/core/explain";
-import type { GroupLevel, NamedFilter } from "@sincpro/web-framework/core/list";
+import {
+  choosesMany,
+  type GroupLevel,
+  type NamedFilter,
+} from "@sincpro/web-framework/core/list";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
 import { summaryFieldsOf } from "@sincpro/web-framework/core/summary";
 import { useFramework } from "@sincpro/web-framework/react/context";
@@ -269,6 +273,12 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
 
   // Opened by `api.pick` (`entity.chooserRef()`): a row ANSWERS whoever asked, it does not open.
   const choosing = api?.self.params?.[PICK_PARAM] !== undefined;
+  // Asked for SEVERAL (`CHOOSE_MANY`, a many2many's «Buscar más…»): a row press ticks it, and
+  // «Agregar (N)» answers what was chosen — the keys, or every record the list matches.
+  const choosingMany = choosing && choosesMany(api?.choosing?.question);
+  const own = useSelection(listing);
+  const chosen = held ?? own;
+  const ticking = selectable || choosingMany;
   // The record opened from a row knows the page it came from: «3 / 64» and its neighbours.
   const { trails, dateStyle } = useFramework();
   const trailKey = `trail:${useId()}`;
@@ -314,9 +324,11 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
     onOpen ??
     (api === undefined
       ? undefined
-      : choosing
-        ? (row: T) => api.answer(listing.entity.ref(idOf(row)))
-        : openWithTrail);
+      : choosingMany
+        ? (row: T) => chosen.toggle(idOf(row))
+        : choosing
+          ? (row: T) => api.answer(listing.entity.ref(idOf(row)))
+          : openWithTrail);
   const creating =
     create &&
     api !== undefined &&
@@ -390,8 +402,6 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   usePhone(api ?? NO_WORKSPACE); // where a row opens follows the mode (`targetsFor`)
   const trail = crumbs ?? (embedded || api === undefined ? undefined : following);
 
-  const own = useSelection(listing);
-  const chosen = held ?? own;
   // The workspace hears what is chosen: the keys, or — «all that match» — the ones on screen.
   const published = (
     chosen.selection.by === "keys"
@@ -400,15 +410,24 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   ).join("\u0000");
   const heard = useRef(published);
   useEffect(() => {
-    if (!selectable || heard.current === published) return;
+    if (!ticking || heard.current === published) return;
     heard.current = published;
     api?.select(
       published === "" ? [] : published.split("\u0000").map((id) => listing.entity.ref(id)),
     );
-  }, [api, selectable, published, listing.entity]);
+  }, [api, ticking, published, listing.entity]);
   // «Elegir los 187 que coinciden» only past the page, and only with the server's exact count.
   const total = listing.count?.exact === true ? listing.count.value : null;
-  const selection = selectable
+  const onChosen = choosingMany ? (
+    <Button role="primary" size="sm" onClick={() => api?.answer(chosen.selection)}>
+      {frameworkCopy().picker.addChosen(chosen.size)}
+    </Button>
+  ) : typeof selectionActions === "function" ? (
+    selectionActions(chosen)
+  ) : (
+    selectionActions
+  );
+  const selection = ticking
     ? {
         has: chosen.isChosen,
         toggle: chosen.toggle,
@@ -417,14 +436,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
         ...(total !== null && total > listing.rows.length
           ? { matching: { total, onSelect: chosen.chooseAllMatching } }
           : {}),
-        ...(selectionActions === undefined
-          ? {}
-          : {
-              actions:
-                typeof selectionActions === "function"
-                  ? selectionActions(chosen)
-                  : selectionActions,
-            }),
+        ...(onChosen === undefined ? {} : { actions: onChosen }),
       }
     : undefined;
 

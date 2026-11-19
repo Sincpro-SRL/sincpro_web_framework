@@ -1,6 +1,6 @@
 "use client";
 
-import { type Entity, type ResourceRef } from "@sincpro/client-framework";
+import { type Entity, type ResourceRef, type Selection } from "@sincpro/client-framework";
 import { type AnyRecord, type Criteria, type Expression, merge } from "@sincpro/criteria";
 import { isList, type ListDefinition, scopeOf } from "@sincpro/web-framework/core/list";
 import type { OpenTarget } from "@sincpro/web-ui";
@@ -35,6 +35,14 @@ export type RecordOpening = {
   choose?: (
     entity: Entity,
     answer: (id: string) => void,
+    query: string,
+    scope?: Expression,
+  ) => void;
+  /** «Buscar más…» for several — a many2many: the same list opened to choose MANY, answering a
+   *  `Selection` (what was ticked, or every record it matches). Without it, `choose` adds one. */
+  chooseMany?: (
+    entity: Entity,
+    answer: (selection: Selection) => void,
     query: string,
     scope?: Expression,
   ) => void;

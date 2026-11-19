@@ -1961,3 +1961,23 @@ client-framework now has the value and the run (Sincpro-SRL/sincpro_client_frame
 
 Story 64. Not here: a batch the server runs in one request, «everything matching» sent as a
 criteria (#32, after Sincpro-SRL/sincpro_framework#185); choosing many into a relation (#61).
+
+## Choosing many into a relation (2026-11-19, #61, part 1)
+
+A many2many was filled one record at a time: «Buscar más…» opened the entity's list and a row
+press answered ONE record. The composer's chooser answers any value, and web-ui's list chooses
+several (`onChoose` + `selection`); the framework never asked for more than one.
+
+- **`CHOOSE_MANY`** (core): the question a chooser of several is opened with (composer's `pick`),
+  read back by `choosesMany`. **`RecordOpening.chooseMany`** opens it and answers a `Selection`;
+  `entityView` fills it with the workspace's `pick`.
+- **`EntityList`** opened with it ticks a row on a press instead of answering, offers «Elegir los
+  N que coinciden» as any selectable list does, and «Agregar (N)» answers what was chosen.
+- **`EntityTags`** uses it for «Buscar más…» when the workspace offers it: the keys chosen —
+  ticked, or every record the search matches, read once (`keysOf`) — are added after the chips on
+  screen, each once, at most `BATCH_LIMIT`; past it nothing is added and a toast says why. A
+  workspace without it adds the one answered, as before.
+
+Story 65 (a mail's recipients: two ticked, then all 71 «Mamani»); story 39 follows it (a tick
+and «Agregar (1)»). Left for part 2: «Agregar varios» on a lines editor — one new line per record
+chosen for a line's many2one.

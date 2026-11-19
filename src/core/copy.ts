@@ -78,6 +78,8 @@ export type FrameworkCopy = {
     browse: string;
     /** The choice of nothing, when a field may be left empty (`EntityPicker none`). */
     none: string;
+    /** A chooser of several: what puts the chosen on the field that asked — «Agregar (3)». */
+    addChosen: (count: number | null) => string;
   };
   summary: {
     /** The facts of a record's summary: when it was made and last changed. */
@@ -178,6 +180,7 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
   picker: {
     browse: "Search all",
     none: "None",
+    addChosen: (count) => (count === null ? "Add them" : `Add (${count})`),
   },
   summary: {
     created: "Created",
@@ -290,6 +293,7 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
   picker: {
     browse: "Buscar en todos",
     none: "Ninguno",
+    addChosen: (count) => (count === null ? "Agregarlos" : `Agregar (${count})`),
   },
   summary: {
     created: "Creado",

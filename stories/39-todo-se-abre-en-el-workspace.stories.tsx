@@ -151,10 +151,12 @@ export const LasEtiquetasBuscanEnElWorkspace: Story = {
     await userEvent.click(canvas.getByRole("combobox", { name: /Seguidores/ }));
     await userEvent.click(await page.findByRole("option", { name: /^Buscar más…/ }));
     const modal = await modalDelWorkspace(canvasElement, /Personas/);
-    // The people already on are not offered again; the one clicked is added to them.
+    // The people already on are not offered again; the one ticked is added to them — a
+    // many2many's chooser chooses several (story 65), and «Agregar» answers.
     await expect(await within(modal).findByText("Luis Pérez 2")).toBeVisible();
     await expect(within(modal).queryByText("Ana Rojas 1")).toBeNull();
     await userEvent.click(within(modal).getByText("Luis Pérez 2"));
+    await userEvent.click(await within(modal).findByRole("button", { name: "Agregar (1)" }));
     await waitFor(() =>
       expect(canvas.getByLabelText("Seguidores elegidos")).toHaveTextContent("U-0001 U-0002"),
     );

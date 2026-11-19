@@ -17,6 +17,24 @@ import {
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 
 /**
+ * What a chooser of SEVERAL is asked (composer's `pick` `question`): the entity's list opened to
+ * choose many answers a `Selection` — what was ticked, or every record its question matches —
+ * instead of the one record a row press answers.
+ *
+ *     api.pick<Selection>(entity.chooserRef(query, scope), add, { question: CHOOSE_MANY })
+ */
+export const CHOOSE_MANY = Object.freeze({ many: true as const });
+
+/** Whether a chooser was asked for several (`CHOOSE_MANY`). */
+export function choosesMany(question: unknown): boolean {
+  return (
+    typeof question === "object" &&
+    question !== null &&
+    (question as { many?: unknown }).many === true
+  );
+}
+
+/**
  * A named way of looking at an entity: «Por cobrar», «Borradores», «Mis tickets».
  *
  * Context: an ERP rarely shows ONE list of invoices. It shows the invoices to collect, the
