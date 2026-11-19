@@ -14,6 +14,11 @@ export {
   useListScope,
 } from "@sincpro/web-framework/react/scope";
 export {
+  BATCH_LIMIT,
+  type BatchCommandState,
+  useBatchCommand,
+} from "@sincpro/web-framework/react/useBatchCommand";
+export {
   type AnswerOf,
   type CommandState,
   type Rehearsal,
@@ -49,6 +54,7 @@ export {
   useRecordLifecycle,
 } from "@sincpro/web-framework/react/useRecordLifecycle";
 export { useRelated } from "@sincpro/web-framework/react/useRelated";
+export { type ListSelection, useSelection } from "@sincpro/web-framework/react/useSelection";
 export { type ServiceState, useService } from "@sincpro/web-framework/react/useService";
 export {
   type ServiceReading,

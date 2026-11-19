@@ -12,6 +12,7 @@ export {
   cachedTransport,
   type CacheOptions,
 } from "@sincpro/web-framework/core/cache";
+export { sendRoute } from "@sincpro/web-framework/core/command";
 export {
   ENGLISH_FRAMEWORK_COPY,
   type FrameworkCopy,
@@ -66,6 +67,8 @@ export {
   writtenInCell,
 } from "@sincpro/web-framework/core/lines";
 export {
+  CHOOSE_MANY,
+  choosesMany,
   defineList,
   type GroupLevel,
   isList,

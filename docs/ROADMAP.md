@@ -1934,3 +1934,80 @@ function (`searchRecords`). What was ours:
   `like`. With sincpro_framework every foreign key is a text that does; the framework hands it
   without, but a screen that hands web-ui a model of its own meets the same trap. Worth a line in
   web-ui's README (or a `relationKind: "key" | "name"` on the field).
+
+## Acting on many records (2026-11-19, #60)
+
+What is chosen in a list was the list's own: the page's keys in its state, reachable by nothing
+outside it, and «Elegir los 187 que coinciden» drawable by web-ui but held by nobody. Each bulk
+gesture — quipu paying several months, «Confirmar» on the invoices ticked — was written by hand.
+client-framework now has the value and the run (Sincpro-SRL/sincpro_client_framework#60:
+`Selection`, `keysOf`, `runBatch`, `BatchResult`); this is where a screen holds and draws them:
+
+- **`useSelection(listing)`** holds a `Selection` for a list — ticks, «all that match» with the
+  server's exact count, clear — and forgets it when the list's question changes (another filter is
+  another set). **`EntityList selection`** takes it from the screen (its own otherwise); «Elegir
+  los N que coinciden» is offered past the page, with an exact count. `selectionActions` may be
+  `(selection) => node`. The workspace still hears what is chosen (`api.select`).
+- **`useBatchCommand(entity, name)`** runs a Command once per chosen record — `for rec in self` —
+  through the screens' transport, each record its own use case with its own idempotency key, kept
+  while unanswered (so «Reintentar» never runs twice what the server did). Keys come from the
+  selection (`keysOf`, at most `BATCH_LIMIT` = 200 by default — past it, nothing runs and it says
+  so). One at a time by default. `retry` runs again what failed or never ran; `stop` starts
+  nothing more.
+- **`BatchProgress`** draws it: the bar while it runs, then «2 hechos · 1 falló» with each failure
+  named by its record and the server's reason, and «Reintentar los que fallaron».
+- **`sendRoute`** (core): a write route sent as a Command for one record — what `useCommand` and
+  `useBatchCommand` both send now (it was inline in `useRouteCommand`).
+
+Story 64. Not here: a batch the server runs in one request, «everything matching» sent as a
+criteria (#32, after Sincpro-SRL/sincpro_framework#185); choosing many into a relation (#61).
+
+## Choosing many into a relation (2026-11-19, #61, part 1)
+
+A many2many was filled one record at a time: «Buscar más…» opened the entity's list and a row
+press answered ONE record. The composer's chooser answers any value, and web-ui's list chooses
+several (`onChoose` + `selection`); the framework never asked for more than one.
+
+- **`CHOOSE_MANY`** (core): the question a chooser of several is opened with (composer's `pick`),
+  read back by `choosesMany`. **`RecordOpening.chooseMany`** opens it and answers a `Selection`;
+  `entityView` fills it with the workspace's `pick`.
+- **`EntityList`** opened with it ticks a row on a press instead of answering, offers «Elegir los
+  N que coinciden» as any selectable list does, and «Agregar (N)» answers what was chosen.
+- **`EntityTags`** uses it for «Buscar más…» when the workspace offers it: the keys chosen —
+  ticked, or every record the search matches, read once (`keysOf`) — are added after the chips on
+  screen, each once, at most `BATCH_LIMIT`; past it nothing is added and a toast says why. A
+  workspace without it adds the one answered, as before.
+
+Story 65 (a mail's recipients: two ticked, then all 71 «Mamani»); story 39 follows it (a tick
+and «Agregar (1)»). Left for part 2: «Agregar varios» on a lines editor — one new line per record
+chosen for a line's many2one.
+
+## «Buscar más…» in the bar, paths in the builder (2026-11-19, #64, web-ui 2.8)
+
+web-ui 2.8 (Sincpro-SRL/sincpro_web_ui#55) offers «Buscar más…» under a relation's records in the
+bar and the builder (`browseRecords`), and walks paths in the builder — «Cliente › País (el
+registro)» — through `loadModel`. Its PR names what is ours:
+
+- **`recordsBrowser`** (web/list/records): the relation's entity opened to choose — several
+  (`RecordOpening.chooseMany`, #61) when the place takes several, one otherwise —, on what was
+  typed, without what is already chosen (`not in`), the keys answered named (`NameBook`).
+  `entityView` gives it to every view (`RecordsBrowserProvider`); `EntitySearchBar` hands it to
+  the BAR only (`useRecordsBrowser`). Not to the builder: it is a web-ui `Dialog`, and React Aria
+  makes everything outside a modal dialog inert — a workspace chooser opened from it could not be
+  used. The builder browses once it is a workspace view (web-ui's Invoices template).
+- **`modelLoader` / `useLoadModel`**: the model at the end of a path of relations — the
+  relation's own definition, else its entity's (known, or read once) — as web-ui reads it; a path
+  that leads nowhere is refused. `EntitySearchBar` hands it to the builder.
+- **`refusalNotice`**: what a person is told when choosing failed — too many, in the framework's
+  words; anything else as the server explained it —, one toast shared by `EntityTags` and the
+  bar's browser. **`Chooser<A>`** is the one type of a chooser — `RecordOpening.choose` /
+  `chooseMany` use it.
+
+Story 66; `tests/records.test.ts` (a path walked through a definition and through an entity, a
+browse of several and of one).
+
+### Found on the way
+
+- **The builder in a `Dialog`** cannot open anything of the workspace above it. A builder as a
+  workspace view (as web-ui's template does) would browse too, and hold its own place in the
+  breadcrumbs — a piece for #30/#31's round.

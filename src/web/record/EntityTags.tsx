@@ -1,14 +1,16 @@
 "use client";
 
-import { type Entity } from "@sincpro/client-framework";
+import { type Entity, keysOf, listRoute, type Selection } from "@sincpro/client-framework";
 import type { AnyRecord, Criteria } from "@sincpro/criteria";
 import { isList, type ListDefinition } from "@sincpro/web-framework/core/list";
 import type { LookupOption } from "@sincpro/web-framework/core/lookup";
 import { useFramework } from "@sincpro/web-framework/react/context";
+import { BATCH_LIMIT } from "@sincpro/web-framework/react/useBatchCommand";
 import { excluding, useLookup } from "@sincpro/web-framework/react/useLookup";
 import { presentationOf } from "@sincpro/web-framework/web/list/presentation";
+import { refusalNotice } from "@sincpro/web-framework/web/list/records";
 import { chooserScopeOf, useRecordOpening } from "@sincpro/web-framework/web/record/opening";
-import { type OpenTarget, type TagOption, TagsField } from "@sincpro/web-ui";
+import { type OpenTarget, type TagOption, TagsField, useToastIfAny } from "@sincpro/web-ui";
 import { useRef } from "react";
 
 /**
@@ -24,8 +26,11 @@ import { useRef } from "react";
  *
  * Inside a workspace, opening a chip and «Buscar más…» are the workspace's (`RecordOpening`),
  * as for a many2one: a chip opens where the workspace puts it, and «Buscar más…» is the
- * entity's list opened to choose, offering neither what `criteria` leaves out nor the chips
- * already on — the record answered there is added. `onOpen` / `onBrowseAll` replace either.
+ * entity's list opened to choose SEVERAL (`chooseMany`), offering neither what `criteria` leaves
+ * out nor the chips already on — what was ticked there, or every record it matches («Elegir los
+ * 37 que coinciden»), is added, at most `BATCH_LIMIT` at once (past it nothing is added and a
+ * notice says why). A workspace that cannot choose several adds the one answered (`choose`).
+ * `onOpen` / `onBrowseAll` replace either.
  * Without a workspace a chip is a value.
  *
  *     <EntityTags entity={people} value={followers} onChange={setFollowers} />
@@ -58,8 +63,9 @@ export function EntityTags<T extends AnyRecord>({
   disabled?: boolean;
   "aria-label"?: string;
 }) {
-  const { metas } = useFramework();
+  const { metas, transport } = useFramework();
   const opening = useRecordOpening();
+  const toast = useToastIfAny();
   const base = isList(entity) ? entity.entity : entity;
   // «Buscar más…» answers after the chooser closes: it adds to the chips on screen THEN.
   const now = useRef(value);
@@ -69,20 +75,30 @@ export function EntityTags<T extends AnyRecord>({
     (opening === null
       ? undefined
       : (id: string, to: OpenTarget) => opening.open(base.ref(id), to));
-  const choose = opening?.choose;
+  /** Added after the chips on screen THEN, each once, in the order they came. */
+  const add = (keys: readonly string[]) => {
+    const fresh = keys.filter((key) => !now.current.includes(key));
+    if (fresh.length > 0) onChange([...now.current, ...fresh]);
+  };
+  /** The keys of what a chooser of several answered — in hand, or read once with a ceiling. */
+  const addChosen = (selection: Selection) => {
+    const meta = metas.get(base.key);
+    keysOf(selection, {
+      transport,
+      route: listRoute(base.list),
+      identity: meta?.get_id || meta?.identity || "id",
+      limit: BATCH_LIMIT,
+    }).then(add, (failure: unknown) => toast?.show(refusalNotice(failure)));
+  };
+  const scope = () => chooserScopeOf(entity, excluding(criteria, value, metas.get(base.key)));
+  const { choose, chooseMany } = opening ?? {};
   const browseAll =
     onBrowseAll ??
-    (choose === undefined
-      ? undefined
-      : (query: string) =>
-          choose(
-            base,
-            (id) => {
-              if (!now.current.includes(id)) onChange([...now.current, id]);
-            },
-            query,
-            chooserScopeOf(entity, excluding(criteria, value, metas.get(base.key))),
-          ));
+    (chooseMany !== undefined
+      ? (query: string) => chooseMany(base, addChosen, query, scope())
+      : choose === undefined
+        ? undefined
+        : (query: string) => choose(base, (id) => add([id]), query, scope()));
   const lookup = useLookup(entity, {
     ...(criteria === undefined ? {} : { criteria }),
     values: value,

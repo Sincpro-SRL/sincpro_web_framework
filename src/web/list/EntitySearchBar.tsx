@@ -6,7 +6,11 @@ import type { GroupLevel, NamedFilter } from "@sincpro/web-framework/core/list";
 import type { Groups } from "@sincpro/web-framework/react/useGroups";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
 import { groupableOf } from "@sincpro/web-framework/web/list/groups";
-import { useSearchRecords } from "@sincpro/web-framework/web/list/records";
+import {
+  useLoadModel,
+  useRecordsBrowser,
+  useSearchRecords,
+} from "@sincpro/web-framework/web/list/records";
 import { facetsOf, modelOf } from "@sincpro/web-framework/web/list/search";
 import {
   type BuiltFilter,
@@ -44,6 +48,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
  *     —, chosen by key and read by name («Cliente: Andrés Pérez»), and an enum into its words
  *     («Estado: Pagada», sent as `paid`): the related entity's literal search
  *     (`useSearchRecords`), unless the application put its own in a web-ui `SearchProvider`;
+ *     inside a workspace, «Buscar más…» under them opens the entity's list to choose
+ *     (`useRecordsBrowser`) — the bar's, never the builder's: the builder is a modal dialog, and
+ *     what opens outside one cannot be used;
+ *   - the builder walks relations — «Cliente › País» — through the models along the path
+ *     (`useLoadModel`), and picks the related records themselves;
  *   - a named filter is one click; the builder writes what nobody foresaw (all/any/not);
  *   - everything put becomes ONE `selection` the SERVER answers (`listing.filter`) — web-ui
  *     writes it in criteria's own shape, a filter through a relation included;
@@ -109,6 +118,8 @@ export function EntitySearchBar<T extends AnyRecord>({
   // The application's own search of records wins; the framework's is the default.
   const framework = useSearchRecords();
   const searchRecords = useSearchSettings().searchRecords ?? framework;
+  const browseRecords = useRecordsBrowser();
+  const loadModel = useLoadModel(meta);
   const seeded = useRef(false);
   useEffect(() => {
     if (seeded.current || seed === undefined || seed === "" || meta?.search == null) return;
@@ -144,6 +155,7 @@ export function EntitySearchBar<T extends AnyRecord>({
         onCriteriaChange={place}
         placeholder={copy.searchBar}
         searchRecords={searchRecords}
+        {...(browseRecords === null ? {} : { browseRecords })}
         {...(filters.length === 0
           ? {}
           : {
@@ -184,6 +196,7 @@ export function EntitySearchBar<T extends AnyRecord>({
           <CriteriaBuilder
             model={model}
             searchRecords={searchRecords}
+            {...(loadModel === undefined ? {} : { loadModel })}
             // What is on: the filter AND the order, by as many fields as were asked — the
             // builder writes `order: [...]` and it goes to the server whole.
             {...(current === undefined && listing.order.length === 0

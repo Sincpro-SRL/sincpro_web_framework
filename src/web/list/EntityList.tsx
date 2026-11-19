@@ -10,13 +10,18 @@ import { type AnyRecord, type Criteria, nameOf } from "@sincpro/criteria";
 import { RecordLink, useCrumbs, usePhone, type WorkspaceApi } from "@sincpro/web-composer";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { explain } from "@sincpro/web-framework/core/explain";
-import type { GroupLevel, NamedFilter } from "@sincpro/web-framework/core/list";
+import {
+  choosesMany,
+  type GroupLevel,
+  type NamedFilter,
+} from "@sincpro/web-framework/core/list";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
 import { summaryFieldsOf } from "@sincpro/web-framework/core/summary";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useGroups } from "@sincpro/web-framework/react/useGroups";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
 import { usePivot } from "@sincpro/web-framework/react/usePivot";
+import { type ListSelection, useSelection } from "@sincpro/web-framework/react/useSelection";
 import { columnsOf } from "@sincpro/web-framework/web/list/columns";
 import { EntitySearchBar } from "@sincpro/web-framework/web/list/EntitySearchBar";
 import { pilesOf } from "@sincpro/web-framework/web/list/groups";
@@ -151,12 +156,17 @@ export type EntityListProps<T extends AnyRecord, C extends CommandBodies = Comma
    *  Without it, the list definition's, else every one the model does. */
   groupable?: readonly string[];
   /**
-   * Rows can be ticked. With `api`, what is ticked is PUBLISHED to the workspace
-   * (`api.select`): a panel beside it follows the selection without knowing this list.
+   * Rows can be ticked — and, past the page, «Elegir los 187 que coinciden». With `api`, what is
+   * chosen is PUBLISHED to the workspace (`api.select`): a panel beside it follows the selection
+   * without knowing this list.
    */
   selectable?: boolean;
-  /** What to do with what is ticked: drawn in the bar while something is. */
-  selectionActions?: ReactNode;
+  /** The selection, held by the screen (`useSelection(listing)`): read and set from outside the
+   *  list. Without it the list holds its own. */
+  selection?: ListSelection<T>;
+  /** What to do with what is chosen, drawn in the bar while something is — handed the selection
+   *  to act on it (`useBatchCommand`). */
+  selectionActions?: ReactNode | ((selection: ListSelection<T>) => ReactNode);
   /** The list is a FIELD of a record — its lines, its members — and not a screen. */
   embedded?: boolean;
   /**
@@ -221,6 +231,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   facets: askedFacets,
   groupable: askedGroupable,
   selectable = false,
+  selection: held,
   selectionActions,
   embedded = false,
   create = true,
@@ -262,6 +273,12 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
 
   // Opened by `api.pick` (`entity.chooserRef()`): a row ANSWERS whoever asked, it does not open.
   const choosing = api?.self.params?.[PICK_PARAM] !== undefined;
+  // Asked for SEVERAL (`CHOOSE_MANY`, a many2many's «Buscar más…»): a row press ticks it, and
+  // «Agregar (N)» answers what was chosen — the keys, or every record the list matches.
+  const choosingMany = choosing && choosesMany(api?.choosing?.question);
+  const own = useSelection(listing);
+  const chosen = held ?? own;
+  const ticking = selectable || choosingMany;
   // The record opened from a row knows the page it came from: «3 / 64» and its neighbours.
   const { trails, dateStyle } = useFramework();
   const trailKey = `trail:${useId()}`;
@@ -307,9 +324,11 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
     onOpen ??
     (api === undefined
       ? undefined
-      : choosing
-        ? (row: T) => api.answer(listing.entity.ref(idOf(row)))
-        : openWithTrail);
+      : choosingMany
+        ? (row: T) => chosen.toggle(idOf(row))
+        : choosing
+          ? (row: T) => api.answer(listing.entity.ref(idOf(row)))
+          : openWithTrail);
   const creating =
     create &&
     api !== undefined &&
@@ -383,23 +402,41 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   usePhone(api ?? NO_WORKSPACE); // where a row opens follows the mode (`targetsFor`)
   const trail = crumbs ?? (embedded || api === undefined ? undefined : following);
 
-  const [ticked, setTicked] = useState<ReadonlySet<string>>(() => new Set());
-  const tick = (next: ReadonlySet<string>) => {
-    setTicked(next);
-    api?.select([...next].map((id) => listing.entity.ref(id)));
-  };
-  const selection = selectable
+  // The workspace hears what is chosen: the keys, or — «all that match» — the ones on screen.
+  const published = (
+    chosen.selection.by === "keys"
+      ? chosen.selection.keys
+      : listing.rows.map((row) => idOf(row)).filter((id) => chosen.isChosen(id))
+  ).join("\u0000");
+  const heard = useRef(published);
+  useEffect(() => {
+    if (!ticking || heard.current === published) return;
+    heard.current = published;
+    api?.select(
+      published === "" ? [] : published.split("\u0000").map((id) => listing.entity.ref(id)),
+    );
+  }, [api, ticking, published, listing.entity]);
+  // «Elegir los 187 que coinciden» only past the page, and only with the server's exact count.
+  const total = listing.count?.exact === true ? listing.count.value : null;
+  const onChosen = choosingMany ? (
+    <Button role="primary" size="sm" onClick={() => api?.answer(chosen.selection)}>
+      {frameworkCopy().picker.addChosen(chosen.size)}
+    </Button>
+  ) : typeof selectionActions === "function" ? (
+    selectionActions(chosen)
+  ) : (
+    selectionActions
+  );
+  const selection = ticking
     ? {
-        has: (id: string) => ticked.has(id),
-        toggle: (id: string) => {
-          const next = new Set(ticked);
-          if (next.has(id)) next.delete(id);
-          else next.add(id);
-          tick(next);
-        },
-        count: ticked.size,
-        clear: () => tick(new Set()),
-        ...(selectionActions === undefined ? {} : { actions: selectionActions }),
+        has: chosen.isChosen,
+        toggle: chosen.toggle,
+        count: chosen.size ?? 0,
+        clear: chosen.clear,
+        ...(total !== null && total > listing.rows.length
+          ? { matching: { total, onSelect: chosen.chooseAllMatching } }
+          : {}),
+        ...(onChosen === undefined ? {} : { actions: onChosen }),
       }
     : undefined;
 
