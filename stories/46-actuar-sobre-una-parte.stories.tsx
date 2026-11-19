@@ -90,3 +90,61 @@ export const CadaParteSeQuitaDesdeSuFila: Story = {
     await expect(canvas.getByText("Acme Bolivia")).toBeVisible();
   },
 };
+
+/** Several parts at once: the screen says what is done to the chosen ones (`selectionActions`). */
+function SharesChosen() {
+  const [project, setProject] = useState({
+    id: "p1",
+    shares: [
+      { tenant_id: "acme", name: "Acme Bolivia" },
+      { tenant_id: "globex", name: "Globex" },
+      { tenant_id: "initech", name: "Initech" },
+    ],
+  });
+  const [said, setSaid] = useState("");
+  return (
+    <div className="flex max-w-xl flex-col gap-3 p-6">
+      <RecordLines
+        record={project}
+        meta={projectMeta}
+        name="shares"
+        locale="es"
+        selectionActions={(chosen, clear) => [
+          {
+            id: "unshare",
+            label: `Quitar ${chosen.length}`,
+            icon: X,
+            onSelect: () => {
+              const gone = new Set(chosen.map((one) => one["tenant_id"]));
+              setProject((now) => ({
+                ...now,
+                shares: now.shares.filter((one) => !gone.has(one.tenant_id)),
+              }));
+              setSaid(`quitados: ${[...gone].join(", ")}`);
+              clear();
+            },
+          },
+        ]}
+      />
+      <p className="text-meta text-muted">{said}</p>
+    </div>
+  );
+}
+
+export const VariasPartesALaVez: Story = {
+  render: () => <SharesChosen />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("Globex");
+    const tick = (name: string) =>
+      within(canvas.getByText(name).closest("tr")!).getByRole("checkbox");
+    await userEvent.click(tick("Globex"));
+    await userEvent.click(tick("Initech"));
+    await userEvent.click(await canvas.findByRole("button", { name: /Quitar 2/ }));
+    await expect(await canvas.findByText("quitados: globex, initech")).toBeVisible();
+    await waitFor(() => expect(canvas.queryByText("Initech")).toBeNull());
+    await expect(canvas.getByText("Acme Bolivia")).toBeVisible();
+    // The choice went with the parts: nothing is chosen any more.
+    await expect(canvas.queryByRole("button", { name: /Quitar \d/ })).toBeNull();
+  },
+};
