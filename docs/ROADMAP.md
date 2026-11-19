@@ -1981,3 +1981,33 @@ several (`onChoose` + `selection`); the framework never asked for more than one.
 Story 65 (a mail's recipients: two ticked, then all 71 «Mamani»); story 39 follows it (a tick
 and «Agregar (1)»). Left for part 2: «Agregar varios» on a lines editor — one new line per record
 chosen for a line's many2one.
+
+## «Buscar más…» in the bar, paths in the builder (2026-11-19, #64, web-ui 2.8)
+
+web-ui 2.8 (Sincpro-SRL/sincpro_web_ui#55) offers «Buscar más…» under a relation's records in the
+bar and the builder (`browseRecords`), and walks paths in the builder — «Cliente › País (el
+registro)» — through `loadModel`. Its PR names what is ours:
+
+- **`recordsBrowser`** (web/list/records): the relation's entity opened to choose — several
+  (`RecordOpening.chooseMany`, #61) when the place takes several, one otherwise —, on what was
+  typed, without what is already chosen (`not in`), the keys answered named (`NameBook`).
+  `entityView` gives it to every view (`RecordsBrowserProvider`); `EntitySearchBar` hands it to
+  the BAR only (`useRecordsBrowser`). Not to the builder: it is a web-ui `Dialog`, and React Aria
+  makes everything outside a modal dialog inert — a workspace chooser opened from it could not be
+  used. The builder browses once it is a workspace view (web-ui's Invoices template).
+- **`modelLoader` / `useLoadModel`**: the model at the end of a path of relations — the
+  relation's own definition, else its entity's (known, or read once) — as web-ui reads it; a path
+  that leads nowhere is refused. `EntitySearchBar` hands it to the builder.
+- **`refusalNotice`**: what a person is told when choosing failed — too many, in the framework's
+  words; anything else as the server explained it —, one toast shared by `EntityTags` and the
+  bar's browser. **`Chooser<A>`** is the one type of a chooser — `RecordOpening.choose` /
+  `chooseMany` use it.
+
+Story 66; `tests/records.test.ts` (a path walked through a definition and through an entity, a
+browse of several and of one).
+
+### Found on the way
+
+- **The builder in a `Dialog`** cannot open anything of the workspace above it. A builder as a
+  workspace view (as web-ui's template does) would browse too, and hold its own place in the
+  breadcrumbs — a piece for #30/#31's round.

@@ -163,6 +163,10 @@ built; this file is how to keep it.
 - **The cuts panel opens in the overlay layer** (web-ui 2.2: filters, grouping, favourites, and
   since 2.7 the builder's door, a button named «Búsqueda avanzada…»): a play finds its controls
   in the page (`within(document.body)`), never in the story's canvas.
+- **Nothing of the workspace opens from inside a web-ui `Dialog`.** React Aria makes everything
+  outside a modal dialog inert (`ariaHideOutside`, a focus scope), so a composer modal opened from
+  it — a chooser, «Buscar más…» — cannot be used. That is why `EntitySearchBar` hands the
+  workspace's browser to the bar and not to the builder (story 66).
 - **A to-one relation's key column is handed to web-ui's bar without «like»** (`modelOf`).
   sincpro_framework's `identified_by` is the foreign key, a text that takes `like`; web-ui 2.7
   reads a relation whose column takes `like` as one that NAMES the record and compares the typed

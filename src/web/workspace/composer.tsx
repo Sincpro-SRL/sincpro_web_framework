@@ -21,16 +21,24 @@ import {
   type WorkspaceApi,
 } from "@sincpro/web-composer";
 import { CHOOSE_MANY, type ListDefinition } from "@sincpro/web-framework/core/list";
+import { useFramework } from "@sincpro/web-framework/react/context";
 import { ListScopeProvider } from "@sincpro/web-framework/react/scope";
 import { useListing } from "@sincpro/web-framework/react/useListing";
 import { EntityList } from "@sincpro/web-framework/web/list/EntityList";
-import { findChoices } from "@sincpro/web-framework/web/list/records";
+import {
+  findChoices,
+  recordsBrowser,
+  RecordsBrowserProvider,
+  refusalNotice,
+  useSearchRecords,
+} from "@sincpro/web-framework/web/list/records";
 import {
   type RecordOpening,
   RecordOpeningProvider,
 } from "@sincpro/web-framework/web/record/opening";
 import { openIn, RECORD_SIZE, targetsFor } from "@sincpro/web-framework/web/workspace/open";
 import { EntityRecord } from "@sincpro/web-framework/web/workspace/record";
+import { useToastIfAny } from "@sincpro/web-ui";
 import { type ComponentType, type ReactNode, useMemo } from "react";
 
 /**
@@ -127,7 +135,22 @@ function InWorkspace({ api, children }: { api: WorkspaceApi; children: ReactNode
         api.pick(entity.newRef(values), () => created(), answering),
     };
   }, [api, targets]);
-  return <RecordOpeningProvider value={opening}>{children}</RecordOpeningProvider>;
+  // «Buscar más…» in the view's search bars: the same choosers, named by the framework's book.
+  const { transport, metas, names, entities } = useFramework();
+  const named = useSearchRecords();
+  const toast = useToastIfAny();
+  const browser = useMemo(
+    () =>
+      recordsBrowser({ transport, metas, names, entities }, opening, named, (failure) =>
+        toast?.show(refusalNotice(failure)),
+      ),
+    [transport, metas, names, entities, opening, named, toast],
+  );
+  return (
+    <RecordOpeningProvider value={opening}>
+      <RecordsBrowserProvider value={browser}>{children}</RecordsBrowserProvider>
+    </RecordOpeningProvider>
+  );
 }
 
 /** The entity's list when the application writes none: opened under a named cut, it says

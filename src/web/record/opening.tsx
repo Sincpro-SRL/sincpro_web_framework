@@ -3,6 +3,7 @@
 import { type Entity, type ResourceRef, type Selection } from "@sincpro/client-framework";
 import { type AnyRecord, type Criteria, type Expression, merge } from "@sincpro/criteria";
 import { isList, type ListDefinition, scopeOf } from "@sincpro/web-framework/core/list";
+import type { Chooser } from "@sincpro/web-framework/web/list/records";
 import type { OpenTarget } from "@sincpro/web-ui";
 import { createContext, type ReactNode, useContext } from "react";
 
@@ -32,20 +33,10 @@ export type RecordOpening = {
   /** «Buscar más…»: the entity's own list opened to choose (in composer, a modal that answers),
    *  on what was typed, offering only what `scope` lets the picker choose (`chooserScopeOf`).
    *  Without it the picker brings its own chooser. */
-  choose?: (
-    entity: Entity,
-    answer: (id: string) => void,
-    query: string,
-    scope?: Expression,
-  ) => void;
+  choose?: Chooser<string>;
   /** «Buscar más…» for several — a many2many: the same list opened to choose MANY, answering a
    *  `Selection` (what was ticked, or every record it matches). Without it, `choose` adds one. */
-  chooseMany?: (
-    entity: Entity,
-    answer: (selection: Selection) => void,
-    query: string,
-    scope?: Expression,
-  ) => void;
+  chooseMany?: Chooser<Selection>;
   /** «Agregar» on a one2many: the form of a new record of `entity`, starting with `values`
    *  (the key that points back here), opened where it answers; `created` once it exists.
    *  Without it a record's one2many only reads. */

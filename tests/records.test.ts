@@ -1,13 +1,32 @@
 import assert from "node:assert/strict";
 
-import { memoryTransport, metaStore } from "@sincpro/client-framework";
+import { chosen, memoryTransport, metaStore } from "@sincpro/client-framework";
 import type { Criteria } from "@sincpro/criteria";
-import { modelOf, recordsSearch } from "@sincpro/web-framework";
+import { modelLoader, modelOf, recordsBrowser, recordsSearch } from "@sincpro/web-framework";
 import { nameBook } from "@sincpro/web-framework/core/names";
 import { test } from "vitest";
 
 import { servidorVentas } from "../stories/support/servidor";
 import { clienteMeta, clientes, facturaMeta, facturas } from "../stories/support/ventas";
+
+const waitUntil = async (done: () => boolean) => {
+  for (let tries = 0; tries < 50 && !done(); tries++)
+    await new Promise((ok) => setTimeout(ok, 5));
+  assert.ok(done(), "never happened");
+};
+
+/** The framework's reads over the sales server, and its search of a relation's records. */
+function searchWith() {
+  const servidor = servidorVentas();
+  const transport = memoryTransport(servidor.tables, { handle: servidor.handle });
+  const framework = {
+    transport,
+    metas: metaStore(),
+    names: nameBook(transport, metaStore(), [clientes]),
+    entities: [facturas, clientes],
+  };
+  return { framework, searchRecords: recordsSearch(framework, "es") };
+}
 
 /** The framework's search of a relation's records over the sales server, its pages counted. */
 function search() {
@@ -102,4 +121,77 @@ test("the search model says an enum's words and a to-many relation's key", () =>
   );
   // Without a definition web-ui compares them by `id`, its default.
   assert.equal(modelOf(clienteMeta, "es").fields["invoices"]?.relationKey, undefined);
+});
+
+test("the builder walks a path: a relation's own definition, else its entity's", async () => {
+  const { framework } = searchWith();
+  const loadModel = modelLoader(framework, facturaMeta, "es");
+  // The invoice's customer carries its definition inside.
+  const customers = await loadModel(["customer"]);
+  assert.equal(customers.aggregate, "Cliente");
+  assert.ok(customers.fields["tax_id"]);
+  // A customer's invoices do not: their entity's, read once.
+  const invoices = await loadModel(["customer", "invoices"]);
+  assert.equal(invoices.aggregate, facturaMeta.aggregate);
+  // A path that leads nowhere is refused, never a model invented.
+  await assert.rejects(loadModel(["state", "x"]));
+});
+
+test("«Buscar más…» opens the relation's chooser — several or one —, without what is chosen", async () => {
+  const { framework, searchRecords } = searchWith();
+  const asked: { many: boolean; scope: unknown; query: string }[] = [];
+  let answerMany: ((selection: ReturnType<typeof chosen>) => void) | undefined;
+  let answerOne: ((id: string) => void) | undefined;
+  const browse = recordsBrowser(
+    framework,
+    {
+      chooseMany: (_entity, answer, query, scope) => {
+        asked.push({ many: true, scope, query });
+        answerMany = answer;
+      },
+      choose: (_entity, answer, query, scope) => {
+        asked.push({ many: false, scope, query });
+        answerOne = answer;
+      },
+    },
+    searchRecords,
+    () => assert.fail("nothing refused"),
+  );
+  const chosenNow: unknown[][] = [];
+  const done = (records: readonly unknown[]) => void chosenNow.push([...records]);
+
+  browse({
+    relation: "Cliente",
+    path: ["customer"],
+    label: "Cliente",
+    text: "glo",
+    many: true,
+    chosen: [{ id: "C-004", name: "Globex Bolivia" }],
+    choose: done,
+  });
+  assert.deepEqual(asked[0], {
+    many: true,
+    query: "glo",
+    scope: { field: "id", operator: "not in", value: ["C-004"] },
+  });
+  answerMany?.(chosen(["C-001", "C-002"]));
+  await waitUntil(() => chosenNow.length === 1);
+  assert.deepEqual(chosenNow[0], [
+    { id: "C-001", name: "Importadora del Oriente" },
+    { id: "C-002", name: "Clínica San Gabriel" },
+  ]);
+
+  browse({
+    relation: "Cliente",
+    path: ["customer"],
+    label: "Cliente",
+    text: "",
+    many: false,
+    chosen: [],
+    choose: done,
+  });
+  assert.equal(asked[1]?.many, false);
+  answerOne?.("C-003");
+  await waitUntil(() => chosenNow.length === 2);
+  assert.deepEqual(chosenNow[1], [{ id: "C-003", name: "Ferretería El Progreso" }]);
 });

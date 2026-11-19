@@ -1,21 +1,14 @@
 "use client";
 
-import {
-  type Entity,
-  keysOf,
-  listRoute,
-  type Selection,
-  SelectionTooLarge,
-} from "@sincpro/client-framework";
+import { type Entity, keysOf, listRoute, type Selection } from "@sincpro/client-framework";
 import type { AnyRecord, Criteria } from "@sincpro/criteria";
-import { frameworkCopy } from "@sincpro/web-framework/core/copy";
-import { explain } from "@sincpro/web-framework/core/explain";
 import { isList, type ListDefinition } from "@sincpro/web-framework/core/list";
 import type { LookupOption } from "@sincpro/web-framework/core/lookup";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { BATCH_LIMIT } from "@sincpro/web-framework/react/useBatchCommand";
 import { excluding, useLookup } from "@sincpro/web-framework/react/useLookup";
 import { presentationOf } from "@sincpro/web-framework/web/list/presentation";
+import { refusalNotice } from "@sincpro/web-framework/web/list/records";
 import { chooserScopeOf, useRecordOpening } from "@sincpro/web-framework/web/record/opening";
 import { type OpenTarget, type TagOption, TagsField, useToastIfAny } from "@sincpro/web-ui";
 import { useRef } from "react";
@@ -95,17 +88,7 @@ export function EntityTags<T extends AnyRecord>({
       route: listRoute(base.list),
       identity: meta?.get_id || meta?.identity || "id",
       limit: BATCH_LIMIT,
-    }).then(add, (failure: unknown) => {
-      if (failure instanceof SelectionTooLarge)
-        toast?.show({
-          tone: "warn",
-          message: frameworkCopy().batch.tooMany(failure.size, failure.limit),
-        });
-      else {
-        const { heading, sentence } = explain(failure);
-        toast?.show({ tone: "bad", message: heading, detail: sentence });
-      }
-    });
+    }).then(add, (failure: unknown) => toast?.show(refusalNotice(failure)));
   };
   const scope = () => chooserScopeOf(entity, excluding(criteria, value, metas.get(base.key)));
   const { choose, chooseMany } = opening ?? {};
