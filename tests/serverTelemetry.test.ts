@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
-import { trace } from "@opentelemetry/api";
+import { propagation, ROOT_CONTEXT, trace } from "@opentelemetry/api";
 import {
   BoundedContext,
   Command,
@@ -77,6 +77,7 @@ let endpoint: Awaited<ReturnType<typeof collector>>;
 beforeAll(async () => (endpoint = await collector()));
 afterAll(async () => {
   trace.disable();
+  propagation.disable();
   configureProcess();
   // OpenTelemetry's and this entry's process-wide state: the test leaves it as it found it.
   delete (globalThis as Record<symbol, unknown>)[
@@ -164,4 +165,21 @@ test("without oneTreePerRequest a use case read while a request is drawn starts 
   assert.ok(read, "the use case's span");
   assert.notEqual(read.traceId, request.traceId);
   assert.ok(!read.parentSpanId, "a root");
+});
+
+test("the server continues a request's traceparent, and can write its own into the page", () => {
+  // What an SSR framework does with the global propagator: read the incoming header, and write
+  // the request's span (Next: `experimental.clientTraceMetadata`). Without one, both are nothing.
+  const incoming = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
+  const continued = propagation.extract(ROOT_CONTEXT, { traceparent: incoming });
+  assert.equal(trace.getSpanContext(continued)?.traceId, "0af7651916cd43dd8448eb211c80319c");
+  const request = trace.getTracer("next.js").startSpan("GET /cursos", undefined, continued);
+  const page: Record<string, string> = {};
+  propagation.inject(trace.setSpan(ROOT_CONTEXT, request), page);
+  request.end();
+  assert.equal(
+    page["traceparent"],
+    `00-0af7651916cd43dd8448eb211c80319c-${request.spanContext().spanId}-01`,
+  );
+  assert.equal(page["baggage"], undefined, "trace context only");
 });

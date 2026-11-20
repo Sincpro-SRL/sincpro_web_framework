@@ -25,7 +25,8 @@ export { reportUncaught } from "@sincpro/web-framework/errors/uncaught";
  *
  * What it sends is narrow by default, because in an ERP a request body is an invoice and a
  * customer: no breadcrumbs or default integrations, and every event leaves without cookies,
- * headers, request bodies, query strings or the user's address. `beforeSend` is the
+ * headers, request bodies, query strings or the user's address — of the person, only their id,
+ * what GlitchTip counts «users affected» by. `beforeSend` is the
  * application's, run after that.
  */
 export type GlitchtipOptions = {

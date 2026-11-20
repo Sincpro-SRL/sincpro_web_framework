@@ -2095,6 +2095,18 @@ application that never uses them ships nothing of them:
   case's failure already reported is not reported again; «Script error.» from another origin,
   with no error, is skipped. Proven in a real Next build: a click that broke and a promise nobody
   waited for arrived, an `AbortError` did not. `tests/reportUncaught.test.ts`.
+- **The server's propagator** (#81): `registerServerTracing` registered a provider and no
+  propagator, and `@opentelemetry/sdk-trace` registers none — so Next never continued a request's
+  incoming `traceparent` and `clientTraceMetadata` wrote nothing, silently. It now registers the
+  W3C trace-context propagator (no baggage) unless the platform has one. Proven in a real Next
+  build: with `oneTreePerRequest`, a request sent with a `traceparent` → Next's `GET /dinamica` is
+  that span's child, ten spans in the caller's trace, and the page carries
+  `<meta name="traceparent">` with it; without the propagator, neither. Without a context manager
+  Next cannot make the extracted context active, so continuing needs `oneTreePerRequest` too.
+- **The person's id, where GlitchTip counts it** (#81): `sentryReporter` set `user: { id }`, the
+  narrowing dropped `user`, and the same id still travelled as the `user_id` tag. The narrowing now
+  keeps `user.id` alone — the id already sent — and drops the rest of the person (email, name, IP).
+  An application that wants no id drops it in `beforeSend`.
 - **Readable stacks** (#78): a production stack points at built bundles. On the server Next prints
   its stacks mapped but hands over errors whose `stack` is not (it replaces Node's formatter), so
   `./errors/server` maps each frame with `node:module`'s `findSourceMap` when Node loaded the
