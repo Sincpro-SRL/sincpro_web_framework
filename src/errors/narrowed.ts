@@ -16,9 +16,19 @@ export type SentEvent = {
   [key: string]: unknown;
 };
 
+/** The person's id — what GlitchTip counts «users affected» by, and what already travels as the
+ *  `user_id` tag —; nothing else of the person (email, name, IP…). */
+function idOf(user: unknown): { id: string } | undefined {
+  if (typeof user !== "object" || user === null || !("id" in user)) return undefined;
+  const id = (user as { id: unknown }).id;
+  return typeof id === "string" || typeof id === "number" ? { id: String(id) } : undefined;
+}
+
 /** Every event leaves without what may carry a person's or a customer's data. */
 export function narrowed(event: SentEvent): SentEvent {
-  const { user: _user, ...rest } = event;
+  const { user, ...others } = event;
+  const person = idOf(user);
+  const rest: SentEvent = person === undefined ? others : { ...others, user: person };
   if (rest.request === undefined) return rest;
   const { cookies: _c, headers: _h, data: _d, query_string: _q, ...request } = rest.request;
   return {

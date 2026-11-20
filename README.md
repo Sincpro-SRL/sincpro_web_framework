@@ -543,6 +543,13 @@ unless the platform registered one first, and a use case with no parent of its o
 the active span (client-framework 2.5's `adoptActiveSpan`). Without it — the default — each use
 case's span starts a trace of its own, as before.
 
+`registerServerTracing` also registers the W3C trace-context propagator (no baggage), unless the
+platform registered one: an SSR framework reads and writes `traceparent` only through it. With it
+and `oneTreePerRequest`, a request that arrives with a `traceparent` continues that trace, and
+Next writes the request's own into the page (`experimental.clientTraceMetadata: ["traceparent"]`,
+`<meta name="traceparent">` — on dynamic pages only: a cached page would hand every visitor one
+trace).
+
 A page that broke while drawing shows the route's error screen instead of the framework's generic
 one: plain words, the code the server logged it with (Next's `digest`), «try again» and «home»,
 reported once through the process:

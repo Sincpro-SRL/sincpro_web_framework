@@ -13,6 +13,7 @@ import {
   BoundedContext,
   Command,
   configureProcess,
+  processContext,
   restTransport,
   servicesWith,
   type Transport,
@@ -170,6 +171,19 @@ test("a use case that fails on the server is reported with its real stack, who s
     files.some((file) => file.includes("serverErrors.test")),
     `the real stack, where it broke: ${files.join(", ")}`,
   );
+});
+
+test("the person who ran it is said by their id alone — what GlitchTip counts users by", async () => {
+  processContext.set({ user_id: "u-7" });
+  try {
+    await assert.rejects(coursesBoundedContext.execute(new CommandExplode()));
+    await sent();
+  } finally {
+    processContext.set({});
+  }
+  const [event] = fake.events;
+  assert.deepEqual(event?.user, { id: "u-7" });
+  assert.equal(event?.tags?.["user_id"], "u-7");
 });
 
 test("a refusal the server explained is not a fault: it is not reported", async () => {

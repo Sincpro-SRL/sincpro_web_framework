@@ -44,7 +44,8 @@ import { narrowed, type SentEvent } from "@sincpro/web-framework/errors/narrowed
  * Optional on every count, like `./errors`: an entry of its own that nothing else imports,
  * `@sentry/core` an optional peer loaded with `import()`, and nothing throws: without a DSN
  * nothing loads; if the SDK does not load, that is said once and reports are dropped. What it
- * sends is narrowed as the browser's: no cookies, headers, bodies, query strings or the person.
+ * sends is narrowed as the browser's: no cookies, headers, bodies, query strings, and of the
+ * person only their id.
  */
 export type ServerErrorsOptions = {
   /** The application's DSN, from its settings. None — an empty setting — and reporting is off. */

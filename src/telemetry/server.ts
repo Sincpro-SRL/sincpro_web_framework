@@ -36,7 +36,7 @@ import { tracerResource } from "@sincpro/web-framework/telemetry";
  *
  * Optional on every count, like `./telemetry`: an entry of its own that nothing else imports,
  * the same optional peers (`@opentelemetry/api`, `@opentelemetry/sdk-trace`,
- * `@opentelemetry/exporter-trace-otlp-http`, `@opentelemetry/resources`, and
+ * `@opentelemetry/exporter-trace-otlp-http`, `@opentelemetry/resources`, `@opentelemetry/core`, and
  * `@opentelemetry/context-async-hooks` for `oneTreePerRequest`) loaded with `import()`,
  * and nothing throws: without an endpoint nothing loads and nothing is registered; if the SDK
  * is not installed or fails, that is said once on the console and use cases run untraced,
@@ -163,18 +163,25 @@ async function started(
 ): Promise<ServerTracing | undefined> {
   try {
     const [
-      { trace },
+      { trace, propagation },
       { TracerProvider, BatchSpanProcessor, TraceIdRatioBasedSampler, ParentBasedSampler },
       { OTLPTraceExporter },
       { resourceFromAttributes },
+      { W3CTraceContextPropagator },
       { openTelemetryTracer },
     ] = await Promise.all([
       import("@opentelemetry/api"),
       import("@opentelemetry/sdk-trace"),
       import("@opentelemetry/exporter-trace-otlp-http"),
       import("@opentelemetry/resources"),
+      import("@opentelemetry/core"),
       import("@sincpro/client-framework/opentelemetry"),
     ]);
+    // An SSR framework reads and writes `traceparent` only through the global propagator: with
+    // it Next continues a request's incoming trace and can write it into the page
+    // (`experimental.clientTraceMetadata`); without one, both are silently nothing. W3C trace
+    // context only — no baggage —, unless the platform registered a propagator first.
+    propagation.setGlobalPropagator(new W3CTraceContextPropagator());
     if (options.oneTreePerRequest === true) await followEachRequest();
     const exporter = new OTLPTraceExporter({
       url: options.endpoint,
