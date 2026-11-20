@@ -399,7 +399,7 @@ and where the context lives, once, in `main`; without them, everything runs the 
 ```ts
 // entrypoints/main.tsx
 import { configureProcess, processContext } from "@sincpro/client-framework";
-import { glitchtipReporter } from "@sincpro/web-framework/errors"; // optional
+import { glitchtipReporter, reportUncaught } from "@sincpro/web-framework/errors"; // optional
 import { browserTracer } from "@sincpro/web-framework/telemetry"; // optional
 
 const release = "my-app:1.0.0"; // <name>:<version>, the backend's APP_RELEASE
@@ -408,8 +408,14 @@ configureProcess({
   tracer: browserTracer({ endpoint: settings.otlp, release }),
   reporter: glitchtipReporter({ dsn: settings.glitchtip, release }),
 });
+reportUncaught(); // optional: what nobody caught — a click handler, a promise nobody waited for
 processContext.set({ tenant_id: session.tenant }); // every use case runs with it and sends it
 ```
+
+`reportUncaught()` listens to `window`'s `error` and `unhandledrejection` and hands each to the
+process's `reportError`: a cancellation or a refusal is not a fault, and a use case's failure
+already reported is not reported again. Without it, only what the process decides is unexpected
+reaches the reporter, as before.
 
 ```tsx
 function CloseButton({ issueId }: { issueId: string }) {
@@ -553,6 +559,21 @@ export async function onRequestError(error, request, context) {
 // where the server runs use cases: what fails unexpectedly there is reported, with its trace
 import { serverReporter } from "@sincpro/web-framework/errors/server";
 configureServerProcess({ identity: { release }, reporter: serverReporter() });
+```
+
+**Readable stacks.** A production stack points at built bundles (`page.js:1:4313`). On the server
+nothing has to be uploaded: build the server with its source maps and run Node with its own
+(`experimental.serverSourceMaps: true` in Next, `NODE_OPTIONS=--enable-source-maps`), and each
+reported frame says where it was in the source (`app/cursos/page.tsx:12`) — Next prints its
+stacks mapped but hands over errors whose `stack` is not, so `./errors/server` maps them itself
+with `node:module`. In the browser the maps must never be served: inject debug IDs at build and
+upload them to GlitchTip with its CLI, then drop them from what is deployed:
+
+```sh
+# the application's build (Next: productionBrowserSourceMaps: true)
+glitchtip-cli sourcemaps inject .next/static
+glitchtip-cli sourcemaps upload .next/static --release "$RELEASE"  # SENTRY_URL, SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT
+find .next/static -name '*.map' -delete
 ```
 
 ## The abstractions
