@@ -528,6 +528,33 @@ export default function PortalError({ error, reset }: { error: Error; reset: () 
 }
 ```
 
+What fails on the server reaches GlitchTip too, with its real stack — the browser only ever gets
+Next's generic message and the `digest`. `./errors/server` keeps one Sentry-compatible client per
+process (`@sentry/core`'s server client, not `@sentry/node`, which would set up an OpenTelemetry
+of its own); a request's report carries the same `digest` the visitor sees, its route and its
+trace:
+
+```ts
+// instrumentation.ts (Next) — once per process, and each request that failed
+export async function register() {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  const { registerServerErrors } = await import("@sincpro/web-framework/errors/server");
+  await registerServerErrors({ dsn: process.env.SENTRY_DSN, release, environment }); // none: off
+}
+export async function onRequestError(error, request, context) {
+  const { reportRequestError } = await import("@sincpro/web-framework/errors/server");
+  reportRequestError(error, {
+    method: request.method,
+    path: request.path,
+    route: context.routePath,
+  });
+}
+
+// where the server runs use cases: what fails unexpectedly there is reported, with its trace
+import { serverReporter } from "@sincpro/web-framework/errors/server";
+configureServerProcess({ identity: { release }, reporter: serverReporter() });
+```
+
 ## The abstractions
 
 Each answers one question, and each comes in the three levels — use the component, drop to the
@@ -542,6 +569,7 @@ hook and draw your own, or go straight to the loose piece.
 | What every use case runs with    | `processContext`, `project.context` (client-framework)          | `useContextValues`                    | `ContextStore`                                              |
 | What happened, what broke        | `./telemetry`, `./errors` (optional)                            | —                                     | `configureProcess({ tracer, reporter })`                    |
 | What happened, on the server     | `configureServerProcess` (`./telemetry/server`, optional)       | —                                     | `registerServerTracing`, `serverTracer`                     |
+| What broke, on the server        | `reportRequestError` (`./errors/server`, optional)              | —                                     | `registerServerErrors`, `serverReporter`                    |
 | A page that broke                | `RouteError`, in the route's error boundary                     | —                                     | `reportError` (client-framework)                            |
 | What is each field?              | `Meta` from the server, or `defineMeta`                         | —                                     | `textOf`, `viewOf`, `metaFromSchema`                        |
 | A value outside a model          | —                                                               | `useTextOf`                           | `moneyTextOf`, `dayTextOf`, `instantTextOf`, `numberTextOf` |
@@ -618,6 +646,7 @@ Three levels, one direction, and optional entries — `make doctor` keeps the ar
 | `web/workspace`       | the composer: `entityView`, `openIn`, `RelatedRecord`, `<SincproApp>`            | where it opens, the application context                                  |
 | `telemetry`, `errors` | `browserTracer`, `glitchtipReporter`: built from the application's settings      | optional peers, loaded after the first render; nothing else imports them |
 | `telemetry/server`    | `registerServerTracing`, `configureServerProcess`: a server's use cases traced   | optional peers too; Node only — a browser never loads it                 |
+| `errors/server`       | `registerServerErrors`, `serverReporter`, `reportRequestError`: to GlitchTip     | optional peer `@sentry/core`; a browser never loads it                   |
 
 Screens import from `@sincpro/web-framework`. What every platform shares — the transport,
 `entity()`, model definitions, `Feature` and `ApplicationService`, the generated client — is
@@ -660,6 +689,7 @@ moves to the generated one — is [`docs/ADOPTION.md`](docs/ADOPTION.md).
 | `readOnServer`                          | A page read on the server by the browser's use case: plain JSON, a failure left to the browser  | ✅     |
 | `./telemetry`, `./errors`               | Optional: the application's traces to its OTLP endpoint, its errors to GlitchTip                | ✅     |
 | `./telemetry/server`                    | Optional: a rendering server's use cases on its OTLP provider, their trace continued by the API | ✅     |
+| `./errors/server`                       | Optional: what fails on a rendering server to GlitchTip, with the visitor's digest and trace    | ✅     |
 | `RouteError`                            | A page that broke: plain words, the server's code, retry and home; reported once                | ✅     |
 | `selection`                             | Filters named as criteria 2.0 and the backend read them, the search bar's included              | ✅     |
 | `useListing`, `EntityList`              | N records: criteria, search bar, builder, paging                                                | ✅     |

@@ -2073,6 +2073,20 @@ application that never uses them ships nothing of them:
 - **`RouteError({ error, reset, where, home })`** (web): the screen a route's error boundary draws
   — web-ui's `Failed` with the copy table's words (`route`), the server's `digest` as the code to
   quote, retry and home, reported once (`reportError`). Story 69.
+- **`./errors/server`** (#75), the server's `glitchtipReporter`: GlitchTip saw the backend and the
+  browser, never the server in between — a page that broke there reached it only through the
+  browser, as Next's generic message and a `digest`, and a use case that failed there was a log
+  line. `registerServerErrors` (once per process, on `globalThis` for every realm: `@sentry/core`'s
+  `ServerRuntimeClient` over `fetch`, not `@sentry/node`, whose v11 sets up an OpenTelemetry,
+  instrumentation and bundler plugins of its own), `serverReporter()` (the `ErrorReporter` for
+  `configureServerProcess`) and `reportRequestError(error, { method, path, route })` (what Next's
+  `onRequestError` calls: tags `digest`, `route`, `http.method`, `url.path` without its query,
+  `trace_id`). The browser's narrowing, shared (`errors/narrowed.ts`). A refusal the server
+  explained is not reported; one error handed over twice is one event (the client marks what it
+  captured). `tests/serverErrors.test.ts` against a fake GlitchTip reading the real envelopes.
+  Left out on purpose: the process's crashes (`uncaughtException`, `unhandledRejection`) — a
+  handler changes how Node exits, and a report sent while it exits may never leave; the
+  platform's restarts and logs say it.
 
 ### Found on the way
 

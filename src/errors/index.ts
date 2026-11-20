@@ -1,4 +1,7 @@
 import type { ErrorAbout, ErrorReporter } from "@sincpro/client-framework";
+import { narrowed, type SentEvent } from "@sincpro/web-framework/errors/narrowed";
+
+export type { SentEvent };
 
 /**
  * An `ErrorReporter` for the browser, built from the application's own settings: a
@@ -36,31 +39,7 @@ export type GlitchtipOptions = {
   beforeSend?: (event: SentEvent) => SentEvent | null;
 };
 
-/** The parts of an event this reporter narrows; the rest passes as the SDK built it. */
-export type SentEvent = {
-  request?: {
-    url?: string;
-    cookies?: unknown;
-    headers?: unknown;
-    data?: unknown;
-    query_string?: unknown;
-  };
-  user?: unknown;
-  [key: string]: unknown;
-};
-
 const WAITING_AT_MOST = 20;
-
-/** Every event leaves without what may carry a person's or a customer's data. */
-function narrowed(event: SentEvent): SentEvent {
-  const { user: _user, ...rest } = event;
-  if (rest.request === undefined) return rest;
-  const { cookies: _c, headers: _h, data: _d, query_string: _q, ...request } = rest.request;
-  return {
-    ...rest,
-    request: { ...request, ...(request.url ? { url: request.url.split("?")[0] } : {}) },
-  };
-}
 
 export function glitchtipReporter(options: GlitchtipOptions): ErrorReporter {
   let ready: ErrorReporter | null = null;
