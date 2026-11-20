@@ -355,6 +355,13 @@ built; this file is how to keep it.
   exact `sincpro-context` starts from `configureProcess()`, or it reads the language too.
 - **A refusal is headed by its `kind` in the copy's words** (`explain`): what happened travels in
   the problem's `detail`. A fake that puts it in `title` draws a heading nobody sees.
+- **A screen rendered on a server and hydrated is proved with StrictMode at the ROOT** (story 70):
+  React mounts twice only what StrictMode wraps from the root, so one inside the page never shows
+  a second read on mount. An attribute that differs is only a console error (React 19,
+  development), not `onRecoverableError`: listen to both. And the provider gets `timeZone` and
+  `locale` — without them an instant is written on the host's clock, and a server and a browser
+  in different zones draw different HTML. `useRecord` skips the server's read by the question it
+  asked, never by «the first effect».
 - **The meta store is filled DURING useListing's render**: a value read from it earlier in the
   same component's render is from before the answer, and nothing renders again. A criteria that
   depends on the definition keeps it in state and sets it in an effect (`useLookup exclude`).

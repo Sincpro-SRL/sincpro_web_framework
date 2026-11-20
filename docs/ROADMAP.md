@@ -1897,7 +1897,8 @@ three places where the framework handed web-ui less than it can draw:
   (Sincpro-SRL/sincpro_criteria#27, fixed in 2.4.0, the floor now). On it, story 60 fails without
   the ⌘K change.
 - **Not done, on purpose:** `useRecord` starting from a record the server already read (the SSR
-  step after #55). No public page draws one record yet; it waits for the first that does.
+  step after #55). No public page draws one record yet; it waits for the first that does. Done
+  since, in #76 («A record read on the server», below).
 - **Server rendering under Next.js:** `installFrameworkCopy` is a process global, the trap web-ui
   documented for `installCopy` (Sincpro-SRL/sincpro_web_ui#49). A prerender in one language never
   meets it; a server rendering several would need a provider, as web-ui's `UiCopyProvider`.
@@ -2111,3 +2112,65 @@ application that never uses them ships nothing of them:
   written before it, keeps compiling, and English stands in (`routeCopy`). The framework's words
   are still a process global (`installFrameworkCopy`): a server rendering several languages at
   once needs a provider first, as web-ui's `UiCopyProvider`.
+
+## A record read on the server (2026-11-19, #76)
+
+A page drawn on a server could start a list (`readListing`) and a use case's answer
+(`readOnServer`) from what the server read, but not a record: `useRecord` read the record and its
+model only in the browser, in an effect, so the server's HTML of a record screen was a skeleton and
+the browser asked for the record after hydrating. Now, additive — nothing changes for a screen
+that does not pass it:
+
+- **`readRecordOnServer(transport, entity, opened, { what, signal })`** (core): the question
+  `useRecord` asks — the record (`one`), or for a new one (`""`) only its model, asked of the list
+  with one row — through the screens' use case (`screensTransport`: traced like the browser's
+  reads, with the process's context), answered as plain JSON, `RecordRead<T>`: the entity's key
+  and the id it was read for, the record (`null` for a new one), its model and the caller's
+  draft. A failure answers `undefined` and the same WARN line as `readOnServer` (`what` is the
+  entity's key unless given; a refusal says its type and kind, never its message); a read the
+  caller aborted (`signal`) answers nothing, without a line.
+- **`useRecord(entity, opened, { initial })`** starts `ready` from it when it mounts on the record
+  it was read for (the entity's key and the id; a stored one with its record): the model goes into
+  the provider's `metas`, a kept draft comes back restored as the browser's read brings it, and a
+  new record starts from its model's defaults and what its reference carries. The mount's read is
+  skipped for that same question only — React's second mount in StrictMode included —; a
+  `reload()`, a write, another company or another id read as always, and editing, previews,
+  drafts, conflicts and saving are the browser's. An `initial` read for another record, or handed
+  after the screen mounted, is never shown.
+- **`useRecordScreen(…, { initial })` and `EntityRecord initial`**: the screen-level and the
+  declarative entries.
+
+`tests/recordOnServer.test.tsx`: the read (plain JSON, a new record's model, the screens' span, a
+refusal and a failure on the log, an abort without a line), and `renderToString` of an
+application's own record screen and of `EntityRecord` started from it — the record's values in the
+HTML, nothing asked while rendering — beside the skeleton without it; another id or entity never
+shown; the model in `metas`; a kept draft. Story 70: the server's HTML (`renderToString`, its own
+`restTransport`) hydrated in Chrome by another transport, in StrictMode at the root, with no
+difference — text or attribute — and no read of the record on mount; then edited and saved there.
+Without `initial`, the skeleton as before; `EntityRecord` the same; and a client-side navigation
+(no HTML, the read as data) never shows the skeleton.
+
+### Found on the way
+
+- **A page rendered on a server installs the business's zone and language.** Without
+  `FrameworkProvider timeZone`, an instant is written on the host's clock — the same record read
+  «05/01/2026 14:14» rendered under `TZ=UTC` and «05/01/2026 23:14» under `Asia/Tokyo` —, so a
+  server and a browser in different zones hydrate different HTML; with it, the HTML is the same
+  whatever the host. A number without `locale` is written in the host's language, the same way.
+  `EntityRecord`'s audit line is safe: the summary writes its instants on the installed zone
+  before web-ui draws them (web-ui's `DateValue` reads an ISO instant on the host's clock).
+- **React's StrictMode mounts twice only what it wraps from the root.** A `StrictMode` inside the
+  page component never ran an effect twice in a story; at the root, as Next puts it, it does —
+  when hydrating too. So `useRecord` skips the server's question by what it asked (the transport,
+  the entity, the id, the round), not by «the first effect»: `useServiceReading`'s `initial`
+  skips the first effect only, so under a root StrictMode (development) it reads the same
+  arguments once more on mount — measured, one request more; harmless in production. Not changed
+  here.
+- **A hydration difference in an attribute is only a console error** (React 19, development), not
+  `onRecoverableError`: a play that listens to the latter alone misses it. Story 70 listens to
+  both, and each was made to fail once (an attribute, a text) before trusting it.
+- **A server read through `screensTransport` writes the use case's own log lines** (its execution
+  started and finished) beside the WARN: a test finds the WARN by its message.
+- **A many2one's picker reads its first options in the browser on mount**
+  (`GET /clientes?…limit 10`, with the discovery document): its own reading, as in a single-page
+  application; the record is not asked again.

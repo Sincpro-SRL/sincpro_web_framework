@@ -259,11 +259,18 @@ token for anonymous reads, and modules that touch no `window` or `document` when
 SSR framework can render them.
 
 Data read on the server and hydrated: a list's first page with `readListing` (handed to
-`useListing(list, { page })`), and a use case's answer with `readOnServer` (handed to
-`useServiceReading(useCase, args, { initial })`, typed by `ServerRead<typeof useCase>`) — both
-from `@sincpro/web-framework/core`, which loads no screen. The page arrives with its data in its
-HTML and the browser asks nothing on mount; a read that fails on the server is one line on the
-process's log and leaves its part to the browser, never the page refused.
+`useListing(list, { page })`), a use case's answer with `readOnServer` (handed to
+`useServiceReading(useCase, args, { initial })`, typed by `ServerRead<typeof useCase>`), and a
+record with its model with `readRecordOnServer(transport, entity, id)` (handed to
+`useRecord(entity, id, { initial })`, `useRecordScreen(…, { initial })` or `EntityRecord initial`,
+typed by `RecordRead<T>`) — all from `@sincpro/web-framework/core`, which loads no screen. The
+page arrives with its data in its HTML and the browser asks nothing on mount; a read that fails
+on the server is one line on the process's log and leaves its part to the browser, never the
+page refused. A record's `initial` is taken only by the screen that opens that same record, when
+it mounts; editing, previews, drafts and saving are the browser's as in a single-page
+application. Give the `FrameworkProvider` the business's `timeZone` and `locale` on a page that
+renders on a server: without them an instant is written on the server's clock and a number in
+its language, then the browser's, and hydration differs.
 
 Around it, the server's own pieces, wired from the application's framework (README, «Rendered on
 a server»): `./telemetry/server` traces the server's use cases on the process's OpenTelemetry
@@ -276,9 +283,8 @@ stack — `registerServerErrors` once per process, `reportRequestError` from the
 request-error hook (the visitor's `digest`, the route, the trace) and `serverReporter()` for the
 use cases the server runs.
 
-What is still not there: a record read on the server (`useRecord` starting from it), and the
-framework's words per request — `installFrameworkCopy` is a process global, so a server
-rendering several languages at once needs a provider first (ROADMAP).
+What is still not there: the framework's words per request — `installFrameworkCopy` is a process
+global, so a server rendering several languages at once needs a provider first (ROADMAP).
 
 ## Upgrading from 1.x
 

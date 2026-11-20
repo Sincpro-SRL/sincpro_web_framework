@@ -28,6 +28,7 @@ import {
   needsPreview,
 } from "@sincpro/web-framework/core/edit";
 import { linesAnswered } from "@sincpro/web-framework/core/lines";
+import type { RecordRead } from "@sincpro/web-framework/core/server";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useWrites } from "@sincpro/web-framework/react/useWrites";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -67,9 +68,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
  *     that key — a retry names the same record, never a second one — and the hook becomes it.
  *     Its `id` stays `""` until it is stored: until then it does not exist.
  *
+ *   - **read on the server** — a page rendered on a server hands it what `readRecordOnServer`
+ *     read there (`initial`): the hook starts `ready` with it — the screen is filled in the HTML,
+ *     not a skeleton — and its model goes into the provider's `metas`; in the browser nothing is
+ *     asked on mount. Only for the record it was read for (the entity's key and the id it opens
+ *     with), and only when it mounts, as `useState`'s first value: another record afterwards, a
+ *     `reload()`, a write or another company read as always, and editing, previews, drafts,
+ *     conflicts and saving are the browser's, the same as without it.
+ *
  *     const invoice = useRecord(invoices, "");          // a new one
  *     const invoice = useRecord(invoices, "F-2026-7");  // an existing one
  *     const invoice = useRecord(invoices, resource);    // what the workspace opened
+ *     const invoice = useRecord(invoices, id, { initial }); // what the server already read
  */
 export type RecordState<T> =
   | { status: "loading"; record: null; meta: Meta | null; error: null }
@@ -139,12 +149,43 @@ const PREVIEW_PAUSE = 300;
 export function useRecord<T extends AnyRecord>(
   entity: Entity<T>,
   opened: string | ResourceRef,
+  options: {
+    /** The record and its model already read on the server that renders the screen
+     *  (`readRecordOnServer`): the hook starts from it when it mounts on that same record. */
+    initial?: RecordRead<T> | undefined;
+  } = {},
 ): RecordReading<T> {
   const { transport, locale, metas, context } = useFramework();
   const given = typeof opened === "string" ? opened : (opened.id ?? "");
   // As written in the reference: a text compares by value, so a new render with the same
   // reference is not a new start.
   const start = typeof opened === "string" ? undefined : opened.params?.[WITH_PARAM];
+  // What the server read, when it is THIS record — the entity and the id it opens with, a stored
+  // one with its record. Read only by the first render's initial values: an `initial` that
+  // arrives later, or one read for another record, is never shown.
+  const initial = options.initial;
+  const served =
+    initial !== undefined &&
+    initial.entity === entity.key &&
+    initial.id === given &&
+    (given === "" || initial.record !== null)
+      ? initial
+      : undefined;
+  /** The state a read answered with: the record (a new one from its model's defaults and what
+   *  its reference carries), its model — the same the effect below sets. */
+  const startedFrom = (read: RecordRead<T>): RecordState<T> => {
+    if (read.meta) metas.set(entity.key, read.meta);
+    const meta = read.meta ?? metas.get(entity.key) ?? null;
+    const starting =
+      start === undefined ? {} : startingValuesOf({ params: { [WITH_PARAM]: start } });
+    return {
+      status: "ready",
+      record:
+        read.id === "" ? ({ ...defaultsOf(meta), ...starting } as T) : (read.record as T),
+      meta,
+      error: null,
+    };
+  };
   // A create that answered its identity turns this into that record — until the screen asks
   // for another one.
   const [born, setBorn] = useState<{ from: string; id: string } | null>(null);
@@ -155,17 +196,25 @@ export function useRecord<T extends AnyRecord>(
   // The key a new record is born under when it is created by `Edit`: minted once per new
   // record, on the first gesture that needs it, and kept for every draft save and the save.
   const minted = useRef<{ from: string; key: string } | null>(null);
-  const [state, setState] = useState<RecordState<T>>({
-    status: "loading",
-    record: null,
-    meta: null,
-    error: null,
-  });
+  const [state, setState] = useState<RecordState<T>>(() =>
+    served === undefined
+      ? { status: "loading", record: null, meta: null, error: null }
+      : startedFrom(served),
+  );
   // Which record `state` was read for: the render after the id changed — a create that answered,
   // another record asked — must not show the previous one under the new id.
-  const [readFor, setReadFor] = useState<string | null>(null);
+  const [readFor, setReadFor] = useState<string | null>(served === undefined ? null : given);
   const [round, setRound] = useState(0);
-  const [typed, setTyped] = useState<AnyRecord>({});
+  // The question the server already answered, as the read below asks it (its dependencies, in
+  // their order): on mount it is not asked again — nor in React's second mount of the same
+  // question (StrictMode). Any other question (a `reload()`, another id, another transport)
+  // reads as always.
+  const answered = useRef<readonly unknown[] | null>(
+    served === undefined ? null : [transport, metas, entity, given, given === "", start, 0],
+  );
+  // A server that answers the record FROM the draft (sincpro_framework) sends no values apart:
+  // the record is the draft. One that sends them apart, they are what was typed.
+  const [typed, setTyped] = useState<AnyRecord>(() => served?.draft?.values ?? {});
   const typedNow = useRef(typed);
   typedNow.current = typed;
   const [computed, setComputed] = useState<AnyRecord>({});
@@ -174,7 +223,7 @@ export function useRecord<T extends AnyRecord>(
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<unknown>(null);
   const [conflict, setConflict] = useState(false);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(served?.draft ?? null);
   const pause = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The preview in flight. A newer one cancels it, and so do a save, a discard and leaving:
   // an answer about values that are no longer on screen must never land on them.
@@ -197,6 +246,11 @@ export function useRecord<T extends AnyRecord>(
   };
 
   useEffect(() => {
+    // The server's question (`initial`) is answered already: nothing to read.
+    const asked = [transport, metas, entity, id, isNew, start, round];
+    const before = answered.current;
+    if (before !== null && asked.every((one, at) => Object.is(one, before[at]))) return;
+    answered.current = null;
     const aborter = new AbortController();
     // Read again — after a save, a reload — the record on screen STAYS until the answer: a form
     // that blinked through a skeleton lost its focus, its scroll and the click that landed then.

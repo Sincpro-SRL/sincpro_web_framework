@@ -488,6 +488,28 @@ const balance = useServiceReading(project.Accounts.balance, [{ member_id: member
 });
 ```
 
+A record screen starts the same way. `readRecordOnServer` reads the record and its model with the
+transport the provider is given — plain JSON (`RecordRead`), `undefined` and one line on the log
+when it fails — and `useRecord` starts `ready` from it (so do `useRecordScreen` and
+`EntityRecord`, by `initial`): the HTML carries the record, not a skeleton, and the browser asks
+nothing for it on mount. Only for the record it was read for; editing, previews, drafts and
+saving stay the browser's, as always. Give the provider the business's `timeZone` and `locale`:
+without them an instant is written on the server's clock and then on the browser's, and the HTML
+does not match:
+
+```tsx
+// the Server Component
+import { readRecordOnServer } from "@sincpro/web-framework/core";
+const invoice = await readRecordOnServer(transport, invoices, params.id);
+return <InvoicePage id={params.id} initial={invoice} />;
+
+// the page ("use client"), under <FrameworkProvider timeZone="America/La_Paz" locale="es">
+function InvoicePage({ id, initial }: { id: string; initial?: RecordRead<Invoice> }) {
+  const invoice = useRecord(invoices, id, { initial }); // ready on the server already
+  …
+}
+```
+
 The server's use cases are traced like the browser's and their `traceparent` reaches the API —
 the counterpart of `browserTracer`, in its own optional entry. The provider is registered once
 per process, where the SSR framework's own spans land too; the process is configured once per
@@ -566,6 +588,7 @@ hook and draw your own, or go straight to the loose piece.
 | The application's logic          | its `Feature`s and `ApplicationService`s (client-framework)     | `useService`                          | `project.Issues.close(…)`                                   |
 | Read through a use case          | its `Feature`s (client-framework)                               | `useServiceReading`                   | `project.Accounts.balance(…)`                               |
 | Read it on the server first      | the same use case, before the page is drawn                     | `useServiceReading(…, { initial })`   | `readOnServer`, `ServerRead`                                |
+| A record read on the server      | `EntityRecord initial`                                          | `useRecord(…, { initial })`           | `readRecordOnServer`, `RecordRead`                          |
 | What every use case runs with    | `processContext`, `project.context` (client-framework)          | `useContextValues`                    | `ContextStore`                                              |
 | What happened, what broke        | `./telemetry`, `./errors` (optional)                            | —                                     | `configureProcess({ tracer, reporter })`                    |
 | What happened, on the server     | `configureServerProcess` (`./telemetry/server`, optional)       | —                                     | `registerServerTracing`, `serverTracer`                     |
@@ -687,6 +710,7 @@ moves to the generated one — is [`docs/ADOPTION.md`](docs/ADOPTION.md).
 | `defineMeta`, `metaFromSchema`          | A model by hand, or completed from OpenAPI (client-framework)                                   | ✅     |
 | `useService`                            | A screen runs one of the application's use cases: run, busy, answer, error                      | ✅     |
 | `readOnServer`                          | A page read on the server by the browser's use case: plain JSON, a failure left to the browser  | ✅     |
+| `readRecordOnServer`                    | A record screen filled in the server's HTML: `useRecord` starts from it, nothing asked on mount | ✅     |
 | `./telemetry`, `./errors`               | Optional: the application's traces to its OTLP endpoint, its errors to GlitchTip                | ✅     |
 | `./telemetry/server`                    | Optional: a rendering server's use cases on its OTLP provider, their trace continued by the API | ✅     |
 | `./errors/server`                       | Optional: what fails on a rendering server to GlitchTip, with the visitor's digest and trace    | ✅     |
