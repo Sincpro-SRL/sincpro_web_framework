@@ -187,9 +187,9 @@ record screen of one's own that keeps the framework's (`useRecordScreen`).
 (`readOnServer`: plain JSON, and a failure that never takes the page down — the browser reads
 again); the server traces with its own provider and sends the `traceparent` to the API
 (`./telemetry/server`); and a route's failure is one screen, with its digest, reported once
-(`RouteError`). Taken from what a Next.js application proved, with its site, portal and
-backoffice as separate zones. Next: a use case's span under the server's request span, with client-framework's
-`adoptActiveSpan`.
+(`RouteError`). With `oneTreePerRequest`, each request is one trace — the page, its reads and
+what the backend did. Taken from what a Next.js application proved, with its site, portal and
+backoffice as separate zones.
 
 **Next — the rest of the framework of work** ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
 [`docs/prd/PRD_02_how-an-application-is-built.md`](docs/prd/PRD_02_how-an-application-is-built.md)):

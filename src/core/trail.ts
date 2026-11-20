@@ -32,6 +32,23 @@ export type Trail = {
   total: number | null;
 };
 
+/** This page load's mark: drawn once per load of this module, never sent anywhere. */
+const PAGE_LOAD = Math.random().toString(36).slice(2, 8);
+
+/**
+ * The key a list's trail is kept by — and the `from` the records opened from it carry in their
+ * link: the list's React id (`useId()`), marked with this page load.
+ *
+ * Context: React's ids start over on every load, and a workspace restores its links from the
+ * URL. Unmarked, a record restored after a reload could name the trail of whichever new list
+ * happened to get the same id, and show its «3 / 64» and walk its rows. Marked, an old link
+ * names no trail of this load, and the record simply shows none. The key never reaches the
+ * HTML (a row opens its record on a click), so it cannot differ between server and browser.
+ */
+export function trailKeyOf(listId: string): string {
+  return `trail:${PAGE_LOAD}${listId}`;
+}
+
 /** Where a record stands in its trail: «3 of 64», 1-based. */
 export function placeOf(trail: Trail, id: string): { index: number; total: number } | null {
   const at = trail.ids.indexOf(id);

@@ -2081,12 +2081,18 @@ application that never uses them ships nothing of them:
   client-framework, so each its own `configureProcess`. What is per process lives on
   `globalThis` — OpenTelemetry's global provider —; what is per realm is configured once in
   each. That is why there are two calls, not one.
-- **A server use case's span is a root**, not a child of the SSR framework's request span:
-  `openTelemetryTracer` takes its parent from the run only (client-framework, on purpose — two
-  use cases at once never take each other's span), and `registerServerTracing` registers no
-  context manager. The API's request is still the use case's child (`traceparent`); joining the
-  page's span would need the active context read when a run has no parent — client-framework's,
-  with a context manager (`AsyncLocalStorage`) registered by the application's SDK.
+- **A server use case's span was a root**, not a child of the SSR framework's request span:
+  `openTelemetryTracer` took its parent from the run only (client-framework, on purpose — two
+  use cases at once never take each other's span), and `registerServerTracing` registered no
+  context manager. Now `oneTreePerRequest: true` joins them: it registers Node's
+  `AsyncLocalStorage` context manager (unless the platform has one), and a run with no parent
+  starts under the active span (client-framework 2.5's `adoptActiveSpan`, opt-in there too) — a
+  run with a parent keeps it, so two use cases at once still never take each other's. Off by
+  default, as before.
+- **A list's trail key carries the page load** (`trailKeyOf`): it was React's `useId()` alone,
+  and React's ids start over on every load, so a record restored from the URL after a reload
+  could name the trail of a new list that got the same id. The key never reaches the HTML (a
+  row opens on a click), so marking it cannot break hydration.
 - **The copy's `route` section is optional** in `FrameworkCopy`: an application's own table,
   written before it, keeps compiling, and English stands in (`routeCopy`). The framework's words
   are still a process global (`installFrameworkCopy`): a server rendering several languages at
