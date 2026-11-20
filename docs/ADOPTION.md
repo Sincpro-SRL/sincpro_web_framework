@@ -271,7 +271,10 @@ provider — `registerServerTracing` once per process (Next's `instrumentation.t
 `oneTreePerRequest`, the request, its page's reads and the API are one trace),
 `configureServerProcess` once per realm where the server reads — and `RouteError` is the screen a
 route's error boundary draws (Next's `error.tsx`): plain words, the server's `digest`, retry and
-home, reported once.
+home, reported once. `./errors/server` sends what fails on the server to GlitchTip with its real
+stack — `registerServerErrors` once per process, `reportRequestError` from the SSR framework's
+request-error hook (the visitor's `digest`, the route, the trace) and `serverReporter()` for the
+use cases the server runs.
 
 What is still not there: a record read on the server (`useRecord` starting from it), and the
 framework's words per request — `installFrameworkCopy` is a process global, so a server

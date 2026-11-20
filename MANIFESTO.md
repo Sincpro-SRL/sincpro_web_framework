@@ -188,8 +188,9 @@ record screen of one's own that keeps the framework's (`useRecordScreen`).
 again); the server traces with its own provider and sends the `traceparent` to the API
 (`./telemetry/server`); and a route's failure is one screen, with its digest, reported once
 (`RouteError`). With `oneTreePerRequest`, each request is one trace — the page, its reads and
-what the backend did. Taken from what a Next.js application proved, with its site, portal and
-backoffice as separate zones.
+what the backend did. What fails on the server reaches GlitchTip with its real stack and the
+digest the visitor saw (`./errors/server`), as the browser's and the backend's do. Taken from
+what a Next.js application proved, with its site, portal and backoffice as separate zones.
 
 **Next — the rest of the framework of work** ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
 [`docs/prd/PRD_02_how-an-application-is-built.md`](docs/prd/PRD_02_how-an-application-is-built.md)):
