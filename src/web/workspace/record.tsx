@@ -7,6 +7,7 @@ import { useCrumbs, usePhone, type ViewProps } from "@sincpro/web-composer";
 import { frameworkCopy } from "@sincpro/web-framework/core/copy";
 import { explain } from "@sincpro/web-framework/core/explain";
 import { formOf } from "@sincpro/web-framework/core/form";
+import type { RecordRead } from "@sincpro/web-framework/core/server";
 import { summaryFieldsOf } from "@sincpro/web-framework/core/summary";
 import { placeOf, stepIn } from "@sincpro/web-framework/core/trail";
 import { useFramework } from "@sincpro/web-framework/react/context";
@@ -93,9 +94,12 @@ export function useRecordScreen<T extends AnyRecord>(
     title?: ((record: T) => string | null) | undefined;
     /** `false`: the screen draws its own history — it is not read here. */
     history?: boolean | undefined;
+    /** The record and its model already read on the server that renders the screen
+     *  (`readRecordOnServer`): it starts from it, filled in the HTML (`useRecord`). */
+    initial?: RecordRead<T> | undefined;
   } = {},
 ) {
-  const reading = useRecord(entity, resource);
+  const reading = useRecord(entity, resource, { initial: options.initial });
   const crumbs = useCrumbs(api);
   useRecordInWorkspace(api, reading, options);
   const look = presentationOf(entity);
@@ -196,8 +200,12 @@ export function EntityRecord<T extends AnyRecord>({
   pages,
   actions,
   title,
+  initial,
 }: ViewProps & {
   entity: Entity<T>;
+  /** The record and its model already read on the server that renders the screen
+   *  (`readRecordOnServer`): drawn filled there, and not asked again in the browser. */
+  initial?: RecordRead<T> | undefined;
   /** Its name, the screen's way — for a record whose model has no display field. */
   title?: (record: T) => string | null;
   /** The fields, in this order. Without it, the model's (`formOf`). */
@@ -212,7 +220,7 @@ export function EntityRecord<T extends AnyRecord>({
    */
   actions?: (record: RecordReading<T>) => ScreenActions;
 }) {
-  const screen = useRecordScreen(entity, { api, resource }, { title });
+  const screen = useRecordScreen(entity, { api, resource }, { title, initial });
   const { reading, crumbs, history, pager } = screen;
   const [page, setPage] = useState<string | undefined>(undefined);
   const copy = frameworkCopy().record;
