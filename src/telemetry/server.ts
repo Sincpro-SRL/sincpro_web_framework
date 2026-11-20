@@ -1,3 +1,4 @@
+import type { TraceAPI, Tracer as OpenTelemetryTracer } from "@opentelemetry/api";
 import {
   type Attributes,
   configureProcess,
@@ -18,7 +19,7 @@ import { tracerResource } from "@sincpro/web-framework/telemetry";
  *       if (process.env.NEXT_RUNTIME !== "nodejs") return;
  *       const { registerServerTracing } = await import("@sincpro/web-framework/telemetry/server");
  *       const endpoint = process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT; // from its settings
- *       await registerServerTracing({ endpoint, release, environment });
+ *       await registerServerTracing({ endpoint, release, environment, oneTreePerRequest: true });
  *     }
  *
  *     // once per realm, where the server runs use cases — a module that reads on the server
@@ -35,7 +36,8 @@ import { tracerResource } from "@sincpro/web-framework/telemetry";
  *
  * Optional on every count, like `./telemetry`: an entry of its own that nothing else imports,
  * the same optional peers (`@opentelemetry/api`, `@opentelemetry/sdk-trace`,
- * `@opentelemetry/exporter-trace-otlp-http`, `@opentelemetry/resources`) loaded with `import()`,
+ * `@opentelemetry/exporter-trace-otlp-http`, `@opentelemetry/resources`, and
+ * `@opentelemetry/context-async-hooks` for `oneTreePerRequest`) loaded with `import()`,
  * and nothing throws: without an endpoint nothing loads and nothing is registered; if the SDK
  * is not installed or fails, that is said once on the console and use cases run untraced,
  * sending no `traceparent`. Node only — an edge runtime skips it (its exporter speaks `http`).
@@ -58,6 +60,18 @@ export type ServerTracingOptions = {
   sampling?: number;
   /** More resource attributes (`tenant.group`, …). */
   attributes?: Attributes;
+  /**
+   * Each request one tree — the request the SSR framework traces, its renders, the use cases a
+   * page reads and what the backend did with them. Node's AsyncLocalStorage carries the active
+   * span through each request's awaits (registered here, unless the platform registered a
+   * context manager of its own first), and a use case run with no parent of its own starts
+   * under it (client-framework's `adoptActiveSpan`, 2.5+).
+   *
+   * Default `false`, as before: a use case's span is the root of its trace. Turning it on loads
+   * one more optional peer, `@opentelemetry/context-async-hooks`; if it does not load, that is
+   * said once and the rest works as without it.
+   */
+  oneTreePerRequest?: boolean;
 };
 
 /** The process's tracing, once registered. */
@@ -74,6 +88,8 @@ type Held = {
   registered?: Promise<ServerTracing | undefined>;
   /** A tracer over OpenTelemetry's global provider, once its API is loaded. */
   tracerOf?: (name: string) => Tracer;
+  /** The first registration asked for one tree per request: use cases start under the active span. */
+  adoptActiveSpan?: boolean;
 };
 
 const HELD = Symbol.for("@sincpro/web-framework/telemetry/server");
@@ -99,8 +115,47 @@ export function registerServerTracing(
   const endpoint = options.endpoint;
   if (!endpoint) return Promise.resolve(undefined);
   const shared = held();
-  shared.registered ??= started({ ...options, endpoint });
+  if (shared.registered === undefined) {
+    // Before the first page: every realm's tracer reads it when it is first asked for.
+    shared.adoptActiveSpan = options.oneTreePerRequest === true;
+    shared.registered = started({ ...options, endpoint });
+  }
   return shared.registered;
+}
+
+/** A tracer of client-framework's over OpenTelemetry's, as this process's registration asked. */
+function tracerOver(
+  trace: TraceAPI,
+  overOpenTelemetry: (
+    tracer: OpenTelemetryTracer,
+    options: { adoptActiveSpan: boolean },
+  ) => Tracer,
+): (name: string) => Tracer {
+  return (name) =>
+    overOpenTelemetry(trace.getTracer(name), {
+      adoptActiveSpan: held().adoptActiveSpan === true,
+    });
+}
+
+/**
+ * What is active follows each request through its awaits: Node's AsyncLocalStorage, registered
+ * with OpenTelemetry's API — unless the platform registered a context manager first, which then
+ * carries it.
+ */
+async function followEachRequest(): Promise<void> {
+  try {
+    const [{ context }, { AsyncLocalStorageContextManager }] = await Promise.all([
+      import("@opentelemetry/api"),
+      import("@opentelemetry/context-async-hooks"),
+    ]);
+    const manager = new AsyncLocalStorageContextManager().enable();
+    if (!context.setGlobalContextManager(manager)) manager.disable();
+  } catch (error) {
+    console.warn(
+      `${WHO}: a request is not one tree — @opentelemetry/context-async-hooks did not load`,
+      error,
+    );
+  }
 }
 
 async function started(
@@ -120,6 +175,7 @@ async function started(
       import("@opentelemetry/resources"),
       import("@sincpro/client-framework/opentelemetry"),
     ]);
+    if (options.oneTreePerRequest === true) await followEachRequest();
     const exporter = new OTLPTraceExporter({
       url: options.endpoint,
       ...(options.headers ? { headers: { ...options.headers } } : {}),
@@ -131,7 +187,7 @@ async function started(
       }),
       spanProcessors: [new BatchSpanProcessor({ exporter })],
     });
-    held().tracerOf ??= (name) => openTelemetryTracer(trace.getTracer(name));
+    held().tracerOf ??= tracerOver(trace, openTelemetryTracer);
     if (!trace.setGlobalTracerProvider(provider)) {
       await provider.shutdown();
       console.warn(`${WHO}: another provider was registered first — use cases trace on it`);
@@ -154,7 +210,7 @@ function loadApi(): Promise<void> {
         import("@opentelemetry/api"),
         import("@sincpro/client-framework/opentelemetry"),
       ]);
-      held().tracerOf ??= (name) => openTelemetryTracer(trace.getTracer(name));
+      held().tracerOf ??= tracerOver(trace, openTelemetryTracer);
     } catch (error) {
       console.warn(`${WHO}: tracing is off — @opentelemetry/api did not load`, error);
     }

@@ -144,3 +144,24 @@ test("a use case read on the server is exported with who sent it, and the API co
   assert.ok(read, `the use case's span among ${spans.map((one) => one.name).join(", ")}`);
   assert.deepEqual(sentToTheApi, [`00-${read.traceId}-${read.spanId}-01`]);
 });
+
+test("without oneTreePerRequest a use case read while a request is drawn starts its own trace, as before", async () => {
+  sentToTheApi.length = 0;
+  endpoint.received.length = 0;
+  const request = await trace
+    .getTracer("next.js")
+    .startActiveSpan("GET /courses", async (span) => {
+      await coursesBoundedContext.execute(new CommandReadCourses());
+      span.end();
+      return span.spanContext();
+    });
+  await (await registerServerTracing({ endpoint: endpoint.url }))?.flush();
+
+  const spans = endpoint.received.flatMap((sent) =>
+    sent.resourceSpans.flatMap((one) => one.scopeSpans.flatMap((scope) => scope.spans)),
+  ) as { name: string; traceId: string; parentSpanId?: string }[];
+  const read = spans.find((one) => one.name === "courses/ReadCourses");
+  assert.ok(read, "the use case's span");
+  assert.notEqual(read.traceId, request.traceId);
+  assert.ok(!read.parentSpanId, "a root");
+});

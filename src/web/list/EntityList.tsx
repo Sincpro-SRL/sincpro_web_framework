@@ -18,6 +18,7 @@ import {
 } from "@sincpro/web-framework/core/list";
 import { textOf, viewOf } from "@sincpro/web-framework/core/present";
 import { summaryFieldsOf } from "@sincpro/web-framework/core/summary";
+import { trailKeyOf } from "@sincpro/web-framework/core/trail";
 import { useFramework } from "@sincpro/web-framework/react/context";
 import { useGroups } from "@sincpro/web-framework/react/useGroups";
 import type { Listing } from "@sincpro/web-framework/react/useListing";
@@ -304,7 +305,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   const ticking = selectable || choosingMany || selectionActions !== undefined;
   // The record opened from a row knows the page it came from: «3 / 64» and its neighbours.
   const { trails, dateStyle } = useFramework();
-  const trailKey = `trail:${useId()}`;
+  const trailKey = trailKeyOf(useId());
   // Kept current with the page on screen: the row and its name (`RecordLink`) open the same
   // reference, and whichever opens it, the record finds where it came from.
   useEffect(() => {

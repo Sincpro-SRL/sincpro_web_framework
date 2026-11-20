@@ -267,7 +267,8 @@ process's log and leaves its part to the browser, never the page refused.
 
 Around it, the server's own pieces, wired from the application's framework (README, «Rendered on
 a server»): `./telemetry/server` traces the server's use cases on the process's OpenTelemetry
-provider — `registerServerTracing` once per process (Next's `instrumentation.ts`),
+provider — `registerServerTracing` once per process (Next's `instrumentation.ts`; with
+`oneTreePerRequest`, the request, its page's reads and the API are one trace),
 `configureServerProcess` once per realm where the server reads — and `RouteError` is the screen a
 route's error boundary draws (Next's `error.tsx`): plain words, the server's `digest`, retry and
 home, reported once.

@@ -500,13 +500,20 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   const { registerServerTracing } = await import("@sincpro/web-framework/telemetry/server");
   const endpoint = process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT; // none: tracing stays off
-  await registerServerTracing({ endpoint, release, environment });
+  await registerServerTracing({ endpoint, release, environment, oneTreePerRequest: true });
 }
 
 // where the server runs use cases — once per realm; in a browser it does nothing
 import { configureServerProcess } from "@sincpro/web-framework/telemetry/server";
 configureServerProcess({ identity: { release } });
 ```
+
+With `oneTreePerRequest`, each request is one trace: the request the SSR framework traced, its
+renders, the use cases its page read and what the API did with them. It registers Node's
+`AsyncLocalStorage` context manager (the optional peer `@opentelemetry/context-async-hooks`),
+unless the platform registered one first, and a use case with no parent of its own starts under
+the active span (client-framework 2.5's `adoptActiveSpan`). Without it — the default — each use
+case's span starts a trace of its own, as before.
 
 A page that broke while drawing shows the route's error screen instead of the framework's generic
 one: plain words, the code the server logged it with (Next's `digest`), «try again» and «home»,
