@@ -2049,3 +2049,45 @@ acciones»; `tests/groups.test.ts` (a group's totals, and its words without them
   2.9.1 — stories 64 and 65 fail on 2.9.0.
 - **The record's name twice** in the modern style — the trail's last crumb and the paper — is
   web-ui's decision (as Odoo); an application that wants it once leaves out the last crumb.
+
+## Rendered on a server (2026-11-19, #71)
+
+customer_cauor's web (Next.js 16, App Router) renders its public site on a server and wrote three
+pieces of its own around this package; they are the same in any application that renders on one
+(TanStack Start, Remix…), so they live here — none imports an SSR framework, and a single-page
+application that never uses them ships nothing of them:
+
+- **`readOnServer(useCase, args, { what })`** (core): the use case the page reads with in the
+  browser, run on the server before the page is drawn. Its answer crosses as plain JSON (a Client
+  Component receives data, never instances); a failure answers `undefined` and one WARN line on
+  the process's log (`logger`, a refusal without its message), and the browser reads it on mount.
+  `ServerRead<typeof useCase>` types the page's `initial` for `useServiceReading`.
+  `tests/readOnServer.test.tsx`, including its pairing rendered with `renderToString`.
+- **`./telemetry/server`**, a new optional entry, the server's `browserTracer`:
+  `registerServerTracing` (once per process: OpenTelemetry's provider exporting OTLP/HTTP,
+  registered globally so the SSR framework's own spans land there too), `configureServerProcess`
+  (once per realm, never in a browser: `configureProcess` with a tracer on that provider) and
+  `serverTracer` (the loose piece). Same optional peers, loaded with `import()`.
+  `tests/serverTelemetry.test.ts` exports a use case to a real OTLP/HTTP endpoint and checks the
+  `traceparent` the API was sent is that span's.
+- **`RouteError({ error, reset, where, home })`** (web): the screen a route's error boundary draws
+  — web-ui's `Failed` with the copy table's words (`route`), the server's `digest` as the code to
+  quote, retry and home, reported once (`reportError`). Story 69.
+
+### Found on the way
+
+- **Next runs one process with several module realms** (instrumentation, Server Components, the
+  server render of Client Components): each its own copy of this package and of
+  client-framework, so each its own `configureProcess`. What is per process lives on
+  `globalThis` — OpenTelemetry's global provider —; what is per realm is configured once in
+  each. That is why there are two calls, not one.
+- **A server use case's span is a root**, not a child of the SSR framework's request span:
+  `openTelemetryTracer` takes its parent from the run only (client-framework, on purpose — two
+  use cases at once never take each other's span), and `registerServerTracing` registers no
+  context manager. The API's request is still the use case's child (`traceparent`); joining the
+  page's span would need the active context read when a run has no parent — client-framework's,
+  with a context manager (`AsyncLocalStorage`) registered by the application's SDK.
+- **The copy's `route` section is optional** in `FrameworkCopy`: an application's own table,
+  written before it, keeps compiling, and English stands in (`routeCopy`). The framework's words
+  are still a process global (`installFrameworkCopy`): a server rendering several languages at
+  once needs a provider first, as web-ui's `UiCopyProvider`.

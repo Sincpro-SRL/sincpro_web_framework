@@ -256,11 +256,25 @@ What is not shipped yet: a memory server that speaks sincpro_framework's `Edit` 
 What works today: readings without the composer (`FrameworkProvider` + `useListing` /
 `useRecord`; `react/` and `web/record/` never import it, `make doctor`), a transport without a
 token for anonymous reads, and modules that touch no `window` or `document` when imported, so an
-SSR framework can render them. What does not: data loaded on the server and hydrated — every
-reading starts in an effect, so a server render draws the skeleton, which no search engine reads.
-That arrives with the server-state cache (ARCHITECTURE.md, TanStack Query under the hooks). Until
-then a public page reads with its framework's loader and draws with web-ui, and the application
-parts use this package.
+SSR framework can render them.
+
+Data read on the server and hydrated: a list's first page with `readListing` (handed to
+`useListing(list, { page })`), and a use case's answer with `readOnServer` (handed to
+`useServiceReading(useCase, args, { initial })`, typed by `ServerRead<typeof useCase>`) — both
+from `@sincpro/web-framework/core`, which loads no screen. The page arrives with its data in its
+HTML and the browser asks nothing on mount; a read that fails on the server is one line on the
+process's log and leaves its part to the browser, never the page refused.
+
+Around it, the server's own pieces, wired from the application's framework (README, «Rendered on
+a server»): `./telemetry/server` traces the server's use cases on the process's OpenTelemetry
+provider — `registerServerTracing` once per process (Next's `instrumentation.ts`),
+`configureServerProcess` once per realm where the server reads — and `RouteError` is the screen a
+route's error boundary draws (Next's `error.tsx`): plain words, the server's `digest`, retry and
+home, reported once.
+
+What is still not there: a record read on the server (`useRecord` starting from it), and the
+framework's words per request — `installFrameworkCopy` is a process global, so a server
+rendering several languages at once needs a provider first (ROADMAP).
 
 ## Upgrading from 1.x
 

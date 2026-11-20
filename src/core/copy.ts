@@ -131,6 +131,32 @@ export type FrameworkCopy = {
      *  its own refusal. */
     next: Partial<Record<FailureKind, string>>;
   };
+  /**
+   * A page that broke while drawing (`RouteError`). Optional, so a table an application wrote
+   * before it keeps compiling; without it the English words stand in.
+   */
+  route?: {
+    /** The heading: something went wrong showing the page. */
+    broke: string;
+    /** What it means, in plain words: not the person's doing; try again, say it if it repeats. */
+    sentence: string;
+    /** The code the server logged it with (`digest`), as the page shows it. */
+    code: (digest: string) => string;
+    /** Draws the page again. */
+    retry: string;
+    /** Leaves for the application's start. */
+    home: string;
+  };
+};
+
+type RouteCopy = NonNullable<FrameworkCopy["route"]>;
+
+const ENGLISH_ROUTE: RouteCopy = {
+  broke: "Something went wrong showing this page",
+  sentence: "It is not something you did. Try again; if it happens again, report it.",
+  code: (digest) => `Code: ${digest}`,
+  retry: "Try again",
+  home: "Back to the start",
 };
 
 export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
@@ -241,6 +267,7 @@ export const ENGLISH_FRAMEWORK_COPY: FrameworkCopy = {
       internal: "If it happens again, report it.",
     },
   },
+  route: ENGLISH_ROUTE,
 };
 
 export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
@@ -355,6 +382,14 @@ export const SPANISH_FRAMEWORK_COPY: FrameworkCopy = {
       internal: "Si vuelve a pasar, avisá a soporte.",
     },
   },
+  route: {
+    broke: "Algo salió mal al mostrar esta página",
+    sentence:
+      "No es algo que hayas hecho. Intentá de nuevo; si vuelve a pasar, avisá a soporte.",
+    code: (digest) => `Código: ${digest}`,
+    retry: "Intentar de nuevo",
+    home: "Volver al inicio",
+  },
 };
 
 let installed: FrameworkCopy = ENGLISH_FRAMEWORK_COPY;
@@ -366,3 +401,6 @@ export function installFrameworkCopy(copy: FrameworkCopy): void {
 
 /** The words in use. A plain read: they are installed before anything draws. */
 export const frameworkCopy = (): FrameworkCopy => installed;
+
+/** The words of a page that broke: the installed table's, or English when it has none. */
+export const routeCopy = (): RouteCopy => installed.route ?? ENGLISH_ROUTE;
