@@ -108,6 +108,7 @@ export {
 } from "@sincpro/web-framework/web/record/ServiceButton";
 export { cardOf, relationOf } from "@sincpro/web-framework/web/record/summary";
 export { Refused } from "@sincpro/web-framework/web/Refused";
+export { RouteError, type RouteErrorProps } from "@sincpro/web-framework/web/RouteError";
 export {
   entityView,
   type EntityViewOptions,

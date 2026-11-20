@@ -41,6 +41,14 @@ This framework exists to walk between them: **extensible first, ordered always.*
   is where things open.
 - **One base for many applications**: the ERP backoffice and web client, a point of sale, a
   customer portal, a storefront, dashboards and widgets — the same domains, different shells.
+  Each project chooses its look, its shell, its rendering and how it deploys — one application
+  or several —; underneath, every one is built, read and observed the same way.
+- **Every way the web is drawn.** A single-page app, a server render — server components,
+  streaming, pages regenerated on a schedule — or both in one application, on whichever bundler
+  and router the application picked. The same use cases, hooks and screens on both sides: the
+  server reads with the use case the browser runs (`readOnServer`), the screen starts from what
+  it read (`useServiceReading(…, { initial })`), and a route that breaks shows the failure with
+  the code that finds it (`RouteError`).
 
 ## What it is not
 
@@ -53,6 +61,9 @@ This framework exists to walk between them: **extensible first, ordered always.*
   default drawn from metadata, not a hidden runtime.
 - **Not a permission system, a login or a session manager.** Permissions are business; the
   backend owns them.
+- **Not tied to a renderer.** It imports no Next.js, Remix or Vite and needs none: it runs inside
+  the one the application chose. What a server needs from it (`./core`, `./telemetry/server`)
+  loads in plain Node, and the browser never loads what only the server needs.
 - **Not a general state manager**, and not an event bus for everything.
 - **Not for mobile.** [@sincpro/mobile](https://github.com/Sincpro-SRL/sincpro_mobile) has its own
   core — with the same vocabulary.
@@ -82,7 +93,8 @@ This framework exists to walk between them: **extensible first, ordered always.*
    else decides.
 8. **Observability is not optional.** Every use case is traced and every unexpected error is
    reported, and the browser's trace is continued by the server — by the framework, not by each
-   author. A failure on screen carries the code that finds it.
+   author. A page drawn on the server is traced too, and its reads carry the trace to the
+   backend. A failure on screen carries the code that finds it.
 9. **One architecture, one vocabulary.** `entrypoints`, `domains`, `common`; inside a domain,
    `domain`, `adapters`, `services`, `infrastructure`, `entrypoints` — plus `components`, because
    the web draws. The same words as sincpro_framework and @sincpro/mobile: whoever knows one knows
@@ -96,6 +108,15 @@ This framework exists to walk between them: **extensible first, ordered always.*
     piece is missing, it is fixed where it belongs.
 13. **Grow by evidence.** No folder, abstraction or layer before its second use. Every change
     starts from a use case, written as a story that fails without it.
+14. **Both sides of the render.** A piece without state or effects works on the server; a piece
+    with them is marked for the client (`"use client"`) and draws on the server exactly what it
+    draws first in the browser, so a page never mismatches when it wakes up. Neither side is the
+    default: a project chooses page by page.
+15. **Grow without breaking.** A new capability arrives as an option — a new subpath, a new
+    prop, an optional section of the copy —, never as a change to what exists. Every flavor
+    keeps working: decorators and plain calls, a single-page app and a server render, the
+    traditional style and the modern one. An application upgrades by changing a version number;
+    nothing is deprecated to make room.
 
 ## How it is composed
 
@@ -109,6 +130,7 @@ sincpro_framework ── client contract ──► generated/     types, client,
                                          entrypoints/    views · live sources · widgets
                                              │
           shells:   backoffice (composer) · point of sale · customer portal · storefront
+          drawn:    in the browser · on the server · both
 
 infrastructure, across every layer: the levels of context (app · domain · window · record ·
 execution), the server-state cache, telemetry, error reporting, the raw transport
@@ -160,6 +182,14 @@ with the context, reported); the levels of context and the bounded contexts (cli
 `UseBoundedContext`, `processContext`, a change of company read again on every screen); import
 rules and scaffolding for applications (`sincpro-client check`, `sincpro-client scaffold`); and a
 record screen of one's own that keeps the framework's (`useRecordScreen`).
+
+**Rendered on a server:** a server component or a loader reads with the browser's use case
+(`readOnServer`: plain JSON, and a failure that never takes the page down — the browser reads
+again); the server traces with its own provider and sends the `traceparent` to the API
+(`./telemetry/server`); and a route's failure is one screen, with its digest, reported once
+(`RouteError`). Taken from what a Next.js application proved, with its site, portal and
+backoffice as separate zones. Next: a use case's span under the server's request span, with client-framework's
+`adoptActiveSpan`.
 
 **Next — the rest of the framework of work** ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
 [`docs/prd/PRD_02_how-an-application-is-built.md`](docs/prd/PRD_02_how-an-application-is-built.md)):

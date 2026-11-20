@@ -127,6 +127,7 @@ export {
   type RelationField,
   relationFieldOf,
 } from "@sincpro/web-framework/core/relation";
+export { readOnServer, type ServerRead } from "@sincpro/web-framework/core/server";
 export {
   type RecordSummary,
   summaryFieldsOf,

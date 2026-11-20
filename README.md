@@ -466,6 +466,61 @@ const tickets = defineMeta({
 });
 ```
 
+**8. Rendered on a server** — only when the application renders pages on one (Next.js, TanStack
+Start, Remix); a single-page application skips it and ships nothing of it. Three pieces, and none
+imports an SSR framework: the application wires its own framework's hooks.
+
+A page reads on the server with the use case it reads with in the browser, and arrives with its
+data in its HTML. `readOnServer` answers plain JSON — a Client Component receives data, never
+instances — and, when the read fails, `undefined` and one line on the process's log: the page is
+drawn anyway and the browser reads it on mount. `ServerRead<typeof useCase>` types the page's
+`initial`:
+
+```tsx
+// a route's loader or a Server Component — plain logic, no screen loaded
+import { readOnServer } from "@sincpro/web-framework/core";
+const balance = await readOnServer(project.Accounts.balance, [{ member_id }]);
+return <Balance member={member_id} initial={balance} />;
+
+// the page, rendered there and hydrated in the browser: it asks nothing on mount
+const balance = useServiceReading(project.Accounts.balance, [{ member_id: member }], {
+  initial,
+});
+```
+
+The server's use cases are traced like the browser's and their `traceparent` reaches the API —
+the counterpart of `browserTracer`, in its own optional entry. The provider is registered once
+per process, where the SSR framework's own spans land too; the process is configured once per
+realm (Next bundles instrumentation, Server Components and server rendering apart), and never in
+a browser:
+
+```ts
+// instrumentation.ts (Next) — once per process
+export async function register() {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  const { registerServerTracing } = await import("@sincpro/web-framework/telemetry/server");
+  const endpoint = process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT; // none: tracing stays off
+  await registerServerTracing({ endpoint, release, environment });
+}
+
+// where the server runs use cases — once per realm; in a browser it does nothing
+import { configureServerProcess } from "@sincpro/web-framework/telemetry/server";
+configureServerProcess({ identity: { release } });
+```
+
+A page that broke while drawing shows the route's error screen instead of the framework's generic
+one: plain words, the code the server logged it with (Next's `digest`), «try again» and «home»,
+reported once through the process:
+
+```tsx
+// app/(portal)/error.tsx (Next) — the boundary is the framework's, the screen this one
+"use client";
+import { RouteError } from "@sincpro/web-framework";
+export default function PortalError({ error, reset }: { error: Error; reset: () => void }) {
+  return <RouteError error={error} reset={reset} where="portal" home="/panel" />;
+}
+```
+
 ## The abstractions
 
 Each answers one question, and each comes in the three levels — use the component, drop to the
@@ -476,8 +531,11 @@ hook and draw your own, or go straight to the loose piece.
 | Where is the data?               | `entity()` (client-framework)                                   | —                                     | `restTransport`, `memoryTransport`                          |
 | The application's logic          | its `Feature`s and `ApplicationService`s (client-framework)     | `useService`                          | `project.Issues.close(…)`                                   |
 | Read through a use case          | its `Feature`s (client-framework)                               | `useServiceReading`                   | `project.Accounts.balance(…)`                               |
+| Read it on the server first      | the same use case, before the page is drawn                     | `useServiceReading(…, { initial })`   | `readOnServer`, `ServerRead`                                |
 | What every use case runs with    | `processContext`, `project.context` (client-framework)          | `useContextValues`                    | `ContextStore`                                              |
 | What happened, what broke        | `./telemetry`, `./errors` (optional)                            | —                                     | `configureProcess({ tracer, reporter })`                    |
+| What happened, on the server     | `configureServerProcess` (`./telemetry/server`, optional)       | —                                     | `registerServerTracing`, `serverTracer`                     |
+| A page that broke                | `RouteError`, in the route's error boundary                     | —                                     | `reportError` (client-framework)                            |
 | What is each field?              | `Meta` from the server, or `defineMeta`                         | —                                     | `textOf`, `viewOf`, `metaFromSchema`                        |
 | A value outside a model          | —                                                               | `useTextOf`                           | `moneyTextOf`, `dayTextOf`, `instantTextOf`, `numberTextOf` |
 | A file or a photo it holds       | `EntityList`, `RecordField`: by its widget, as a `FileValue`    | —                                     | `attachmentOf`, `storedFileOf`, `renditionUrl`              |
@@ -542,7 +600,7 @@ Not yet: a new record does not take the `params` it was opened with as its initi
 
 ### Inside
 
-Three levels, one direction, and two optional entries — `make doctor` keeps the arrows:
+Three levels, one direction, and optional entries — `make doctor` keeps the arrows:
 
 | Folder                | Knows                                                                            | Why apart                                                                |
 | --------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
@@ -552,6 +610,7 @@ Three levels, one direction, and two optional entries — `make doctor` keeps th
 | `web/record`          | one record: `RecordField`, `factsOf`, `RelatedList`, `EntityPicker`, `cardOf`    | works outside a workspace (no composer)                                  |
 | `web/workspace`       | the composer: `entityView`, `openIn`, `RelatedRecord`, `<SincproApp>`            | where it opens, the application context                                  |
 | `telemetry`, `errors` | `browserTracer`, `glitchtipReporter`: built from the application's settings      | optional peers, loaded after the first render; nothing else imports them |
+| `telemetry/server`    | `registerServerTracing`, `configureServerProcess`: a server's use cases traced   | optional peers too; Node only — a browser never loads it                 |
 
 Screens import from `@sincpro/web-framework`. What every platform shares — the transport,
 `entity()`, model definitions, `Feature` and `ApplicationService`, the generated client — is
@@ -591,7 +650,10 @@ moves to the generated one — is [`docs/ADOPTION.md`](docs/ADOPTION.md).
 | `restTransport`, `memoryTransport`      | The backend, or the same engine in memory (client-framework)                                    | ✅     |
 | `defineMeta`, `metaFromSchema`          | A model by hand, or completed from OpenAPI (client-framework)                                   | ✅     |
 | `useService`                            | A screen runs one of the application's use cases: run, busy, answer, error                      | ✅     |
+| `readOnServer`                          | A page read on the server by the browser's use case: plain JSON, a failure left to the browser  | ✅     |
 | `./telemetry`, `./errors`               | Optional: the application's traces to its OTLP endpoint, its errors to GlitchTip                | ✅     |
+| `./telemetry/server`                    | Optional: a rendering server's use cases on its OTLP provider, their trace continued by the API | ✅     |
+| `RouteError`                            | A page that broke: plain words, the server's code, retry and home; reported once                | ✅     |
 | `selection`                             | Filters named as criteria 2.0 and the backend read them, the search bar's included              | ✅     |
 | `useListing`, `EntityList`              | N records: criteria, search bar, builder, paging                                                | ✅     |
 | `useRecord`, `factsOf`, `RecordLines`   | One record: facts, relations with their real total                                              | ✅     |

@@ -235,11 +235,17 @@ built; this file is how to keep it.
 - **A long play runs out of time before it fails an assertion.** A story is one scenario; a play
   that walks ten (search, open, edit, save, a modal, its rows…) passes alone and times out under
   load. Split it.
-- **Telemetry and error reporting are optional entries** (`./telemetry`, `./errors`): nothing
-  else imports them (`make doctor`), their SDKs are optional peers loaded with `import()`, and
-  without them — or if they fail to load — use cases run untraced and nothing breaks. They build
-  what the application asks for from its own settings; an application may hand its own tracer or
-  reporter to `configureProcess` instead.
+- **Telemetry and error reporting are optional entries** (`./telemetry`, `./telemetry/server`,
+  `./errors`): nothing else imports them (`make doctor`), their SDKs are optional peers loaded
+  with `import()`, and without them — or if they fail to load — use cases run untraced and
+  nothing breaks. They build what the application asks for from its own settings; an
+  application may hand its own tracer or reporter to `configureProcess` instead.
+- **A server that renders is one process with several realms** (Next: instrumentation, Server
+  Components, the server render of Client Components — each its own copy of this package and of
+  client-framework). What is per process goes on `globalThis`, as OpenTelemetry's provider does
+  (`registerServerTracing`); `configureProcess` is per realm, once (`configureServerProcess`,
+  never in a browser). A server piece never imports React or the root entry: `readOnServer` is
+  `core/`'s, the server's telemetry `./telemetry/server` — the root loads only through a bundler.
 - **What a screen reads and writes is a use case of `screens`, and a change of context reads
   again — never starts over.** `FrameworkProvider` reads and writes through `screensTransport`
   (each request traced, with the context, reported when it failed); the transport stays the same

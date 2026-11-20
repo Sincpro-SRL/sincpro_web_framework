@@ -18,6 +18,10 @@
       "types": "./dist/telemetry/index.d.ts",
       "default": "./dist/telemetry/index.js"
     },
+    "./telemetry/server": {
+      "types": "./dist/telemetry/server.d.ts",
+      "default": "./dist/telemetry/server.js"
+    },
     "./errors": {
       "types": "./dist/errors/index.d.ts",
       "default": "./dist/errors/index.js"
