@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
+import { createRequire } from "node:module";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { context, trace } from "@opentelemetry/api";
 import { AsyncLocalStorageContextManager } from "@opentelemetry/context-async-hooks";
@@ -33,7 +37,7 @@ type Received = {
     values: {
       type?: string;
       value?: string;
-      stacktrace?: { frames?: { filename?: string }[] };
+      stacktrace?: { frames?: { filename?: string; lineno?: number; in_app?: boolean }[] };
     }[];
   };
 };
@@ -220,4 +224,45 @@ test("a request that broke on the server carries the digest the visitor sees, it
     fake.raw.every((body) => !body.includes("secret-of-a-customer")),
     "the query never leaves the server",
   );
+});
+
+test("a frame of a built file is reported where it was in the source, when Node has its source map", async () => {
+  // A server built with its source maps and run with `--enable-source-maps`: Node loads the map
+  // of each built file it requires.
+  process.setSourceMapsEnabled(true);
+  const built = mkdtempSync(join(tmpdir(), "built-"));
+  writeFileSync(
+    join(built, "page.cjs"),
+    'module.exports = function e() { throw new Error("thrown in a built file"); };\n' +
+      "//# sourceMappingURL=page.cjs.map\n",
+  );
+  // Every position of the built line comes from line 10 of the source.
+  writeFileSync(
+    join(built, "page.cjs.map"),
+    JSON.stringify({
+      version: 3,
+      file: "page.cjs",
+      sources: ["app/cursos/page.tsx"],
+      names: [],
+      mappings: "AASA",
+    }),
+  );
+  const draw = createRequire(import.meta.url)(join(built, "page.cjs")) as () => void;
+  let broke: unknown;
+  try {
+    draw();
+  } catch (error) {
+    broke = error;
+  }
+  reportRequestError(broke, { path: "/cursos", route: "/cursos" });
+  await sent();
+
+  const frames = fake.events[0]?.exception?.values[0]?.stacktrace?.frames ?? [];
+  const top = frames.at(-1);
+  assert.ok(
+    top?.filename?.endsWith("app/cursos/page.tsx"),
+    `the source, not the build: ${top?.filename}`,
+  );
+  assert.equal(top?.lineno, 10);
+  assert.equal(top?.in_app, true);
 });

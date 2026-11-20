@@ -2,6 +2,7 @@ import type { ErrorAbout, ErrorReporter } from "@sincpro/client-framework";
 import { narrowed, type SentEvent } from "@sincpro/web-framework/errors/narrowed";
 
 export type { SentEvent };
+export { reportUncaught } from "@sincpro/web-framework/errors/uncaught";
 
 /**
  * An `ErrorReporter` for the browser, built from the application's own settings: a
