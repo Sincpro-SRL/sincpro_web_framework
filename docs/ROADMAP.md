@@ -2088,6 +2088,22 @@ application that never uses them ships nothing of them:
   Left out on purpose: the process's crashes (`uncaughtException`, `unhandledRejection`) — a
   handler changes how Node exits, and a report sent while it exits may never leave; the
   platform's restarts and logs say it.
+- **`reportUncaught()`** (#78) in `./errors`: what nobody caught in the browser — an error in a
+  click handler outside a use case, a promise nobody waited for — never reached GlitchTip, since
+  the reporter registers nothing on `window`. Opt-in; `window`'s `error` and `unhandledrejection`
+  go to client-framework's `reportError`, so a cancellation or a refusal is not a fault and a use
+  case's failure already reported is not reported again; «Script error.» from another origin,
+  with no error, is skipped. Proven in a real Next build: a click that broke and a promise nobody
+  waited for arrived, an `AbortError` did not. `tests/reportUncaught.test.ts`.
+- **Readable stacks** (#78): a production stack points at built bundles. On the server Next prints
+  its stacks mapped but hands over errors whose `stack` is not (it replaces Node's formatter), so
+  `./errors/server` maps each frame with `node:module`'s `findSourceMap` when Node loaded the
+  built file's map (`experimental.serverSourceMaps`, `--enable-source-maps`) — no upload, no
+  dependency; proven in a real Next build (`page.js` → `app/roto/page.tsx`). Note: a bundler may
+  hand `node:module` over as its `default` (webpack does). In the browser: debug IDs injected at
+  build and the maps uploaded with GlitchTip's own CLI (`glitchtip-cli sourcemaps inject|upload`,
+  per its documentation) and never deployed — the SDKs attach the debug IDs on their own.
+  Not yet proven end to end here: it needs the CLI and a GlitchTip with a token.
 
 ### Found on the way
 

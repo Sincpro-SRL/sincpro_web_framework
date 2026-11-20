@@ -281,7 +281,10 @@ route's error boundary draws (Next's `error.tsx`): plain words, the server's `di
 home, reported once. `./errors/server` sends what fails on the server to GlitchTip with its real
 stack — `registerServerErrors` once per process, `reportRequestError` from the SSR framework's
 request-error hook (the visitor's `digest`, the route, the trace) and `serverReporter()` for the
-use cases the server runs.
+use cases the server runs. In the browser, `reportUncaught()` adds what nobody caught (a click
+handler, a promise nobody waited for); and stacks are readable — on the server with Node's own
+source maps (`serverSourceMaps`, `--enable-source-maps`), in the browser with debug IDs uploaded to
+GlitchTip by `glitchtip-cli` (README, «Readable stacks»).
 
 What is still not there: the framework's words per request — `installFrameworkCopy` is a process
 global, so a server rendering several languages at once needs a provider first (ROADMAP).

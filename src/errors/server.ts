@@ -133,6 +133,57 @@ function overFetch(transportOver: typeof createTransport) {
     });
 }
 
+/** Node's reading of a built file's source map (`node:module`), when it loaded one. */
+type FindSourceMap = (path: string) =>
+  | {
+      findOrigin(
+        line: number,
+        column: number,
+      ): { fileName?: string; lineNumber?: number; columnNumber?: number };
+    }
+  | undefined;
+
+type Frame = {
+  filename?: string;
+  abs_path?: string;
+  lineno?: number;
+  colno?: number;
+  in_app?: boolean;
+};
+
+/**
+ * Each frame where it was in the source — `app/cursos/page.tsx:12:7`, not a built bundle's
+ * `page.js:1:4313` —, when the built file has a source map Node loaded (the server built with
+ * its source maps, Node run with `--enable-source-maps`). An SSR framework may print its stacks
+ * mapped and still hand over an error whose `stack` is not (Next replaces Node's formatter): the
+ * report is mapped here, with nothing uploaded anywhere.
+ */
+function readable(event: SentEvent, findSourceMap: FindSourceMap | undefined): SentEvent {
+  if (findSourceMap === undefined) return event;
+  const exception = event["exception"] as
+    { values?: { stacktrace?: { frames?: Frame[] } }[] } | undefined;
+  for (const value of exception?.values ?? []) {
+    for (const frame of value.stacktrace?.frames ?? []) {
+      const file = (frame.abs_path ?? frame.filename)?.replace(/^file:\/\//, "");
+      if (!file || frame.lineno === undefined || frame.colno === undefined) continue;
+      let origin:
+        ReturnType<NonNullable<ReturnType<FindSourceMap>>["findOrigin"]> | undefined;
+      try {
+        origin = findSourceMap(file)?.findOrigin(frame.lineno, frame.colno);
+      } catch {
+        continue;
+      }
+      if (!origin?.fileName || origin.lineNumber === undefined) continue;
+      frame.filename = origin.fileName;
+      frame.abs_path = origin.fileName;
+      frame.lineno = origin.lineNumber;
+      if (origin.columnNumber !== undefined) frame.colno = origin.columnNumber;
+      frame.in_app = !origin.fileName.includes("node_modules");
+    }
+  }
+  return event;
+}
+
 async function started(
   options: ServerErrorsOptions & { dsn: string },
 ): Promise<ServerErrors | undefined> {
@@ -144,6 +195,15 @@ async function started(
         import("@sincpro/client-framework/sentry"),
       ]);
     const runtime = (globalThis as { process?: { version?: string } }).process?.version;
+    // An edge runtime has no `node:module`: its frames stay as they are.
+    // A bundler may hand a builtin over as its `default` (webpack does).
+    const findSourceMap = await import("node:module").then(
+      (module) =>
+        (module.findSourceMap ??
+          (module as { default?: { findSourceMap?: FindSourceMap } }).default
+            ?.findSourceMap) as FindSourceMap | undefined,
+      () => undefined,
+    );
     const client = new ServerRuntimeClient({
       dsn: options.dsn,
       transport: overFetch(core.createTransport),
@@ -155,7 +215,7 @@ async function started(
       ...(options.environment ? { environment: options.environment } : {}),
       ...(options.sampling === undefined ? {} : { sampleRate: options.sampling }),
       beforeSend: (event) => {
-        const own = narrowed(event as unknown as SentEvent);
+        const own = narrowed(readable(event as unknown as SentEvent, findSourceMap));
         const kept = options.beforeSend ? options.beforeSend(own) : own;
         return kept as unknown as typeof event | null;
       },
