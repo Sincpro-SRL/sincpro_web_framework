@@ -4,6 +4,7 @@ import {
   EntityTags,
   presented,
   useListing,
+  type View,
 } from "@sincpro/web-framework";
 import { Field, Tag } from "@sincpro/web-ui";
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -19,7 +20,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          "El **nombre** de un registro es del backend (`meta.display`, el `display_name` de Odoo) y sus partes, del resumen (`entity(…, { summary })`). **Cómo se dibuja** se declara una vez, con la entidad: `presented(entidad, { option, row, card })`. Cada tamaño contesta las props de la pieza de web-ui para ese tamaño —la opción de un selector (`PickerItem`), una fila (`RowOf`), una tarjeta (`RecordCard`)— y van **encima** del default: se da sólo lo que cambia. Sin presentación todo queda como estaba.\n\nLa opción se usa en `EntityPicker`, en `EntityTags` (su nombre y su cara) y en ⌘K (su nombre y su detalle, que son texto); la fila, en la cara «filas» de `EntityList` y en la tarjeta del tablero cuando no hay `card`; la tarjeta, en el tablero —abrirla sigue siendo de la lista—.",
+          'El **nombre** de un registro es del backend (`meta.display`, el `display_name` de Odoo) y sus partes, del resumen (`entity(…, { summary })`). **Cómo se dibuja** se declara una vez, con la entidad: `presented(entidad, { option, row, card, tile })`. Cada tamaño contesta las props de la pieza de web-ui para ese tamaño —la opción de un selector (`PickerItem`), una fila (`RowOf`), una tarjeta (`RecordCard`), un mosaico (`RecordCard layout="tile"`)— y van **encima** del default: se da sólo lo que cambia. Sin presentación todo queda como estaba.\n\nLa opción se usa en `EntityPicker`, en `EntityTags` (su nombre y su cara) y en ⌘K (su nombre y su detalle, que son texto); la fila, en la cara «filas» de `EntityList` y en la tarjeta del tablero cuando no hay `card`; la tarjeta, en el tablero; el mosaico, en la cara «Mosaicos» (`views={["tiles"]}`, sólo si se pide: una lista de facturas no tiene foto) —abrirlos sigue siendo de la lista—.',
       },
     },
   },
@@ -47,6 +48,11 @@ const clientesConCara = presented(clientes, {
   row: (c: Cliente) => (c.active ? {} : { tags: <Tag tone="bad">Inactivo</Tag> }),
   // A card says where.
   card: (c: Cliente) => ({ subtitle: c.city }),
+  // A tile is a face: the person's initials on top, and the credit as its figure.
+  tile: (c: Cliente) => ({
+    media: { person: true, alt: c.name },
+    figure: `Bs ${c.credit_limit}`,
+  }),
 });
 
 const GLOBEX = CLIENTES[3]!;
@@ -97,16 +103,18 @@ export const EnElSelector: Story = {
   },
 };
 
-function Lista({ entity }: { entity: typeof clientes }) {
+function Lista({
+  entity,
+  views = ["rows", "board"],
+}: {
+  entity: typeof clientes;
+  views?: readonly View[];
+}) {
   const listing = useListing(entity, { paging: "more" });
   const [abierto, setAbierto] = useState("");
   return (
     <div className="grid gap-2">
-      <EntityList
-        listing={listing}
-        views={["rows", "board"]}
-        onOpen={(c) => setAbierto(String(c.id))}
-      />
+      <EntityList listing={listing} views={views} onOpen={(c) => setAbierto(String(c.id))} />
       <p aria-label="Abierto">{abierto}</p>
     </div>
   );
@@ -127,6 +135,20 @@ export const EnLasFilasYElTablero: Story = {
     const tarjeta = titulo.closest<HTMLElement>(".rounded-box")!;
     await expect(within(tarjeta).getByText(GLOBEX.city)).toBeVisible();
     // Opening it is still the list's: the press rule did not go with the presentation.
+    await userEvent.click(titulo);
+    await expect(canvas.getByLabelText("Abierto")).toHaveTextContent(GLOBEX.id);
+  },
+};
+
+export const EnLosMosaicos: Story = {
+  render: () => <Lista entity={clientesConCara} views={["tiles", "rows"]} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Asked for first, it opens on the tiles: a grid of the entity's own tiles.
+    const titulo = await canvas.findByRole("button", { name: new RegExp(GLOBEX.name) });
+    const mosaico = titulo.closest<HTMLElement>("[data-ui='list.tiles'] > *")!;
+    await expect(within(mosaico).getByText(`Bs ${GLOBEX.credit_limit}`)).toBeVisible();
+    // The tile is pressed whole, and opening is still the list's.
     await userEvent.click(titulo);
     await expect(canvas.getByLabelText("Abierto")).toHaveTextContent(GLOBEX.id);
   },

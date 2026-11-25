@@ -55,7 +55,7 @@ export const UnClientePorSuNombre: Story = {
       ).findByRole("option", { name: /Globex Bolivia/ }),
     );
     // …and the chosen one filters by its key, read by its name.
-    await expect(await canvas.findByText("Cliente: Globex Bolivia")).toBeVisible();
+    await expect(await canvas.findByTitle("Cliente: Globex Bolivia")).toBeVisible();
     await waitFor(() =>
       expect(canvas.queryAllByText("Importadora del Oriente")).toHaveLength(0),
     );
@@ -75,7 +75,7 @@ export const UnEstadoPorSuPalabra: Story = {
         await sugerencias(canvasElement)
       ).findByRole("option", { name: /Estado.*Pagada/ }),
     );
-    await expect(await canvas.findByText("Estado: Pagada")).toBeVisible();
+    await expect(await canvas.findByTitle("Estado: Pagada")).toBeVisible();
     await waitFor(() => expect(canvas.queryAllByText("Borrador")).toHaveLength(0));
     await expect(canvas.queryByRole("option", { name: /paid/ })).toBeNull();
   },

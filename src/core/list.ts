@@ -78,7 +78,7 @@ export type ListDefinition<T extends AnyRecord = AnyRecord> = {
    *  Excel». Without it, the ones the entity's search template names, else its display. */
   facets?: readonly string[];
   /** The faces it offers, the first one shown. */
-  views?: readonly ("table" | "rows" | "board" | "sheet" | "pivot")[];
+  views?: readonly ("table" | "rows" | "board" | "tiles" | "sheet" | "pivot")[];
   /** Grouped from the start — the server counts the groups. */
   groupBy?: readonly GroupLevel[];
   /** The fields «Group by» offers, in this order — among those the model lets split the set. */

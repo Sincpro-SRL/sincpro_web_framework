@@ -32,6 +32,7 @@ export {
   type Presented,
   presented,
   type RowLook,
+  type TileLook,
   tonesOver,
 } from "@sincpro/web-framework/web/list/presentation";
 export {
