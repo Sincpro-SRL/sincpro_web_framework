@@ -406,7 +406,8 @@ import { browserTracer } from "@sincpro/web-framework/telemetry"; // optional
 const release = "my-app:1.0.0"; // <name>:<version>, the backend's APP_RELEASE
 configureProcess({
   identity: { release }, // + tenant, when the deployment serves one
-  tracer: browserTracer({ endpoint: settings.otlp, release }),
+  // recordExceptions: false — a failure's message and stack stay in GlitchTip, not in every span
+  tracer: browserTracer({ endpoint: settings.otlp, release, recordExceptions: false }),
   reporter: glitchtipReporter({ dsn: settings.glitchtip, release }),
 });
 reportUncaught(); // optional: what nobody caught — a click handler, a promise nobody waited for
@@ -529,7 +530,13 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   const { registerServerTracing } = await import("@sincpro/web-framework/telemetry/server");
   const endpoint = process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT; // none: tracing stays off
-  await registerServerTracing({ endpoint, release, environment, oneTreePerRequest: true });
+  await registerServerTracing({
+    endpoint,
+    release,
+    environment,
+    oneTreePerRequest: true,
+    recordExceptions: false, // the detail is the error tracker's
+  });
 }
 
 // where the server runs use cases — once per realm; in a browser it does nothing
@@ -543,6 +550,11 @@ renders, the use cases its page read and what the API did with them. It register
 unless the platform registered one first, and a use case with no parent of its own starts under
 the active span (client-framework 2.5's `adoptActiveSpan`). Without it — the default — each use
 case's span starts a trace of its own, as before.
+
+`recordExceptions: false` (both tracers, client-framework 2.6+) keeps a failed use case's span
+to what the run says — `error.type`, `sincpro.outcome`, an ERROR status — without its exception:
+where errors go to an error tracker with their trace id, the message and the stack are already
+there, under its access rules, and a failure's message can name a customer. Default `true`.
 
 `registerServerTracing` also registers the W3C trace-context propagator (no baggage), unless the
 platform registered one: an SSR framework reads and writes `traceparent` only through it. With it

@@ -2203,7 +2203,7 @@ Without `initial`, the skeleton as before; `EntityRecord` the same; and a client
   (`GET /clientes?…limit 10`, with the discovery document): its own reading, as in a single-page
   application; the record is not asked again.
 
-## web-ui 2.12 to 2.14 and composer 1.9 (2026-11-25)
+## web-ui 2.12 to 2.14 and composer 1.9 (2026-11-25, #83)
 
 Read against what this package draws; adopted where it serves a list or a record, the rest noted.
 
@@ -2238,7 +2238,26 @@ Read against what this package draws; adopted where it serves a list or a record
 - **Not adopted yet, on purpose**: `ListCounter onClick` and `List.Filters` (quick filters under
   the bar) — a list's named `filters` already live in the bar's panel; showing them twice is a
   screen's choice, and a count per filter needs the server's counts by cut (web-ui's own «next
-  round», `countRecords`). web-ui main holds `Price`, `Rating`, `Gallery`, `Inbox`, `Banner`,
-  `Kbd`, `RangeSlider`, `ContextMenu`, `Empty title/icon`, `Skeleton shape`, `QrCode` — merged,
-  not yet released; `Empty`'s title and icon and a `RangeSlider` for a «between» in the builder
-  are the ones this package would read.
+  round», `countRecords`).
+- **2.14 holds the whole modern round too** (web-ui #79 and #81: `Price`, `Rating`, `Gallery`,
+  `Inbox`, `Banner`, `Kbd`, `RangeSlider`, `ContextMenu`, `PlanCard`, `Empty` with a title,
+  `Skeleton shape`, `QrCode`). Its version commit came before those merges, which read as
+  «merged, not released»; the `v2.14.0` tag is on #81 and npm's 2.14.0 ships them. Adopted here:
+  - **`Empty` as a screen**: `EntityList empty` takes web-ui's empty — `title`, `icon` or
+    `illustration`, `action`, `whenFiltered` — every sentence optional (the copy's words);
+    a text is still the quiet sentence. Story 72.
+  - **`Skeleton shape`** comes by itself: `List` picks it by the face, so the tiles load as tiles.
+  - The rest are pieces an application draws with (a shop's `Price`, a payment's `QrCode`);
+    nothing in a list or a record reads them. A `RangeSlider` for a «between» in the criteria
+    builder is web-ui's builder's, not this package's.
+
+## client-framework 2.6 and criteria 2.5 (2026-11-25)
+
+- **A failed span without its message and stack** (client-framework 2.6, `recordExceptions`):
+  `browserTracer` and `registerServerTracing` take `recordExceptions`. `false` where errors go to
+  the error tracker (`./errors`): the detail is already there with the trace's id, and copied into
+  every span it also reaches whatever stores traces — in an ERP a failure's message can name a
+  customer or an amount. Default `true`, client-framework's; a version before 2.6 ignores it, so
+  the peer range stays. `tests/telemetryExceptions.test.ts`, against a collector.
+- **criteria-react 2.5** marks its hooks `"use client"`: a Server Component can import it.
+  Nothing to change here — dev dependency raised, the peer range stays at 2.4.

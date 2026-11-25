@@ -12,7 +12,7 @@ import {
  *     // the application — domains/common/infrastructure/telemetry.ts
  *     import { browserTracer } from "@sincpro/web-framework/telemetry";
  *     const release = "forge-web:1.4.0";                   // the backend's APP_RELEASE
- *     const tracer = browserTracer({ endpoint: settings.otlp, release });
+ *     const tracer = browserTracer({ endpoint: settings.otlp, release, recordExceptions: false });
  *     configureProcess({ identity: { release }, tracer, reporter });   // entrypoints/main.tsx
  *
  * Context: optional on every count. It is an entry of its own that nothing else in this package
@@ -48,6 +48,15 @@ export type BrowserTracerOptions = {
   sampling?: number;
   /** More resource attributes (`tenant.group`, …). */
   attributes?: Attributes;
+  /**
+   * Whether a failed use case's span carries its exception — type, message and stack — or only
+   * that it failed (`error.type`, `sincpro.outcome`, an ERROR status). `false` where errors go to
+   * an error tracker (`@sincpro/web-framework/errors`): the detail is there already, with the
+   * trace's id, under that tool's access; copied into every span it also reaches whatever stores
+   * traces, and in an ERP a failure's message can name a customer or an amount. Default `true`,
+   * as client-framework's (`openTelemetryTracer`'s `recordExceptions`, 2.6+; older ignore it).
+   */
+  recordExceptions?: boolean;
 };
 
 export type BrowserTracer = Tracer & {
@@ -108,7 +117,12 @@ export function browserTracer(options: BrowserTracerOptions): BrowserTracer {
         }),
         spanProcessors: [new BatchSpanProcessor({ exporter })],
       });
-      ready = openTelemetryTracer(provider.getTracer(String(resource["service.name"])));
+      ready = openTelemetryTracer(
+        provider.getTracer(String(resource["service.name"])),
+        options.recordExceptions === undefined
+          ? {}
+          : { recordExceptions: options.recordExceptions },
+      );
       flush = () => provider.forceFlush();
       // A page that is hidden may never come back: what is buffered goes now.
       const leave = () => void flush().catch(() => undefined);
