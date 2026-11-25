@@ -47,6 +47,7 @@ import {
   type DockAction,
   List,
   type ListCrumb,
+  type ListEmpty,
   type ListPresentProps,
   type ListSet,
   type OpenTarget,
@@ -160,8 +161,13 @@ export type EntityListProps<T extends AnyRecord, C extends CommandBodies = Comma
   openTargets?: readonly OpenTarget[];
   /** Open a row's record there — without `api`, how a screen (a one2many) places it. */
   onOpenIn?: (row: T, to: OpenTarget) => void;
-  /** What an empty list says. */
-  empty?: string;
+  /**
+   * What an empty list says. A text is its sentence; an object is web-ui's empty (2.14) — a
+   * `title`, an `icon` or the application's `illustration`, an `action` — for a list that IS the
+   * screen («Todavía no hay facturas» with a button to create one). What it leaves out is the
+   * framework's words, and `whenFiltered` is what it says when a search emptied it.
+   */
+  empty?: string | EntityEmpty;
   /**
    * `"bar"` (the default) is the full search bar with the criteria builder; `"box"` is one
    * text box over the entity's search template — a chooser, a narrow panel; `false` is none.
@@ -235,6 +241,30 @@ export type EntityFace<T> = {
   wide?: boolean;
   render: (set: ListSet<T>) => ReactNode;
 };
+
+/** An empty list as web-ui draws it (`ListEmpty`), every sentence optional: the copy's words. */
+export type EntityEmpty = Omit<ListEmpty, "sentence" | "whenFiltered"> & {
+  sentence?: string;
+  whenFiltered?: Omit<NonNullable<ListEmpty["whenFiltered"]>, "sentence"> & {
+    sentence?: string;
+  };
+};
+
+/** web-ui's empty for this list: what the screen said, over the framework's words. */
+function emptyOf(
+  asked: string | EntityEmpty | undefined,
+  words: { empty: string; emptyFiltered: string },
+): ListEmpty {
+  const own: EntityEmpty = typeof asked === "string" ? { sentence: asked } : (asked ?? {});
+  return {
+    ...own,
+    sentence: own.sentence ?? words.empty,
+    whenFiltered: {
+      ...own.whenFiltered,
+      sentence: own.whenFiltered?.sentence ?? words.emptyFiltered,
+    },
+  };
+}
 
 /** No commands: one constant, so the hook is not handed a new array on every render. */
 const NO_COMMANDS: readonly never[] = [];
@@ -858,10 +888,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
             : [failure.heading, failure.sentence].filter(Boolean).join(". "),
       }}
       filtered={listing.selection !== undefined || listing.text !== ""}
-      empty={{
-        sentence: empty ?? copy.empty,
-        whenFiltered: { sentence: copy.emptyFiltered },
-      }}
+      empty={emptyOf(empty, copy)}
       {...(selection === undefined ? {} : { selection })}
       {...(opening === undefined ? {} : { onOpen: opening })}
       {...(peeking === undefined ? {} : { onPeek: peeking, rowClick: "open" as const })}

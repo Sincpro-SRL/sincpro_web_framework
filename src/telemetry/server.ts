@@ -72,6 +72,15 @@ export type ServerTracingOptions = {
    * said once and the rest works as without it.
    */
   oneTreePerRequest?: boolean;
+  /**
+   * Whether a failed use case's span carries its exception — type, message and stack — or only
+   * that it failed (`error.type`, `sincpro.outcome`, an ERROR status). `false` where errors go to
+   * an error tracker (`@sincpro/web-framework/errors`): the detail is there already, with the
+   * trace's id, under that tool's access; copied into every span it also reaches whatever stores
+   * traces, and in an ERP a failure's message can name a customer or an amount. Default `true`,
+   * as client-framework's (`openTelemetryTracer`'s `recordExceptions`, 2.6+; older ignore it).
+   */
+  recordExceptions?: boolean;
 };
 
 /** The process's tracing, once registered. */
@@ -90,6 +99,8 @@ type Held = {
   tracerOf?: (name: string) => Tracer;
   /** The first registration asked for one tree per request: use cases start under the active span. */
   adoptActiveSpan?: boolean;
+  /** The first registration's `recordExceptions`; unset, client-framework's default. */
+  recordExceptions?: boolean;
 };
 
 const HELD = Symbol.for("@sincpro/web-framework/telemetry/server");
@@ -118,6 +129,8 @@ export function registerServerTracing(
   if (shared.registered === undefined) {
     // Before the first page: every realm's tracer reads it when it is first asked for.
     shared.adoptActiveSpan = options.oneTreePerRequest === true;
+    if (options.recordExceptions !== undefined)
+      shared.recordExceptions = options.recordExceptions;
     shared.registered = started({ ...options, endpoint });
   }
   return shared.registered;
@@ -128,13 +141,16 @@ function tracerOver(
   trace: TraceAPI,
   overOpenTelemetry: (
     tracer: OpenTelemetryTracer,
-    options: { adoptActiveSpan: boolean },
+    options: { adoptActiveSpan: boolean; recordExceptions?: boolean },
   ) => Tracer,
 ): (name: string) => Tracer {
-  return (name) =>
-    overOpenTelemetry(trace.getTracer(name), {
-      adoptActiveSpan: held().adoptActiveSpan === true,
+  return (name) => {
+    const { adoptActiveSpan, recordExceptions } = held();
+    return overOpenTelemetry(trace.getTracer(name), {
+      adoptActiveSpan: adoptActiveSpan === true,
+      ...(recordExceptions === undefined ? {} : { recordExceptions }),
     });
+  };
 }
 
 /**
