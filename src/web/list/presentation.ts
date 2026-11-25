@@ -21,6 +21,7 @@ import type { ComponentProps } from "react";
  *       option: (c) => ({ meta: c.tax_id, aside: <Saldo value={c.balance} /> }),
  *       row: (c) => ({ tags: c.blocked ? <Tag tone="bad">Bloqueado</Tag> : undefined }),
  *       card: (c) => ({ subtitle: c.city, figure: <Saldo value={c.balance} /> }),
+ *       tile: (c) => ({ media: { src: c.photo_url, person: true } }),
  *     });
  *
  * Each size answers the PROPS of web-ui's piece for it (`PickerItem`, `RowOf`, `RecordCard`),
@@ -41,6 +42,9 @@ export type OptionLook = Partial<Omit<PickerItem, "id">>;
 export type RowLook = Partial<RowOf>;
 /** The board's card. Opening it stays the list's: `onOpen` is not the presentation's. */
 export type CardLook = Partial<Omit<ComponentProps<typeof RecordCard>, "onOpen">>;
+/** A tile of the «tiles» face — web-ui's `RecordCard layout="tile"`: the picture on top
+ *  (`media`), the name, the figure (a price). Its shape stays the tile's. */
+export type TileLook = Omit<CardLook, "layout">;
 
 /** The colour of each value of a choice, by field and by value as text (the Meta's own keys):
  *  `{ estado: { APROBADO: "good", RECHAZADO: "bad" } }`. */
@@ -52,6 +56,16 @@ export type Presentation<T> = {
   option?: (record: T) => OptionLook;
   row?: (record: T) => RowLook;
   card?: (record: T) => CardLook;
+  /**
+   * A tile of the «tiles» face — a product on a till's or a shop's grid: `media` (its
+   * picture), `figure` (its price), `badge`, `disabled` (out of stock). Without it, the tile
+   * is web-ui's, made of the row.
+   *
+   * Context: a tile is not a card. A card is told apart by its facts (`fields`, a figure beside
+   * the name); a tile by its picture and its price, and the whole tile is pressed. One look for
+   * both put a board's facts on a shop's grid, or a product's photo on a pipeline.
+   */
+  tile?: (record: T) => TileLook;
   /**
    * The colour of each value of a choice — a state, a priority. Declared once here and used
    * wherever the framework draws the value: a table's cell, a row's and a card's tag, the tag of

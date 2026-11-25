@@ -108,6 +108,9 @@ built; this file is how to keep it.
 - **web-ui's search bar is a `combobox` «Buscar» and its suggestions are `option`s** (1.4). The
   loose box (`search="box"`, `SearchField`) is still a `searchbox`. Never find either as «the
   first textbox»: the first textbox moves when a piece changes role.
+- **A chip of the bar is read by its `title`** (web-ui 2.14): it is drawn in parts —
+  `campo · comparación · valor` —, so «Cliente: Globex Bolivia» is no element's text. And
+  Backspace on the empty bar MARKS the last chip; a second one removes it.
 - **How a record LOOKS is declared with `presented(entity, { option, row, card })`**
   (`web/list/presentation.ts`), not in `entity()`: `core/` cannot name a React node. Each size
   answers web-ui's PROPS for it, merged over the default (`over`) — a place that draws a record

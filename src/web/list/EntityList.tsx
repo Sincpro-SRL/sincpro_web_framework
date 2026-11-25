@@ -30,7 +30,11 @@ import { EntitySearchBar } from "@sincpro/web-framework/web/list/EntitySearchBar
 import { pilesOf } from "@sincpro/web-framework/web/list/groups";
 import { OpenInMenu, openOptions, targetsFor } from "@sincpro/web-framework/web/list/openIn";
 import { pivotOf } from "@sincpro/web-framework/web/list/pivot";
-import { over, presentationOf } from "@sincpro/web-framework/web/list/presentation";
+import {
+  over,
+  presentationOf,
+  type TileLook,
+} from "@sincpro/web-framework/web/list/presentation";
 import {
   RESTORE,
   type RowCommand,
@@ -116,10 +120,12 @@ export type EntityListProps<T extends AnyRecord, C extends CommandBodies = Comma
   yesNo?: Readonly<Partial<Record<string, YesNoColumn<T>>>>;
   /**
    * The ways to look at the set, the first one shown: `table` (columns), `rows` (a name and
-   * its facts, what a narrow panel wants), `board` (cards) and `sheet` (a spreadsheet, every
-   * cell a value — web-ui's, windowed). The same set, the same search, the same page in each.
-   * Without it, a named list's; else all four on a screen, and the table (rows when narrow)
-   * inside a record. The id of one of `faces` opens on that face.
+   * its facts, what a narrow panel wants), `board` (cards), `sheet` (a spreadsheet, every
+   * cell a value — web-ui's, windowed) and `tiles` (a grid of pictures — a till's products, a
+   * shop's items; asked for, never offered by itself: a set of invoices has no picture). The
+   * same set, the same search, the same page in each. Without it, a named list's; else the
+   * first four on a screen, and the table (rows when narrow) inside a record. The id of one
+   * of `faces` opens on that face.
    */
   views?: readonly (View | (string & {}))[];
   /**
@@ -162,6 +168,14 @@ export type EntityListProps<T extends AnyRecord, C extends CommandBodies = Comma
    * Both ask the server on Enter, never per keystroke: a table is searched on purpose.
    */
   search?: "bar" | "box" | false;
+  /**
+   * The bar remembers, in this browser, the last searches put on this list, and offers them
+   * when it takes the focus empty («Recientes»). `true` keeps them under the list's key (a
+   * named list's, else its entity's); a text, under that name — one per tenant, say. Off by
+   * default: what was searched may name a customer, and whether a browser may keep it is the
+   * application's call.
+   */
+  recent?: boolean | string;
   /** What each group adds up when the list is grouped — «Total 1.204.933,00» in its header,
    *  summed by the server over every row of it. Without it, the figures the model computes
    *  (read-only exact numbers, `sumsOf`); `false` adds nothing up. */
@@ -225,7 +239,7 @@ export type EntityFace<T> = {
 /** No commands: one constant, so the hook is not handed a new array on every render. */
 const NO_COMMANDS: readonly never[] = [];
 
-export type View = "table" | "rows" | "board" | "sheet" | "pivot";
+export type View = "table" | "rows" | "board" | "tiles" | "sheet" | "pivot";
 
 /** What a list offers when nobody said: every face that needs no configuration. */
 const EVERY_VIEW: readonly View[] = ["table", "rows", "board", "sheet"];
@@ -248,6 +262,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   pivot: pivotAsked,
   empty,
   search = "bar",
+  recent: askedRecent = false,
   sums,
   filters: askedFilters,
   facets: askedFacets,
@@ -264,8 +279,14 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
   // A named list (`defineList`) brings its own columns, filters, faces and words; what the
   // screen passes wins.
   const definition = listing.definition;
-  // The entity's own look (`presented`): its columns, the tones of its choices, its row and card.
+  // The entity's own look (`presented`): its columns, the tones of its choices, its row, card, tile.
   const look = presentationOf(listing.entity);
+  const recent =
+    askedRecent === false
+      ? undefined
+      : askedRecent === true
+        ? (definition?.key ?? listing.entity.kind)
+        : askedRecent;
   const columns = askedColumns ?? definition?.columns ?? look.columns;
   const views =
     askedViews ??
@@ -613,12 +634,12 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
       },
       look.row?.(row),
     );
-  // Without a look of its own, the board's card is web-ui's, made of the row. With one, the
-  // same card — the row's name, meta and tags — under it, and pressing it is still the list's:
-  // web-ui (1.5) hands an own card the list's press rule (`ways.press`: open, or choose).
-  const ownCard = look.card;
-  const cardOfRow =
-    ownCard === undefined
+  // Without a look of its own, the board's card — and the tile — is web-ui's, made of the row.
+  // With one, the same card — the row's name, meta and tags — under it, and pressing it is still
+  // the list's: web-ui (1.5) hands an own card the list's press rule (`ways.press`: open, or
+  // choose). A tile is the same card in its `tile` shape (web-ui 2.13), under its own look.
+  const cardFrom = (own: ((row: T) => TileLook) | undefined, layout?: "tile") =>
+    own === undefined
       ? undefined
       : (row: T, ways: CardWays) => {
           const d = rowOf(row);
@@ -630,12 +651,15 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
                   ...(d.tags === undefined ? {} : { tags: d.tags }),
                   ...(d.meta === undefined ? {} : { meta: d.meta }),
                 },
-                ownCard(row),
+                own(row),
               )}
+              {...(layout === undefined ? {} : { layout })}
               {...(ways.press === undefined ? {} : { onOpen: ways.press })}
             />
           );
         };
+  const cardOfRow = cardFrom(look.card);
+  const tileOfRow = cardFrom(look.tile, "tile");
 
   // Grouped: the SERVER counts the groups; a group's rows are read when it is opened, so every
   // group starts closed. Every face of web-ui (1.4) draws these piles, the table included, and
@@ -865,6 +889,7 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
               {...(groupable === undefined ? {} : { groupable })}
               {...(facets === undefined ? {} : { facets })}
               {...(asked === "" ? {} : { seed: asked })}
+              {...(recent === undefined ? {} : { recentKey: recent })}
             />
           </List.Search>
         ) : null}
@@ -942,6 +967,9 @@ export function EntityList<T extends AnyRecord, C extends CommandBodies = Comman
       ) : null}
       {views.includes("board") ? (
         <List.Board<T> {...(cardOfRow === undefined ? {} : { card: cardOfRow })} />
+      ) : null}
+      {views.includes("tiles") ? (
+        <List.Tiles<T> {...(tileOfRow === undefined ? {} : { card: tileOfRow })} />
       ) : null}
       {(faces ?? []).map((face) => (
         <List.Present<T>

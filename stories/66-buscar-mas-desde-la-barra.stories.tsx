@@ -68,7 +68,7 @@ export const VariosClientesDesdeLaBarra: Story = {
     await userEvent.click(await elegir.findByRole("button", { name: "Agregar (2)" }));
     // One chip, by their names; the list asks for their invoices only.
     await expect(
-      await canvas.findByText(/Cliente: .*Importadora del Oriente.*Globex Bolivia/),
+      await canvas.findByTitle(/Cliente: .*Importadora del Oriente.*Globex Bolivia/),
     ).toBeVisible();
     await waitFor(() => expect(canvas.queryAllByText("Clínica San Gabriel")).toHaveLength(0));
   },

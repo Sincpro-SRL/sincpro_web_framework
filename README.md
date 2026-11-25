@@ -365,9 +365,9 @@ function InvoiceView({ api, resource }: ViewProps) {
 }
 ```
 
-How a record of an entity LOOKS — as a choice, a row, a card — is said once, around the entity,
-and every place that draws one uses it (`EntityPicker`, `EntityTags`, ⌘K, `EntityList`'s rows and
-board). Each size answers web-ui's props for it, over the default; give only what changes:
+How a record of an entity LOOKS — as a choice, a row, a card, a tile — is said once, around the
+entity, and every place that draws one uses it (`EntityPicker`, `EntityTags`, ⌘K, `EntityList`'s
+rows, board and tiles). Each size answers web-ui's props for it, over the default; give only what changes:
 
 ```tsx
 export const customers = presented(
@@ -376,6 +376,7 @@ export const customers = presented(
     option: (c) => ({ meta: `NIT ${c.tax_id}`, aside: <Balance value={c.balance} /> }),
     row: (c) => (c.blocked ? { tags: <Tag tone="bad">Blocked</Tag> } : {}),
     card: (c) => ({ subtitle: c.city }),
+    tile: (c) => ({ media: { src: c.logo_url }, figure: <Balance value={c.balance} /> }),
   },
 );
 ```
@@ -626,7 +627,7 @@ hook and draw your own, or go straight to the loose piece.
 | A value outside a model          | —                                                               | `useTextOf`                           | `moneyTextOf`, `dayTextOf`, `instantTextOf`, `numberTextOf` |
 | A file or a photo it holds       | `EntityList`, `RecordField`: by its widget, as a `FileValue`    | —                                     | `attachmentOf`, `storedFileOf`, `renditionUrl`              |
 | What is a record, at any size?   | `cardOf`, `relationOf`                                          | `useSummaryOf`                        | `summaryOf`                                                 |
-| How does a record look?          | `presented(entity, { option, row, card })`                      | —                                     | `presentationOf`                                            |
+| How does a record look?          | `presented(entity, { option, row, card, tile })`                | —                                     | `presentationOf`                                            |
 | N records: search, filter, page  | `EntityList`, `EntitySearchBar`                                 | `useListing`, `useGroups`             | `transport.list(route, criteria)`                           |
 | A named slice (to collect, …)    | `defineList` + `listView`                                       | `useListing(list)`                    | `scopeOf`                                                   |
 | A record's whole screen          | `EntityRecord`, `entityView` without `record`                   | `useRecordScreen`                     | `formOf`                                                    |
@@ -640,7 +641,7 @@ hook and draw your own, or go straight to the loose piece.
 | Choose several (many2many)       | `EntityTags`                                                    | `useLookup` (`values`)                | `lookupOf`                                                  |
 | A relation, from the model alone | `RecordField name="customer_id"`                                | `useEntityFor`                        | `relationFieldOf`, `entityFor`                              |
 | Open it where it belongs         | `RelatedRecord`, `entityView`, `EntityList openTargets`         | —                                     | `openIn`, `targetsFor`, `OpenInMenu`                        |
-| Look at the set several ways     | `EntityList views` (table, rows, board, sheet)                  | —                                     | web-ui's `List.*`                                           |
+| Look at the set several ways     | `EntityList views` (table, rows, board, sheet, tiles)           | —                                     | web-ui's `List.*`                                           |
 | Cross it by two fields           | `EntityList pivot`                                              | `usePivot`                            | `pivotOf`                                                   |
 | Order by several fields          | the bar's criteria builder                                      | `listing.orderBy([...])`              | criteria's `order`                                          |
 | Act on it (with a dry run)       | `ServiceButton` (a use case), `CommandButton`, row commands     | `useService`, `useCommand`            | `transport.send`                                            |

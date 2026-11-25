@@ -2202,3 +2202,43 @@ Without `initial`, the skeleton as before; `EntityRecord` the same; and a client
 - **A many2one's picker reads its first options in the browser on mount**
   (`GET /clientes?…limit 10`, with the discovery document): its own reading, as in a single-page
   application; the record is not asked again.
+
+## web-ui 2.12 to 2.14 and composer 1.9 (2026-11-25)
+
+Read against what this package draws; adopted where it serves a list or a record, the rest noted.
+
+- **2.12, the pure helpers out of `"use client"`**: nothing to change. Nothing here wrapped a
+  helper in a client component to reach it from a server (`readOnServer` is `core/`'s and calls
+  none). A server component that formats with web-ui installs ITS copy (`installCopy`) — the
+  application's job, said in web-ui's README.
+- **2.13, `List.Tiles`**: a new face, `views={["tiles"]}` on `EntityList` (and in a named
+  list's `views`) — asked for, never in the faces offered by default: a set of invoices has no
+  picture. Its tile is declared once with the entity, `presented(entity, { tile })` — web-ui's
+  `RecordCard` props without `layout`, over the default made of the row — apart from `card`:
+  a board's card is told by its facts, a shop's tile by its picture and price. Story 30
+  `EnLosMosaicos`.
+- **2.14, recent searches**: `EntityList recent` / `EntitySearchBar recentKey`. `true` keeps
+  them under the named list's key, else the entity's kind; a text, under that name. Off by
+  default, as in web-ui: what was searched may name a customer, and whether a browser keeps it
+  is the application's call. Story 71.
+- **2.14, the bar from the keyboard** comes by itself: `/` focuses the bar, chips in parts,
+  undo in the screen's `ToastProvider` (`SincproApp` has one). Backspace on the empty bar now
+  marks first and removes on the second press.
+- **2.14, a chip reads `campo · comparación · valor`**: its whole sentence is its `title`. Stories
+  63 and 66 read it by title now (`findByTitle("Cliente: Globex Bolivia")`), as web-ui's own did.
+- **composer 1.9 (server rendering)**: nothing to change — `SincproApp`'s workspace has no hash.
+  Its finding about `trail:${useId()}` was already answered here (`trailKeyOf` marks the key
+  with the page load).
+
+### Found on the way
+
+- **Story 54 failed by the calendar, not by web-ui**: an event over a week old is written as its
+  day (`formatRelative`), so «16/11/2026» became the history's `<time>` too once the fixture
+  aged past seven days. The play reads the field's value (`selector: "span"`).
+- **Not adopted yet, on purpose**: `ListCounter onClick` and `List.Filters` (quick filters under
+  the bar) — a list's named `filters` already live in the bar's panel; showing them twice is a
+  screen's choice, and a count per filter needs the server's counts by cut (web-ui's own «next
+  round», `countRecords`). web-ui main holds `Price`, `Rating`, `Gallery`, `Inbox`, `Banner`,
+  `Kbd`, `RangeSlider`, `ContextMenu`, `Empty title/icon`, `Skeleton shape`, `QrCode` — merged,
+  not yet released; `Empty`'s title and icon and a `RangeSlider` for a «between» in the builder
+  are the ones this package would read.

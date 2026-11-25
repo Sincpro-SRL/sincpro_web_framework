@@ -73,6 +73,7 @@ export function EntitySearchBar<T extends AnyRecord>({
   groupable: only,
   facets: named,
   seed,
+  recentKey,
 }: {
   listing: Listing<T>;
   /** The cuts this set offers by name: «sólo pagadas», «vencidas». */
@@ -88,6 +89,11 @@ export function EntitySearchBar<T extends AnyRecord>({
   /** A text to start on, put as the literal search chip — what was typed in a picker whose
    *  «Buscar más…» opened this list. */
   seed?: string;
+  /** Under which name this bar remembers, in this browser, the last searches put — offered
+   *  when the empty bar takes the focus («Recientes», web-ui 2.14). Without it nothing is
+   *  remembered: what was searched may name a customer, and only the application knows
+   *  whether its browsers may keep that. */
+  recentKey?: string;
 }) {
   const copy = frameworkCopy().list;
   const { meta, locale } = listing;
@@ -184,6 +190,7 @@ export function EntitySearchBar<T extends AnyRecord>({
           ? {}
           : { grouping: <GroupingLevels fields={groupable} control={control} /> })}
         onOpenBuilder={() => setBuilding(true)}
+        {...(recentKey === undefined ? {} : { recentKey })}
         {...(meta?.search == null
           ? {}
           : {

@@ -68,7 +68,9 @@ export const UnPagoSoloSeLee: Story = {
     // The receipt it embeds, field by field from its definition.
     await expect(canvas.getByText("N.º de recibo", { selector: "label" })).toBeVisible();
     await expect(canvas.getByText("0042")).toBeVisible();
-    await expect(canvas.getByText("16/11/2026")).toBeVisible();
+    // The field's value, not the history's `<time>`: an event over a week old is written as
+    // the same day (web-ui's `formatRelative`), so the text alone finds two.
+    await expect(canvas.getByText("16/11/2026", { selector: "span" })).toBeVisible();
   },
 };
 

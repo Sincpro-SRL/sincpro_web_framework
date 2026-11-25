@@ -1297,17 +1297,17 @@
   resolved "https://registry.yarnpkg.com/@sincpro/criteria/-/criteria-2.4.0.tgz#96ba258df18ae9e520564d670d18c25aa0dd957a"
   integrity sha512-wYi6jbBMOvJOLohfoBoYtX9miIBv6lwfeeOQmNV6GX7RPaQUJVPPdy418X7VlEgyNuCR6m7rQsXFro2ozjouUg==
 
-"@sincpro/web-composer@^1.8.0":
-  version "1.8.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/web-composer/-/web-composer-1.8.0.tgz#79ba3434b68ac82e08ebb72059dc9005f07e8f7d"
-  integrity sha512-pdCB/HXADw5UzyGxr0GzPy/1ejOt+7ALwXRpSTm5GHtSS/xA/Fq12kboSjV+QhhMSsi4vAawLDdc0ztQzxoYkQ==
+"@sincpro/web-composer@^1.9.0":
+  version "1.9.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/web-composer/-/web-composer-1.9.0.tgz#e9b97ba35bbb42c5e36848f20fbaeaf82d179d5b"
+  integrity sha512-MFwsmzjZIYw2k5gwRmJ/rqTiY/hGXtRJatXzIDbLCFdPQpopVluZBKxe6meysa5ljjmWlm9a0eymsK7SKPvNHA==
   dependencies:
     "@atlaskit/pragmatic-drag-and-drop" "^4.0.0"
 
-"@sincpro/web-ui@^2.11.0":
-  version "2.11.0"
-  resolved "https://registry.yarnpkg.com/@sincpro/web-ui/-/web-ui-2.11.0.tgz#5b5e6ac90d5498cf07e370dceb35b49cd4b32317"
-  integrity sha512-QiA+DSnLn1f9PcI9caOSNzRGM7HmHKLQcmAbEBYVZZAGf52Zu9EENU115etx05YeJgSKNOL/0LuZNOBj5f6DQQ==
+"@sincpro/web-ui@^2.14.0":
+  version "2.14.0"
+  resolved "https://registry.yarnpkg.com/@sincpro/web-ui/-/web-ui-2.14.0.tgz#a71220af1db4baa6c8f62dffb913e6f40182ebb3"
+  integrity sha512-jrv4DQIODQ51BVR6l31FMGqnm7MtGMMKSNJAsFvVuYpnkH+gCefBP4lC43jcZVtuB2aK6LcCwgZoRPEMSUbHjA==
   dependencies:
     "@codemirror/lang-json" "^6.0.2"
     "@codemirror/lint" "^6.9.7"
@@ -1335,6 +1335,7 @@
     tailwind-variants "^4.0.0"
     tailwindcss-react-aria-components "^2.2.0"
     temporal-polyfill "^1.0.6"
+    uqr "^0.1.3"
 
 "@standard-schema/spec@^1.0.0":
   version "1.1.0"
@@ -5641,6 +5642,11 @@ update-browserslist-db@^1.3.4:
   dependencies:
     escalade "^3.2.0"
     picocolors "^1.1.1"
+
+uqr@^0.1.3:
+  version "0.1.3"
+  resolved "https://registry.yarnpkg.com/uqr/-/uqr-0.1.3.tgz#43b5b27508cd28ccc42401ea75b92a39bd8cd510"
+  integrity sha512-0rjE8iEJe4YmT9TOhwsZtqCMRLc5DXZUI2UEYUUg63ikBkqqE5EYWaI0etFe/5KUcmcYwLih2RND1kq+hrUJXA==
 
 uri-js@^4.2.2:
   version "4.4.1"
