@@ -19,8 +19,12 @@ import {
   Dialog,
   fillCopy,
   filterCriteria,
+  filtersOf,
   GroupingLevels,
   hasNamed,
+  levelLabeler,
+  levelsOf,
+  type MenuGroup,
   SearchBar,
   type SearchCriteria,
   selectionOf,
@@ -28,6 +32,7 @@ import {
   useGroupingControl,
   useSearchSettings,
   useUiCopy,
+  withLevels,
 } from "@sincpro/web-ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -53,11 +58,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
  *     what opens outside one cannot be used;
  *   - the builder walks relations — «Cliente › País» — through the models along the path
  *     (`useLoadModel`), and picks the related records themselves;
- *   - a named filter is one click; the builder writes what nobody foresaw (all/any/not);
+ *   - a named filter is one click; the ones of one `group` add up in one chip («Pedidos o
+ *     Trabajando»), as Odoo's; the builder writes what nobody foresaw (all/any/not);
  *   - everything put becomes ONE `selection` the SERVER answers (`listing.filter`) — web-ui
  *     writes it in criteria's own shape, a filter through a relation included;
  *   - with `groups`, «Group by» offers the fields the model says may split the set, and the
- *     SERVER counts the groups (`useGroups`).
+ *     SERVER counts the groups (`useGroups`); how the set is grouped is a facet of the bar too
+ *     («⧉ Estado › Creado el · mes ×»), so a grouped list never looks ungrouped, and removing
+ *     the chip ungroups it.
  *
  *     <List.Search><EntitySearchBar listing={listing} filters={…} /></List.Search>
  */
@@ -65,6 +73,38 @@ export type { NamedFilter };
 
 /** No grouping: one constant, so the control is not handed a new array on every render. */
 const NO_LEVELS: readonly GroupLevel[] = [];
+
+/** The same levels, in the same order: the bar asks to group only when they changed. */
+const sameLevels = (one: readonly GroupLevel[], other: readonly GroupLevel[]) =>
+  one.length === other.length &&
+  one.every(
+    (level, at) => level.field === other[at]?.field && level.grain === other[at]?.grain,
+  );
+
+/** The named filters as the panel lists them: each `group` apart, in the order declared; the
+ *  ones without a group together, where the first of them was. */
+function panelOf<T>(
+  filters: readonly NamedFilter<T>[],
+  isSet: (id: string) => boolean,
+): MenuGroup[] {
+  const order: string[] = [];
+  const by = new Map<string, NamedFilter<T>[]>();
+  for (const one of filters) {
+    const key = one.group ?? "";
+    if (!by.has(key)) {
+      by.set(key, []);
+      order.push(key);
+    }
+    by.get(key)!.push(one);
+  }
+  return order.map((key) => ({
+    options: (by.get(key) ?? []).map((one) => ({
+      id: one.id,
+      label: one.label,
+      checked: isSet(one.id),
+    })),
+  }));
+}
 
 export function EntitySearchBar<T extends AnyRecord>({
   listing,
@@ -138,6 +178,15 @@ export function EntitySearchBar<T extends AnyRecord>({
     // Once the definition is known; what the person changes afterwards is theirs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meta, seed]);
+  // How a level reads in the bar's chain: the field's label, and its grain for a date.
+  const levelName = useMemo(() => levelLabeler(groupableOf(meta, locale)), [meta, locale]);
+  const levels = groups?.levels ?? NO_LEVELS;
+  // What the bar draws: how the set is grouped (always first), then what narrows it.
+  const shown = useMemo(
+    () => (groups === undefined ? put : withLevels(put, levels, levelName)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [put, levels, levelName, groups === undefined],
+  );
   const control = useGroupingControl({
     levels: groups?.levels ?? NO_LEVELS,
     onLevelsChange: (next) => groups?.group(next),
@@ -149,6 +198,12 @@ export function EntitySearchBar<T extends AnyRecord>({
     setPut(next);
     listing.filter(selectionOf(next) as Expression<T> | undefined);
   };
+  // A change made in the bar: the grouping chain to the grouping, the rest to the filter.
+  const changed = (next: SearchCriteria[]) => {
+    const asked = levelsOf(next);
+    if (groups !== undefined && !sameLevels(asked, levels)) groups.group(asked);
+    place(filtersOf(next));
+  };
   // What the bar holds, as one selection: what the builder opens on.
   const current = selectionOf(put);
 
@@ -157,32 +212,29 @@ export function EntitySearchBar<T extends AnyRecord>({
       <SearchBar
         facets={facets}
         model={asked ?? model}
-        criteria={put}
-        onCriteriaChange={place}
+        criteria={shown}
+        onCriteriaChange={changed}
         placeholder={copy.searchBar}
         searchRecords={searchRecords}
         {...(browseRecords === null ? {} : { browseRecords })}
         {...(filters.length === 0
           ? {}
           : {
-              filters: [
-                {
-                  options: filters.map((one) => ({
-                    id: one.id,
-                    label: one.label,
-                    checked: hasNamed(put, one.id),
-                  })),
-                },
-              ],
+              filters: panelOf(filters, (id) => hasNamed(put, id)),
               onFilterSelect: (id: string) => {
                 const named = filters.find((one) => one.id === id);
                 if (named !== undefined)
                   place(
-                    toggleNamed(put, {
-                      id: named.id,
-                      label: named.label,
-                      selection: named.selection as BuiltFilter,
-                    }),
+                    toggleNamed(
+                      put,
+                      {
+                        id: named.id,
+                        label: named.label,
+                        selection: named.selection as BuiltFilter,
+                        ...(named.group === undefined ? {} : { group: named.group }),
+                      },
+                      { or: ui.search.or },
+                    ),
                   );
               },
             })}

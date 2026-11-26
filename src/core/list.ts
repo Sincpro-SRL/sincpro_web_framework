@@ -93,6 +93,15 @@ export type NamedFilter<T> = {
   label: string;
   /** What it keeps, as criteria's `selection`. */
   selection: Expression<T>;
+  /**
+   * The cuts of one question share a group — «Pedidos», «Trabajando», «Terminados» are values of
+   * the same status. Odoo's rule: set together, the filters of a group ADD UP (one chip, «Pedidos
+   * o Trabajando»); a group and anything else narrow each other. The panel lists each group
+   * apart, in the order declared. Without it, a filter narrows everything else.
+   *
+   *     { id: "running", label: "Trabajando", group: "status", selection: … }
+   */
+  group?: string;
 };
 
 /** One level of a grouping: by which field, and by which cut of time when it is a date. */
