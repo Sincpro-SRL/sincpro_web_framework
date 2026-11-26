@@ -254,3 +254,79 @@ export const SoloLosCamposQueLaPantallaNombra: Story = {
     await expect(page.queryByRole("button", { name: "correlation" })).toBeNull();
   },
 };
+
+/** How the set is grouped is a facet of the bar (#86): «⧉ Estado» on its left, as the filters
+ *  are on its right — a grouped list never looks ungrouped. Removing the chain ungroups it. */
+export const ElAgrupadoSeVeEnLaBarra: Story = {
+  render: () => <FacturasPorEstado />,
+  decorators: escenario,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const cadena = await canvas.findByRole("group", { name: /agrupado por Estado/i });
+    await expect(cadena).toBeVisible();
+    // The piles are there, then the × of the chain takes them away.
+    await canvas.findAllByText(/^Total /);
+    await userEvent.click(within(cadena).getByRole("button", { name: "Dejar de agrupar" }));
+    await waitFor(() =>
+      expect(canvas.queryByRole("group", { name: /agrupado por/i })).toBeNull(),
+    );
+    await waitFor(() => expect(canvas.queryAllByText(/^Total /)).toHaveLength(0));
+  },
+};
+
+const conFiltrosDeEstado = defineList(facturas, {
+  id: "con-filtros-de-estado",
+  title: "Facturas",
+  filters: [
+    {
+      id: "borradores",
+      label: "Borradores",
+      group: "state",
+      selection: { field: "state", operator: "=", value: "draft" },
+    },
+    {
+      id: "publicadas",
+      label: "Publicadas",
+      group: "state",
+      selection: { field: "state", operator: "=", value: "posted" },
+    },
+  ],
+});
+
+const pedidosDeFiltros: { route: string; criteria: Criteria }[] = [];
+
+/** Two named filters of one `group` ADD UP (#86, web-ui #82): one chip «Borradores o
+ *  Publicadas», and the server is asked for either — not for an invoice that is both. */
+export const LosFiltrosDeUnGrupoSeSuman: Story = {
+  render: function Render() {
+    return (
+      <EntityList
+        listing={useListing(conFiltrosDeEstado, { pageSize: 20 })}
+        columns={["number", "customer", "state", "amount_total"]}
+      />
+    );
+  },
+  decorators: [
+    (Story) => (
+      <Escenario
+        tables={VENTAS}
+        observe={(route, criteria) => pedidosDeFiltros.push({ route, criteria })}
+      >
+        <Story />
+      </Escenario>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await canvas.findByText("1–20");
+    await userEvent.click(canvas.getByRole("button", { name: /agrupar/i }));
+    await userEvent.click(await page.findByRole("button", { name: "Borradores" }));
+    await userEvent.click(await page.findByRole("button", { name: "Publicadas" }));
+    await expect(await canvas.findByText("Borradores o Publicadas")).toBeVisible();
+    await waitFor(() => {
+      const ultimo = pedidosDeFiltros.at(-1)?.criteria.selection as { any?: unknown[] };
+      return expect(ultimo?.any).toHaveLength(2);
+    });
+  },
+};

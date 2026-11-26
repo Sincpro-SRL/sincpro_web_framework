@@ -2261,3 +2261,23 @@ Read against what this package draws; adopted where it serves a list or a record
   the peer range stays. `tests/telemetryExceptions.test.ts`, against a collector.
 - **criteria-react 2.5** marks its hooks `"use client"`: a Server Component can import it.
   Nothing to change here — dev dependency raised, the peer range stays at 2.4.
+
+## The bar says how the set is grouped, and filters of one question add up (2026-11-26, #86)
+
+Found in sincpro_forge's console: a project's issues open grouped by status and the search bar
+said nothing about it — the grouping lived only inside the panel, so the list looked ungrouped —,
+and «Pedidos» + «Trabajando» + «Terminados» (three values of one status) answered nothing,
+each named filter AND'd with the others.
+
+- **The grouping is a facet of the bar.** `EntitySearchBar` hands web-ui's bar the levels as
+  group instances (`withLevels(put, groups.levels, levelLabeler(groupable))`): «⧉ Estado ›
+  Creado el · mes ×» on the left, before the filters. A change made in the bar goes back where
+  it belongs — the chain to `groups.group` (`levelsOf`), the rest to `listing.filter` —, so the
+  × of the chain ungroups and the panel and the bar never disagree.
+- **`NamedFilter.group`.** Filters of one question share a group: set together they add up in
+  ONE chip, «Borradores o Publicadas» (`{ any: [...] }`), and AND with anything else — Odoo's
+  rule. The panel lists each group apart, in the order declared. Without `group`, unchanged.
+- web-ui #82 (2.15) carries the other half: the funnel on a filter facet, `toggleNamed` with
+  `group`, and a group's header named by its column («Estado», not «status», web-ui #36).
+
+Stories 19 · `ElAgrupadoSeVeEnLaBarra`, `LosFiltrosDeUnGrupoSeSuman`.
